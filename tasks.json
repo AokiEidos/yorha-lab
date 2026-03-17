@@ -1,0 +1,145 @@
+{
+  "project": "YoRHa::LaB",
+  "version": "0.1",
+  "last_updated": "2026-03-17",
+  "queue": [
+    {
+      "id": "p3-1",
+      "phase": "Phase 3",
+      "task": "安装 React Three Fiber 依赖",
+      "status": "completed",
+      "validation": "依赖安装成功"
+    },
+    {
+      "id": "p3-2",
+      "phase": "Phase 3",
+      "task": "创建足迹地图页面路由",
+      "status": "completed",
+      "validation": "页面可访问"
+    },
+    {
+      "id": "p3-3",
+      "phase": "Phase 3",
+      "task": "开发 3D 地球组件",
+      "status": "completed",
+      "validation": "地球渲染成功"
+    },
+    {
+      "id": "p3-4",
+      "phase": "Phase 3",
+      "task": "城市坐标数据模型",
+      "status": "completed",
+      "validation": "数据格式定义完成"
+    },
+    {
+      "id": "p3-5",
+      "phase": "Phase 3",
+      "task": "标记点交互功能",
+      "status": "completed",
+      "validation": "点击标记可交互"
+    },
+    {
+      "id": "p3-6",
+      "phase": "Phase 3",
+      "task": "照片展示弹窗",
+      "status": "completed",
+      "validation": "弹窗显示照片"
+    }
+  ],
+  "completed": [
+    {
+      "id": "p1-1",
+      "phase": "Phase 1",
+      "task": "确定技术栈并创建 Next.js 项目",
+      "completed_at": "2026-03-17T09:11:00Z",
+      "note": "Next.js 15 + TypeScript + Tailwind CSS + ESLint"
+    },
+    {
+      "id": "p1-2",
+      "phase": "Phase 1",
+      "task": "配置 Tailwind CSS + 基础样式",
+      "completed_at": "2026-03-17T09:21:00Z",
+      "note": "亮暗主题切换、代码块样式、卡片、按钮等基础组件"
+    },
+    {
+      "id": "p1-3",
+      "phase": "Phase 1",
+      "task": "搭建页面路由结构",
+      "completed_at": "2026-03-17T09:24:00Z",
+      "note": "首页、文章页、标签页、归档页、关于页"
+    },
+    {
+      "id": "p1-4",
+      "phase": "Phase 1",
+      "task": "配置 ESLint + Prettier",
+      "completed_at": "2026-03-17T09:28:00Z",
+      "note": "ESLint + Prettier + 格式化脚本"
+    },
+    {
+      "id": "p2-1",
+      "phase": "Phase 2",
+      "task": "首页 - 文章列表（分页）",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "文章列表、日期格式化、标签显示"
+    },
+    {
+      "id": "p2-2",
+      "phase": "Phase 2",
+      "task": "文章详情页 - 支持 Markdown 渲染",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "Markdown 解析、目录结构"
+    },
+    {
+      "id": "p2-3",
+      "phase": "Phase 2",
+      "task": "代码块高亮配置",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "Prism.js 样式（基础）"
+    },
+    {
+      "id": "p2-4",
+      "phase": "Phase 2",
+      "task": "图片/视频嵌入支持",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "Markdown 图片语法支持"
+    },
+    {
+      "id": "p2-5",
+      "phase": "Phase 2",
+      "task": "关于页面",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "关于页面已完善"
+    },
+    {
+      "id": "p2-6",
+      "phase": "Phase 2",
+      "task": "标签/分类页面",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "标签列表、标签详情页"
+    },
+    {
+      "id": "p2-7",
+      "phase": "Phase 2",
+      "task": "归档页面",
+      "completed_at": "2026-03-17T12:30:00Z",
+      "note": "按年份归档文章"
+    }
+  ],
+  "failed": [],
+  "execution_rules": {
+    "exclude_hours": [
+      8,
+      18
+    ],
+    "max_retries": 2,
+    "validation_timeout": 120,
+    "status_values": [
+      "pending",
+      "in_progress",
+      "completed",
+      "failed",
+      "paused"
+    ],
+    "pause_on_failure": true
+  }
+}
