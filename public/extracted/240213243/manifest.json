@@ -1,0 +1,72 @@
+{
+  "pdf": "/Users/haru/workspace/paper-reading/arxiv-2402.13243/paper.pdf",
+  "total_pages": 10,
+  "total_figures": 5,
+  "results": {
+    "1": {
+      "1": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/240213243/fig_1_p1.png",
+        "method": "precision_crop",
+        "figure": "1",
+        "page": 1,
+        "region": {
+          "top": 39.6,
+          "bottom": 752.4,
+          "height_pct": 89.99999999999999
+        }
+      }
+    },
+    "2": {
+      "1": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/240213243/fig_1_p2.png",
+        "method": "precision_crop",
+        "figure": "1",
+        "page": 2,
+        "region": {
+          "top": 39.6,
+          "bottom": 376.4529724121094,
+          "height_pct": 42.53194096112492
+        }
+      }
+    },
+    "4": {
+      "2": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/240213243/fig_2_p4.png",
+        "method": "precision_crop",
+        "figure": "2",
+        "page": 4,
+        "region": {
+          "top": 39.6,
+          "bottom": 247.92196655273438,
+          "height_pct": 26.303278605143234
+        }
+      }
+    },
+    "7": {
+      "3": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/240213243/fig_3_p7.png",
+        "method": "precision_crop",
+        "figure": "3",
+        "page": 7,
+        "region": {
+          "top": 39.6,
+          "bottom": 752.4,
+          "height_pct": 89.99999999999999
+        }
+      }
+    },
+    "8": {
+      "3": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/240213243/fig_3_p8.png",
+        "method": "precision_crop",
+        "figure": "3",
+        "page": 8,
+        "region": {
+          "top": 300.96,
+          "bottom": 654.8359375,
+          "height_pct": 44.681305239899
+        }
+      }
+    }
+  }
+}
