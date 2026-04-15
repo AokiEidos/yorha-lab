@@ -101,8 +101,7 @@ export function Navbar() {
         {/* 右侧图标组 */}
         <div className="flex items-center gap-1">
           {[
-            { href: '/search', icon: 'fa-magnifying-glass', label: '搜索' },
-            { href: '/archives', icon: 'fa-cart-shopping', label: '归档' },
+            { href: '/archives', icon: 'fa-cart-shopping', label: '博文' },
             { href: '/tags', icon: 'fa-tag', label: '标签' },
           ].map((item) => (
             <Link
