@@ -68,7 +68,8 @@ function renderLatex(content: string): string {
   });
   
   // 渲染行内公式 $...$
-  content = content.replace(/\$([^$\n]+)\$/g, (match, formula) => {
+  // 非贪婪（+?)，防止跨越多个 $...$ 匹配
+  content = content.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
     try {
       return katex.renderToString(formula.trim(), {
         throwOnError: false,
@@ -149,8 +150,22 @@ export function getPostBySlug(slug: string): Post | null {
 }
 
 export async function markdownToHtml(markdown: string): Promise<string> {
-  // 先渲染 LaTeX 公式
-  markdown = renderLatex(markdown);
+  // 先用占位符保护 LaTeX 公式，防止 remark 把 _ 转成 <em>
+  const mathPlaceholders: string[] = [];
+  
+  // 保护块级公式 $$...$$
+  markdown = markdown.replace(/\$\$([^$]+)\$\$/g, (match) => {
+    const idx = mathPlaceholders.length;
+    mathPlaceholders.push(match);
+    return `MATHPLACEHOLDER${idx}ENDMATH`;
+  });
+  
+  // 保护行内公式 $...$
+  markdown = markdown.replace(/\$([^$\n]+?)\$/g, (match) => {
+    const idx = mathPlaceholders.length;
+    mathPlaceholders.push(match);
+    return `MATHPLACEHOLDER${idx}ENDMATH`;
+  });
   
   // 转换为 HTML（支持 GFM 表格等）
   const result = await remark()
@@ -158,7 +173,15 @@ export async function markdownToHtml(markdown: string): Promise<string> {
     .use(html, { sanitize: false })
     .process(markdown);
   
-  return result.toString();
+  let htmlContent = result.toString();
+  
+  // 还原占位符并渲染 LaTeX
+  htmlContent = htmlContent.replace(/MATHPLACEHOLDER(\d+)ENDMATH/g, (_, idx) => {
+    const original = mathPlaceholders[parseInt(idx)];
+    return renderLatex(original);
+  });
+  
+  return htmlContent;
 }
 
 export function getAllTags(): string[] {
