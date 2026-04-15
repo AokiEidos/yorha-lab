@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 import Link from 'next/link';
 
 interface PostMeta {
@@ -35,7 +37,14 @@ export default function Home() {
       .then(res => res.json())
       .then(data => {
         setPosts(data.posts || []);
-        setTags(data.tags || []);
+        const allTags = (data.tags || []);
+        // 过滤：只显示出现≥2次的标签，减少噪音
+        const tagCount: Record<string, number> = {};
+        (data.posts || []).forEach((post: any) => {
+          (post.tags || []).forEach((t: string) => { tagCount[t] = (tagCount[t] || 0) + 1; });
+        });
+        const filtered = allTags.filter((t: string) => (tagCount[t] || 0) >= 2);
+        setTags(filtered);
         setStats(data.stats || { days: 0, views: 0, lastOnline: '刚刚', totalPosts: 0, totalWords: 0 });
         setLoading(false);
       })
@@ -76,7 +85,7 @@ export default function Home() {
           
           {/* 描述 */}
           <p className="text-white/80 text-sm" style={{ textShadow: '0 1px 5px rgba(0,0,0,0.3)' }}>
-            探索技术与创意的无限可能
+            YOU CAN (NOT) ADVANCE
           </p>
         </div>
 
@@ -169,7 +178,7 @@ export default function Home() {
                       {/* 日期 */}
                       <div className="text-xs text-gray-500 mb-1">
                         <i className="fa-regular fa-clock mr-1"></i>
-                        发布于 {post.date}
+                        发布于 {format(new Date(post.date), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN })}
                       </div>
                       
                       {/* 标题 */}

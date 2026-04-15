@@ -38,7 +38,7 @@ export default async function PostPage({ params }: PageProps) {
           </Link>
           <h1 className="text-4xl font-bold mb-4" style={{ color: '#333' }}>{post.title}</h1>
           <div className="flex items-center gap-4 text-sm" style={{ color: '#666' }}>
-            <time dateTime={new Date(post.date).toISOString().split('T')[0]}>
+            <time dateTime={post.date}>
               {format(new Date(post.date), 'yyyy年MM月dd日', { locale: zhCN })}
             </time>
             {post.tags.length > 0 && (
