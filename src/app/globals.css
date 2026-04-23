@@ -9,13 +9,25 @@
   width: 100%;
   height: 100vh;
   z-index: -1;
-  background-image: url('/images/background.webp');
+  background-image: url('/images/nier.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   /* 深景深效果 - 背景适度模糊作为远景 */
-  filter: blur(15px) saturate(0.7);
-  transform: scale(1.1);
+  filter: blur(3px) saturate(0.85);
+}
+
+/* 白色淡化蒙版 */
+.bg-image::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.30);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* 底部白色背景层 - 确保页面底部是白色 */
@@ -271,7 +283,7 @@ hr {
 
 nav {
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   border-bottom: 1px solid #e5e5e5;
 }
 
@@ -484,7 +496,6 @@ main {
 }
 
 .card:hover .card-image {
-  transform: scale(1.1);
 }
 
 /* 置顶卡片特殊的微旋放大 */

@@ -1,6 +1,6 @@
 export default function AboutPage() {
   return (
-    <div className="container py-12 max-w-4xl">
+    <div className="container max-w-4xl" style={{ paddingTop: "120px", paddingBottom: "3rem" }}>
       <h1 className="text-4xl font-bold mb-8">关于</h1>
 
       <div className="card">

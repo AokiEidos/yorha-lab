@@ -12,7 +12,7 @@ export default function TagsPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="container py-12">
+    <div className="container" style={{ paddingTop: "120px", paddingBottom: "3rem" }}>
       <h1 className="text-4xl font-bold mb-8">标签</h1>
 
       {tags.length === 0 ? (

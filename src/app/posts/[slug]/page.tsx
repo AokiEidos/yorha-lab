@@ -26,7 +26,7 @@ export default async function PostPage({ params }: PageProps) {
   const content = await markdownToHtml(post.content);
 
   return (
-    <div className="container py-12 max-w-4xl" style={{ background: '#fff', borderRadius: '12px', marginTop: '2rem' }}>
+    <div className="container py-12 max-w-4xl" style={{ background: '#fff', borderRadius: '12px', marginTop: '2rem', paddingTop: '120px' }}>
       <article style={{ padding: '2rem' }}>
         <header className="mb-8">
           <Link 

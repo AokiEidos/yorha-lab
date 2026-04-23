@@ -34,9 +34,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{__html: `
           // 随机选择背景图片
           (function() {
-            var images = ['/images/background.webp', '/images/s25pc1.webp'];
+            var images = ['/images/nier.jpg'];
             var randomImg = images[Math.floor(Math.random() * images.length)];
-            var bgImage = document.getElementById('bg-image');
+            var bgImage = document.getElementById('centerbg');
             if (bgImage) {
               bgImage.style.backgroundImage = 'url(' + randomImg + ')';
             }
@@ -44,20 +44,20 @@ export default function RootLayout({
           
           // 随机换背景按钮功能
           document.getElementById('random-bg-btn').addEventListener('click', function() {
-            var images = ['/images/background.webp', '/images/s25pc1.webp'];
-            var currentBg = document.getElementById('bg-image').style.backgroundImage;
+            var images = ['/images/nier.jpg'];
+            var currentBg = document.getElementById('centerbg').style.backgroundImage;
             var availableImages = images.filter(function(img) {
               return !currentBg.includes(img.split('/').pop());
             });
             if (availableImages.length === 0) availableImages = images;
             var randomImg = availableImages[Math.floor(Math.random() * availableImages.length)];
-            document.getElementById('bg-image').style.backgroundImage = 'url(' + randomImg + ')';
+            document.getElementById('centerbg').style.backgroundImage = 'url(' + randomImg + ')';
           });
           
           // 背景虚化滚动效果 - 通过遮罩层实现
           function updateBlur() {
             var scrollY = window.scrollY || window.pageYOffset;
-            var bgOverlay = document.getElementById('bg-overlay');
+            var bgOverlay = null /* bg-overlay removed */;
             
             if (bgOverlay) {
               // 滚动越多，遮罩层越厚（模拟背景变暗/模糊效果）
@@ -82,7 +82,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{__html: `
           // 随机选择背景图片
           (function() {
-            var images = ['/images/background.webp', '/images/s25pc1.webp'];
+            var images = ['/images/nier.jpg'];
             var randomImg = images[Math.floor(Math.random() * images.length)];
             var bg = document.getElementById('centerbg');
             if (bg) bg.style.backgroundImage = 'url(' + randomImg + ')';
@@ -95,7 +95,7 @@ export default function RootLayout({
           
           // 随机换背景按钮点击事件
           document.getElementById('random-bg-btn').addEventListener('click', function() {
-            var images = ['/images/background.webp', '/images/s25pc1.webp'];
+            var images = ['/images/nier.jpg'];
             var currentBg = document.getElementById('centerbg').style.backgroundImage;
             var availableImages = images.filter(function(img) {
               return !currentBg.includes(img.split('/').pop());

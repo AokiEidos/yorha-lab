@@ -30,7 +30,7 @@ export default function Home() {
   const [tags, setTags] = useState<string[]>([]);
   const [stats, setStats] = useState<Stats>({ days: 0, views: 0, lastOnline: '刚刚', totalPosts: 0, totalWords: 0 });
   const [loading, setLoading] = useState(true);
-  const [bgImage, setBgImage] = useState('/images/background.webp');
+  const [bgImage, setBgImage] = useState('/images/nier.jpg');
 
   useEffect(() => {
     fetch('/api/posts')

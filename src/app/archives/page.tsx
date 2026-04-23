@@ -19,7 +19,7 @@ export default function ArchivesPage() {
   const years = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
 
   return (
-    <div className="container py-12">
+    <div className="container" style={{ paddingTop: "120px", paddingBottom: "3rem" }}>
       <h1 className="text-4xl font-bold mb-8">归档</h1>
 
       {posts.length === 0 ? (
