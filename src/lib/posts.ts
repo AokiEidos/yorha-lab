@@ -194,10 +194,10 @@ export function getPostBySlug(slug: string): Post | null {
     };
   }
 
-  // 平铺 .md 文件
-  const directPath = path.join(postsDirectory, `${slug}.md`);
-  if (fs.existsSync(directPath)) {
-    const fileContents = fs.readFileSync(directPath, 'utf8');
+  // 子目录 .md 文件（如 /posts/vla/01-foundations/01-vlm-review → .../vla/01-foundations/01-vlm-review.md）
+  const subdirPath = path.join(postsDirectory, `${slug}.md`);
+  if (fs.existsSync(subdirPath)) {
+    const fileContents = fs.readFileSync(subdirPath, 'utf8');
     const { data, content } = matter(fileContents);
     const { title, excerpt } = extractTitleAndExcerpt(content);
     const arxivMatch = slug.match(/arxiv-(\d+\.\d+)/);
