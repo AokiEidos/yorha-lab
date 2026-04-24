@@ -204,6 +204,25 @@ export function Navbar() {
                   VLA 系列
                 </a>
                 <a
+                  href="/posts/vla-learning-index"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    color: 'rgba(255,255,255,0.85)',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <i className="fa-solid fa-graduation-cap" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
+                  VLA 入门系列
+                </a>
+                <a
                   href="/archives"
                   style={{
                     display: 'flex',

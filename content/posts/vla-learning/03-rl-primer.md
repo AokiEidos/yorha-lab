@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（三）：强化学习快速入门 — Policy Gradient、PPO 与机器人控制"
+hidden: true
 date: 2026-04-15T17:04:00.000+08:00
 draft: false
 tags: ["VLA", "强化学习", "强化学习", "强化学习", "强化学习", "机器人"]

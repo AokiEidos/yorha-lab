@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（四）：RT系列 — 从RT-1到RT-2-X的技术演进"
+hidden: true
 date: 2026-04-15T17:06:00.000+08:00
 draft: false
 tags: ["VLA", "RT系列", "RT系列", "RT系列", "机器人", "深度学习"]

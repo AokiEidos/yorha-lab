@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（八）：GR-1 与 GVLA — World Model 路线的大规模端到端自动驾驶"
+hidden: true
 date: 2026-04-15T17:14:00.000+08:00
 draft: false
 tags: ["VLA", "自动驾驶", "World Model", "机器人-VLA", "机器人-VLA", "World Model", "端到端"]

@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（六）：Action Tokenization — 离散 vs 连续动作"
+hidden: true
 date: 2026-04-15T17:10:00.000+08:00
 draft: false
 tags: ["VLA", "动作分词", "动作分词", "扩散模型", "机器人"]

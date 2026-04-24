@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（七）：开源 VLA 基座 — OpenVLA 与 Octo"
+hidden: true
 date: 2026-04-15T17:12:00.000+08:00
 draft: false
 tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "深度学习"]

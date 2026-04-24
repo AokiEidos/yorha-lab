@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（五）：π₀ — Physical Intelligence 的通用机器人 VLA"
+hidden: true
 date: 2026-04-15T17:08:00.000+08:00
 draft: false
 tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "扩散模型"]

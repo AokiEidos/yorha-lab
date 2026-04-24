@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（九）：CoPa — 通用机器人策略的task-agnostic表示"
+hidden: true
 date: 2026-04-15T17:16:00.000+08:00
 draft: false
 tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "泛化性"]

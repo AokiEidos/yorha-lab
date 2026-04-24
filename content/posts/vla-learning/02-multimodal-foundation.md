@@ -1,5 +1,6 @@
 ---
 title: "VLA 从入门到精通（二）：多模态基础 — CLIP、ALIGN 与视觉-语言对齐"
+hidden: true
 date: 2026-04-15T17:02:00.000+08:00
 draft: false
 tags: ["VLA", "视觉-语言模型", "多模态", "视觉-语言模型", "深度学习"]
