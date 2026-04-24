@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（三）：强化学习快速入门 — Policy Gradient、PPO 与机器人控制"
-hidden: true
-date: 2026-04-15T17:04:00.000+08:00
-draft: false
-tags: ["VLA", "强化学习", "强化学习", "强化学习", "强化学习", "机器人"]
-toc: true
+title: VLA 从入门到精通（三）：强化学习快速入门 — Policy Gradient、PPO 与机器人控制
+hidden: True
+date: 2026-04-15 17:04:00+08:00
+draft: False
+tags: ['VLA', '强化学习', '机器人']
+toc: True
 ---
-
 # VLA 从入门到精通（三）：强化学习快速入门 — Policy Gradient、PPO 与机器人控制
 
 > **前置知识**：了解深度学习基础（MLP、反向传播）。本文不需要强化学习背景知识，从零开始介绍 RL 的核心概念，重点是让读者能理解 π₀ 等 VLA 工作中的 RL 部分。术语首次出现时会有 🧠 注。

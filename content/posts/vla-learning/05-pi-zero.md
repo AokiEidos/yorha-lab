@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（五）：π₀ — Physical Intelligence 的通用机器人 VLA"
-hidden: true
-date: 2026-04-15T17:08:00.000+08:00
-draft: false
-tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "扩散模型"]
-toc: true
+title: VLA 从入门到精通（五）：π₀ — Physical Intelligence 的通用机器人 VLA
+hidden: True
+date: 2026-04-15 17:08:00+08:00
+draft: False
+tags: ['VLA', '机器人-VLA', '机器人', '扩散模型']
+toc: True
 ---
-
 # VLA 从入门到精通（五）：π₀ — Physical Intelligence 的通用机器人 VLA
 
 > **前置知识**：建议先阅读 [VLA 概述与生态](/posts/vla-overview) 和 [RT 系列：从 RT-1 到 RT-2-X](/posts/vla-rt-series)。本文需要理解 VLA 基础概念和 RT-2 的离散 token 动作化方法，以及基本的扩散模型概念（推荐阅读 [从扩散模型到流匹配](/posts/diffusion-to-flow-matching)）。

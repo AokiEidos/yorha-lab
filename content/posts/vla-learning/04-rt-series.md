@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（四）：RT系列 — 从RT-1到RT-2-X的技术演进"
-hidden: true
-date: 2026-04-15T17:06:00.000+08:00
-draft: false
-tags: ["VLA", "RT系列", "RT系列", "RT系列", "机器人", "深度学习"]
-toc: true
+title: VLA 从入门到精通（四）：RT系列 — 从RT-1到RT-2-X的技术演进
+hidden: True
+date: 2026-04-15 17:06:00+08:00
+draft: False
+tags: ['VLA', 'RT系列', '机器人', '深度学习']
+toc: True
 ---
-
 # VLA 从入门到精通（四）：RT系列 — 从RT-1到RT-2-X的技术演进
 
 > **前置知识**：建议先阅读 [VLA概述与生态](/posts/vla-overview)，了解 VLA 基础概念后再阅读本文。本文重点分析 RT-1、RT-2、RT-X 三篇论文的技术细节，重点是 **FiLM 条件注入**和**VLA 联合微调**两个核心机制。

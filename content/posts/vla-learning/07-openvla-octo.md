@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（七）：开源 VLA 基座 — OpenVLA 与 Octo"
-hidden: true
-date: 2026-04-15T17:12:00.000+08:00
-draft: false
-tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "深度学习"]
-toc: true
+title: VLA 从入门到精通（七）：开源 VLA 基座 — OpenVLA 与 Octo
+hidden: True
+date: 2026-04-15 17:12:00+08:00
+draft: False
+tags: ['VLA', '机器人-VLA', '机器人', '深度学习']
+toc: True
 ---
-
 # VLA 从入门到精通（七）：开源 VLA 基座 — OpenVLA 与 Octo
 
 > **前置知识**：建议先阅读 [VLA 概述与生态](/posts/vla-overview)，理解 VLA 基本概念和 RT-2 的联合微调范式。本文重点分析 OpenVLA 和 Octo 两篇工作，重点是**开源 VLA 的架构设计选择**和**闭源与开源方案的权衡**。术语首次出现时会有 🧠 注。

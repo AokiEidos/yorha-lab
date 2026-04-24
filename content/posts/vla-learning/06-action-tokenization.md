@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（六）：Action Tokenization — 离散 vs 连续动作"
-hidden: true
-date: 2026-04-15T17:10:00.000+08:00
-draft: false
-tags: ["VLA", "动作分词", "动作分词", "扩散模型", "机器人"]
-toc: true
+title: VLA 从入门到精通（六）：Action Tokenization — 离散 vs 连续动作
+hidden: True
+date: 2026-04-15 17:10:00+08:00
+draft: False
+tags: ['VLA', '动作分词', '扩散模型', '机器人']
+toc: True
 ---
-
 # VLA 从入门到精通（六）：Action Tokenization — 离散 vs 连续动作
 
 > **前置知识**：了解 VLA 基础概念（前五篇）。本文聚焦 VLA 的核心技术差异之一：**如何表示和输出动作**，重点对比 RT-2 的离散 token 方案和 π₀ 的连续扩散方案。

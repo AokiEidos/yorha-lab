@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（九）：CoPa — 通用机器人策略的task-agnostic表示"
-hidden: true
-date: 2026-04-15T17:16:00.000+08:00
-draft: false
-tags: ["VLA", "机器人-VLA", "机器人-VLA", "机器人", "泛化性"]
-toc: true
+title: VLA 从入门到精通（九）：CoPa — 通用机器人策略的task-agnostic表示
+hidden: True
+date: 2026-04-15 17:16:00+08:00
+draft: False
+tags: ['VLA', '机器人-VLA', '机器人', '泛化性']
+toc: True
 ---
-
 # VLA 从入门到精通（九）：CoPa — 通用机器人策略的 task-agnostic 表示
 
 > **前置知识**：建议先阅读 [VLA 概述与生态](/posts/vla-overview)、[开源 VLA 基座 Octo 与 OpenVLA](/posts/vla-openvla-octo)。本文聚焦 CoPa 的核心创新：如何在**动作空间不统一、机器人形态各异**的情况下，实现真正意义上的 task-agnostic（任务无关）通用策略。术语首次出现时会有 🧠 注。

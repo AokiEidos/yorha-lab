@@ -46,7 +46,7 @@ function extractTitleAndExcerpt(content: string): { title: string; excerpt: stri
     excerpt = coreGistMatch[1].trim().substring(0, 200);
   }
   
-  return { title: title || '未命名论文', excerpt };
+  return { title: title || '', excerpt };
 }
 
 function estimateReadingTime(content: string): number {
@@ -218,6 +218,8 @@ export function getPostBySlug(slug: string): Post | null {
 }
 
 export async function markdownToHtml(markdown: string): Promise<string> {
+  // 去掉文章正文第一个一级标题（页面顶部已显示标题，避免重复）
+  markdown = markdown.replace(/^\n*#\s+[^\n]+\n?/, "");
   // 先用占位符保护 LaTeX 公式，防止 remark 把 _ 转成 <em>
   const mathPlaceholders: string[] = [];
   

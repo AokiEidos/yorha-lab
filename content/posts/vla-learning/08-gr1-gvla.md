@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（八）：GR-1 与 GVLA — World Model 路线的大规模端到端自动驾驶"
-hidden: true
-date: 2026-04-15T17:14:00.000+08:00
-draft: false
-tags: ["VLA", "自动驾驶", "World Model", "机器人-VLA", "机器人-VLA", "World Model", "端到端"]
-toc: true
+title: VLA 从入门到精通（八）：GR-1 与 GVLA — World Model 路线的大规模端到端自动驾驶
+hidden: True
+date: 2026-04-15 17:14:00+08:00
+draft: False
+tags: ['VLA', '自动驾驶', 'World Model', '机器人-VLA', '端到端']
+toc: True
 ---
-
 # VLA 从入门到精通（八）：GR-1 与 GVLA — World Model 路线的大规模端到端自动驾驶
 
 > **前置知识**：理解 VLA 基础（RT-2、π₀ 的动作输出机制）、多帧时序建模（Temporal Attention）、视频生成基础（GAN/扩散模型）。本文讨论 World Model 路线的 VLA 在自动驾驶中的应用，重点是 **视频预测作为辅助目标** 的训练范式。术语首次出现时会有 🧠 注。

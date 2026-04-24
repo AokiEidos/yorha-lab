@@ -1,12 +1,11 @@
 ---
-title: "VLA 从入门到精通（二）：多模态基础 — CLIP、ALIGN 与视觉-语言对齐"
-hidden: true
-date: 2026-04-15T17:02:00.000+08:00
-draft: false
-tags: ["VLA", "视觉-语言模型", "多模态", "视觉-语言模型", "深度学习"]
-toc: true
+title: VLA 从入门到精通（二）：多模态基础 — CLIP、ALIGN 与视觉-语言对齐
+hidden: True
+date: 2026-04-15 17:02:00+08:00
+draft: False
+tags: ['VLA', '视觉-语言模型', '多模态', '深度学习']
+toc: True
 ---
-
 # VLA 从入门到精通（二）：多模态基础 — CLIP、ALIGN 与视觉-语言对齐
 
 > **前置知识**：本系列假设读者了解深度学习基础（MLP、反向传播、Transformer）。本文解释 VLA 的视觉编码器如何工作，以及"视觉-语言对齐"这个核心概念。术语首次出现时会有 🧠 注。
