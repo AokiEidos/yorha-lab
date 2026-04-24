@@ -18,6 +18,7 @@ export interface PostMeta {
   views?: number;
   readingTime?: number;
   isPinned?: boolean;
+  hidden?: boolean;
 }
 
 export interface Post extends PostMeta {
@@ -111,11 +112,14 @@ export function getAllPosts(): PostMeta[] {
         readingTime: estimateReadingTime(content),
         views: 0,
         isPinned: data.isPinned || false,
+        hidden: data.hidden || false,
       };
     })
     .filter(Boolean) as PostMeta[];
 
-  return allPostsData.sort((a, b) => {
+  return allPostsData
+    .filter(p => !p.hidden)
+    .sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
     return a.date < b.date ? 1 : -1;

@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 
 export function Navbar() {
+  const [open, setOpen] = useState(false);
+
   return (
     <nav
       style={{
@@ -14,10 +17,10 @@ export function Navbar() {
         width: 'fit-content',
         maxWidth: '90vw',
         borderRadius: '50px',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
-      {/* 主胶囊容器 - 液态树脂风格 */}
+      {/* 主胶囊容器 */}
       <div
         style={{
           background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.05) 100%)',
@@ -37,7 +40,7 @@ export function Navbar() {
           `,
           border: '1px solid rgba(255,255,255,0.1)',
           position: 'relative',
-          overflow: 'hidden',
+          overflow: 'visible',
         }}
       >
         {/* 顶部边缘高光 */}
@@ -100,8 +103,130 @@ export function Navbar() {
 
         {/* 右侧图标组 */}
         <div className="flex items-center gap-1">
+          {/* 博文下拉触发器 */}
+          <div style={{ position: 'relative' }}>
+            <div
+              style={{
+                color: 'rgba(30,30,30,0.8)',
+                padding: '8px 12px',
+                borderRadius: '25px',
+                fontSize: '13px',
+                fontWeight: 500,
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                background: open ? 'rgba(255,255,255,0.2)' : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.color = 'rgba(30,30,30,1)';
+                setOpen(true);
+              }}
+              onMouseLeave={(e) => {
+                if (!open) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'rgba(30,30,30,0.8)';
+                }
+              }}
+              onClick={() => setOpen(!open)}
+            >
+              <i className="fa-solid fa-book-open" style={{ fontSize: '12px' }}></i>
+              <span>博文</span>
+              <i
+                className="fa-solid fa-chevron-down"
+                style={{
+                  fontSize: '10px',
+                  transition: 'transform 0.2s',
+                  transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+              ></i>
+            </div>
+
+            {/* 下拉菜单 */}
+            {open && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  minWidth: '160px',
+                  background: 'rgba(20, 20, 30, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                  overflow: 'hidden',
+                  zIndex: 2000,
+                }}
+                onMouseLeave={() => setOpen(false)}
+              >
+                <a
+                  href="/posts/diffusion-index"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    color: 'rgba(255,255,255,0.85)',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
+                  Diffusion 系列
+                </a>
+                <a
+                  href="/posts/vla-index"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    color: 'rgba(255,255,255,0.85)',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <i className="fa-solid fa-robot" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
+                  VLA 系列
+                </a>
+                <a
+                  href="/archives"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    color: 'rgba(255,255,255,0.85)',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <i className="fa-solid fa-list-ul" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
+                  全部博文
+                </a>
+              </div>
+            )}
+          </div>
+
           {[
-            { href: '/archives', icon: 'fa-cart-shopping', label: '博文' },
             { href: '/tags', icon: 'fa-tag', label: '标签' },
           ].map((item) => (
             <Link
@@ -158,7 +283,7 @@ export function Navbar() {
           YoRHa::LaB
         </Link>
 
-        {/* 用户头像插槽 - 圆形树脂盘 */}
+        {/* 用户头像插槽 */}
         <div
           style={{
             width: '36px',
