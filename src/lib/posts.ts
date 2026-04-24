@@ -89,19 +89,28 @@ export function getAllPosts(): PostMeta[] {
     return [];
   }
 
-  // 读取 content/posts 下的所有 .md 文件（平铺结构）
-  const files = fs.readdirSync(postsDirectory)
-    .filter(f => f.endsWith('.md'));
+  // 递归读取 content/posts 下的所有 .md 文件（含子目录）
+  const files: string[] = [];
+  function walkDir(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        walkDir(path.join(dir, entry.name));
+      } else if (entry.name.endsWith('.md')) {
+        files.push(path.join(dir, entry.name));
+      }
+    }
+  }
+  walkDir(postsDirectory);
 
   const allPostsData = files
-    .map((fileName) => {
-      const fullPath = path.join(postsDirectory, fileName);
+    .map((fullPath) => {
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       const { data, content } = matter(fileContents);
       const { title: extractedTitle, excerpt } = extractTitleAndExcerpt(content);
-      
-      // slug 从文件名去掉 .md
-      const slug = fileName.replace(/\.md$/, '');
+
+      // slug: 相对于 postsDirectory 的路径，去掉 .md
+      const slug = path.relative(postsDirectory, fullPath).replace(/\.md$/, '');
 
       return {
         slug,
@@ -126,31 +135,86 @@ export function getAllPosts(): PostMeta[] {
   });
 }
 
-export function getPostBySlug(slug: string): Post | null {
-  // 优先查找 flat .md 文件
-  const mdPath = path.join(postsDirectory, `${slug}.md`);
-  const fullPath = fs.existsSync(mdPath) ? mdPath : path.join(postsDirectory, slug, 'README.md');
-  
-  if (!fs.existsSync(fullPath)) {
-    return null;
+export function getAllPostsIncludingHidden(): PostMeta[] {
+  if (!fs.existsSync(postsDirectory)) {
+    return [];
   }
 
-  const fileContents = fs.readFileSync(fullPath, 'utf8');
-  const { data, content } = matter(fileContents);
-  const { title, excerpt } = extractTitleAndExcerpt(content);
-  const arxivMatch = slug.match(/arxiv-(\d+\.\d+)/);
-  const arxivId = arxivMatch ? arxivMatch[1] : '';
+  const files: string[] = [];
+  function walkDir(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        walkDir(path.join(dir, entry.name));
+      } else if (entry.name.endsWith('.md')) {
+        files.push(path.join(dir, entry.name));
+      }
+    }
+  }
+  walkDir(postsDirectory);
 
-  return {
-    slug,
-    title: title || data.title || '未命名论文',
-    date: data.date || new Date().toISOString().split('T')[0],
-    tags: data.tags || [arxivId ? `ArXiv ${arxivId}` : '论文'].filter(Boolean),
-    excerpt,
-    content,
-    readingTime: estimateReadingTime(content),
-    views: 0,
-  };
+  return files
+    .map((fullPath) => {
+      const fileContents = fs.readFileSync(fullPath, 'utf8');
+      const { data, content } = matter(fileContents);
+      const { title: extractedTitle, excerpt } = extractTitleAndExcerpt(content);
+      const slug = path.relative(postsDirectory, fullPath).replace(/\.md$/, '');
+
+      return {
+        slug,
+        title: data.title || extractedTitle || '未命名论文',
+        date: data.date || new Date().toISOString().split('T')[0],
+        tags: data.tags || [],
+        excerpt: excerpt || content.substring(0, 200).replace(/[#*`\n]/g, ' ').trim(),
+        readingTime: estimateReadingTime(content),
+        views: 0,
+        isPinned: data.isPinned || false,
+        hidden: data.hidden || false,
+      };
+    })
+    .filter(Boolean) as PostMeta[];
+}
+
+export function getPostBySlug(slug: string): Post | null {
+  // 子目录 README 优先（支持 /posts/diffusion → diffusion/README.md）
+  const readmePath = path.join(postsDirectory, slug, 'README.md');
+  if (fs.existsSync(readmePath)) {
+    const fileContents = fs.readFileSync(readmePath, 'utf8');
+    const { data, content } = matter(fileContents);
+    const { title, excerpt } = extractTitleAndExcerpt(content);
+    return {
+      slug,
+      title: title || data.title || '未命名',
+      date: data.date || new Date().toISOString().split('T')[0],
+      tags: data.tags || [],
+      excerpt,
+      content,
+      readingTime: estimateReadingTime(content),
+      views: 0,
+    };
+  }
+
+  // 平铺 .md 文件
+  const directPath = path.join(postsDirectory, `${slug}.md`);
+  if (fs.existsSync(directPath)) {
+    const fileContents = fs.readFileSync(directPath, 'utf8');
+    const { data, content } = matter(fileContents);
+    const { title, excerpt } = extractTitleAndExcerpt(content);
+    const arxivMatch = slug.match(/arxiv-(\d+\.\d+)/);
+    const arxivId = arxivMatch ? arxivMatch[1] : '';
+    return {
+      slug,
+      title: title || data.title || '未命名论文',
+      date: data.date || new Date().toISOString().split('T')[0],
+      tags: data.tags || [arxivId ? `ArXiv ${arxivId}` : '论文'].filter(Boolean),
+      excerpt,
+      content,
+      readingTime: estimateReadingTime(content),
+      views: 0,
+    };
+  }
+
+  return null;
 }
 
 export async function markdownToHtml(markdown: string): Promise<string> {

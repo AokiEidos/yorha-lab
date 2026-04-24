@@ -1,23 +1,24 @@
-import { getPostBySlug, getAllPosts, markdownToHtml } from '@/lib/posts';
+import { getPostBySlug, getAllPostsIncludingHidden, markdownToHtml } from '@/lib/posts';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string[] }>;
 }
 
 export async function generateStaticParams() {
-  const posts = getAllPosts();
+  const posts = getAllPostsIncludingHidden();
   return posts.map((post) => ({
-    slug: post.slug,
+    slug: post.slug.split('/'),
   }));
 }
 
 export default async function PostPage({ params }: PageProps) {
-  const { slug: _slug } = await params;
-  const post = getPostBySlug(_slug);
+  const { slug: slugArray } = await params;
+  const slug = slugArray.join('/');
+  const post = getPostBySlug(slug);
 
   if (!post) {
     notFound();
