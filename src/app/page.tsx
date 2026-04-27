@@ -55,8 +55,22 @@ export default function Home() {
     setBgImage('/images/nier.jpg');
   }, []);
 
+  // 首页：模糊 Hero 背景
+  useEffect(() => {
+    const el = document.querySelector('.min-h-screen');
+    if (el) {
+      el.classList.add('current_blur');
+    }
+    return () => {
+      if (el) {
+        el.classList.remove('current_blur');
+      }
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
+      <div className="background_blur"></div>
       {/* 底部白色背景层 */}
       <div className="bg-bottom"></div>
 
