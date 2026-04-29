@@ -5,11 +5,13 @@ export default function TagsPage() {
   const tags = getAllTags();
   const posts = getAllPosts();
 
-  // 计算每个标签的文章数
-  const tagCounts = tags.reduce((acc, tag) => {
-    acc[tag] = posts.filter((post) => post.tags.includes(tag)).length;
-    return acc;
-  }, {} as Record<string, number>);
+  // 计算每个标签的文章数（单次遍历）
+  const tagCounts: Record<string, number> = {};
+  for (const post of posts) {
+    for (const tag of post.tags) {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    }
+  }
 
   return (
     <div className="container" style={{ paddingTop: "120px", paddingBottom: "3rem" }}>

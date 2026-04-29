@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -13,6 +14,21 @@ export async function generateStaticParams() {
   return posts.map((post) => ({
     slug: post.slug.split('/'),
   }));
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug: slugArray } = await params;
+  const slug = slugArray.join('/');
+  const post = getPostBySlug(slug);
+
+  if (!post) {
+    return { title: '未找到 - YoRHa::LaB' };
+  }
+
+  return {
+    title: `${post.title} - YoRHa::LaB`,
+    description: post.excerpt || undefined,
+  };
 }
 
 export default async function PostPage({ params }: PageProps) {

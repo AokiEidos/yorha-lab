@@ -31,45 +31,6 @@ export default function RootLayout({
           </main>
         </div>
         
-        <script dangerouslySetInnerHTML={{__html: `
-          // 随机选择背景图片
-          (function() {
-            var images = ['/images/nier.jpg'];
-            var randomImg = images[Math.floor(Math.random() * images.length)];
-            var bgImage = document.getElementById('centerbg');
-            if (bgImage) {
-              bgImage.style.backgroundImage = 'url(' + randomImg + ')';
-            }
-          })();
-          
-          // 随机换背景按钮功能
-          document.getElementById('random-bg-btn').addEventListener('click', function() {
-            var images = ['/images/nier.jpg'];
-            var currentBg = document.getElementById('centerbg').style.backgroundImage;
-            var availableImages = images.filter(function(img) {
-              return !currentBg.includes(img.split('/').pop());
-            });
-            if (availableImages.length === 0) availableImages = images;
-            var randomImg = availableImages[Math.floor(Math.random() * availableImages.length)];
-            document.getElementById('centerbg').style.backgroundImage = 'url(' + randomImg + ')';
-          });
-          
-          // 背景虚化滚动效果 - 通过遮罩层实现
-          function updateBlur() {
-            var scrollY = window.scrollY || window.pageYOffset;
-            var bgOverlay = null /* bg-overlay removed */;
-            
-            if (bgOverlay) {
-              // 滚动越多，遮罩层越厚（模拟背景变暗/模糊效果）
-              var opacity = 0.3 + Math.min(scrollY / 300, 0.5);
-              bgOverlay.style.background = 'rgba(26, 26, 46, ' + opacity + ')';
-            }
-          }
-          
-          window.addEventListener('scroll', updateBlur, { passive: true });
-          setTimeout(updateBlur, 100);
-        `}} />
-        
         {/* 随机换背景按钮 */}
         <button 
           id="random-bg-btn"

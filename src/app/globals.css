@@ -441,27 +441,9 @@ footer {
   display: none;
 }
 
-/* 暗色模式支持 */
-@media (prefers-color-scheme: dark) {
-  .content-section::before {
-    background: rgba(20, 25, 35, 0.75);
-  }
-}
-
 /* 分隔线渐变阴影 - 已由 content-section::after 处理 */
 .divider-gradient {
   display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .divider-gradient {
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgba(0, 0, 0, 0.5) 50%,
-      rgba(0, 0, 0, 0.4) 100%
-    );
-  }
 }
 
 /* 确保 body/main 没有 overflow: hidden */
@@ -501,4 +483,58 @@ main {
 /* 置顶卡片特殊的微旋放大 */
 .card.pinned:hover .card-image {
   transform: scale(1.05) rotate(1deg);
+}
+
+/* ====================
+   Navbar 悬停样式
+   ==================== */
+.nav-link {
+  color: rgba(30, 30, 30, 0.8);
+  padding: 8px 12px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(30, 30, 30, 1);
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.nav-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-logo {
+  font-family: 'Kaisei Decol', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(30, 30, 30, 0.9);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 25px;
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.1) 0%, rgba(255, 200, 100, 0.1) 100%);
+  transition: all 0.2s ease;
+}
+
+.nav-logo:hover {
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.25) 0%, rgba(255, 200, 100, 0.25) 100%);
 }

@@ -61,30 +61,7 @@ export function Navbar() {
             { href: '/', icon: 'fa-house', label: '首页' },
             { href: '/about', icon: 'fa-user', label: '关于' },
           ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                color: 'rgba(30,30,30,0.8)',
-                padding: '8px 12px',
-                borderRadius: '25px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.color = 'rgba(30,30,30,1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'rgba(30,30,30,0.8)';
-              }}
-            >
+            <Link key={item.href} href={item.href} className="nav-link">
               <i className={`fa-solid ${item.icon}`} style={{ fontSize: '12px' }}></i>
               <span>{item.label}</span>
             </Link>
@@ -106,31 +83,11 @@ export function Navbar() {
           {/* 博文下拉触发器 */}
           <div style={{ position: 'relative' }}>
             <div
+              className="nav-link"
               style={{
-                color: 'rgba(30,30,30,0.8)',
-                padding: '8px 12px',
-                borderRadius: '25px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                background: open ? 'rgba(255,255,255,0.2)' : 'transparent',
+                background: open ? 'rgba(255,255,255,0.2)' : undefined,
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.color = 'rgba(30,30,30,1)';
-                setOpen(true);
-              }}
-              onMouseLeave={(e) => {
-                if (!open) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'rgba(30,30,30,0.8)';
-                }
-              }}
+              onMouseEnter={() => setOpen(true)}
               onClick={() => setOpen(!open)}
             >
               <i className="fa-solid fa-book-open" style={{ fontSize: '12px' }}></i>
@@ -165,79 +122,19 @@ export function Navbar() {
                 }}
                 onMouseLeave={() => setOpen(false)}
               >
-                <a
-                  href="/posts/diffusion-index"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 16px',
-                    color: 'rgba(255,255,255,0.85)',
-                    textDecoration: 'none',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
+                <a href="/posts/diffusion-index" className="nav-dropdown-item">
                   <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
                   Diffusion 系列
                 </a>
-                <a
-                  href="/posts/vla-index"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 16px',
-                    color: 'rgba(255,255,255,0.85)',
-                    textDecoration: 'none',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
+                <a href="/posts/vla-index" className="nav-dropdown-item">
                   <i className="fa-solid fa-robot" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
                   VLA 系列
                 </a>
-                <a
-                  href="/posts/vla-learning-index"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 16px',
-                    color: 'rgba(255,255,255,0.85)',
-                    textDecoration: 'none',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
+                <a href="/posts/vla-learning-index" className="nav-dropdown-item">
                   <i className="fa-solid fa-graduation-cap" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
                   VLA 入门系列
                 </a>
-                <a
-                  href="/archives"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 16px',
-                    color: 'rgba(255,255,255,0.85)',
-                    textDecoration: 'none',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
+                <a href="/archives" className="nav-dropdown-item">
                   <i className="fa-solid fa-list-ul" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
                   全部博文
                 </a>
@@ -248,30 +145,7 @@ export function Navbar() {
           {[
             { href: '/tags', icon: 'fa-tag', label: '标签' },
           ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                color: 'rgba(30,30,30,0.8)',
-                padding: '8px 12px',
-                borderRadius: '25px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.color = 'rgba(30,30,30,1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'rgba(30,30,30,0.8)';
-              }}
-            >
+            <Link key={item.href} href={item.href} className="nav-link">
               <i className={`fa-solid ${item.icon}`} style={{ fontSize: '12px' }}></i>
               <span>{item.label}</span>
             </Link>
@@ -279,26 +153,7 @@ export function Navbar() {
         </div>
 
         {/* Logo 文字 */}
-        <Link
-          href="/"
-          style={{
-            fontFamily: 'Kaisei Decol, serif',
-            fontSize: '16px',
-            fontWeight: 700,
-            color: 'rgba(30,30,30,0.9)',
-            textDecoration: 'none',
-            padding: '8px 16px',
-            borderRadius: '25px',
-            background: 'linear-gradient(135deg, rgba(0,200,255,0.1) 0%, rgba(255,200,100,0.1) 100%)',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,200,255,0.25) 0%, rgba(255,200,100,0.25) 100%)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,200,255,0.1) 0%, rgba(255,200,100,0.1) 100%)';
-          }}
-        >
+        <Link href="/" className="nav-logo">
           YoRHa::LaB
         </Link>
 
