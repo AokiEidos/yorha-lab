@@ -384,6 +384,18 @@ footer {
   overflow-x: auto;
 }
 
+/* Mermaid 图表样式 */
+.mermaid {
+  margin: 1.5em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* 动画 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

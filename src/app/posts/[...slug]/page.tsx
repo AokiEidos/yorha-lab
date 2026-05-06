@@ -4,6 +4,7 @@ import { zhCN } from 'date-fns/locale';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { MermaidRenderer } from '@/components/Mermaid';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -75,11 +76,12 @@ export default async function PostPage({ params }: PageProps) {
           </div>
         </header>
 
-        <div 
+        <div
           className="prose prose-lg max-w-none"
           style={{ color: '#333' }}
           dangerouslySetInnerHTML={{ __html: content }}
         />
+        <MermaidRenderer />
       </article>
 
       <footer className="mt-12 pt-8 border-t" style={{ borderColor: '#ddd' }}>

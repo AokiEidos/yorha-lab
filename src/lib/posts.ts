@@ -241,7 +241,21 @@ export async function markdownToHtml(markdown: string): Promise<string> {
     const original = mathPlaceholders[parseInt(idx)];
     return renderLatex(original);
   });
-  
+
+  // 将 mermaid 代码块转为 <div class="mermaid"> 供客户端渲染
+  htmlContent = htmlContent.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+    (_, code) => {
+      const decoded = code
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      return `<div class="mermaid">${decoded}</div>`;
+    }
+  );
+
   return htmlContent;
 }
 
