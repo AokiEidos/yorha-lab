@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 图神经网络预测方法 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+<style>
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>05 图神经网络预测方法</h1>
+    <p>STGCNN、STGAT、LaneGCN 与时空图建模</p>
+  </div>
+
+  <!-- ========== GNN vs LSTM ========== -->
+  <div class="section">
+    <h2>消息传递 vs LSTM 池化：本质区别</h2>
+    <p>Graph Neural Network — 交互建模从隐式走向显式</p>
+  </div>
+
+  <div class="card">
+    <h3>Social-LSTM 池化的问题</h3>
+    <p>Social-LSTM 的网格池化将所有邻域行人的隐状态混为一个向量，丢失了「谁对谁」的信息：</p>
+    <pre><code><span class="cmt"># Social-LSTM 池化</span>
+<span class="kw">for each</span> grid cell G:
+    aggregated_h = <span class="fn">sum</span>(h_i <span class="kw">for</span> agent i <span class="kw">in</span> G) / |G|
+    <span class="cmt"># 问题：A、B、C 的信息被混在一起，无法区分</span>
+    <span class="cmt"># A 对 B 的影响 和 C 对 B 的影响 完全相同处理</span></code></pre>
+    <p>这种方法本质上是隐式的 —— 交互通过共享的池化结果「泄漏」，但没有任何显式的边或消息机制。</p>
+  </div>
+
+  <div class="card green">
+    <h3>GNN 消息传递的显式建模</h3>
+    <p>GNN 为每一对交互建模独立的消息，通过可学习的注意力权重决定信息流动方向：</p>
+    <pre><code><span class="cmt"># GNN 消息传递 (每条边独立计算)</span>
+<span class="cmt"># 行人 A → B: 发送消息 m_{A→B} = f(h_A, h_B, e_{AB})</span>
+<span class="cmt"># 行人 C → B: 发送消息 m_{C→B} = f(h_C, h_B, e_{CB})</span>
+
+<span class="fn">aggregate</span>(m_{A→B}, m_{C→B}):
+    h_B' = g(h_B, m_{A→B}, m_{C→B})
+    <span class="cmt"># 每条边的消息独立计算，保留了"谁对谁"的信息</span></code></pre>
+  </div>
+
+  <div class="grid-2">
+    <div class="card amber">
+      <h3>LSTM 池化</h3>
+      <ul>
+        <li>交互粒度：区域级（网格）</li>
+        <li>个体区分：丢失</li>
+        <li>权重学习：固定（求和/平均）</li>
+        <li>拓扑感知：无</li>
+        <li>计算复杂度：$O(N)$</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>GNN 消息传递</h3>
+      <ul>
+        <li>交互粒度：成对级（边）</li>
+        <li>个体区分：保留</li>
+        <li>权重学习：可学习（注意力）</li>
+        <li>拓扑感知：显式图结构</li>
+        <li>计算复杂度：$O(|E|)$</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== STGAT ========== -->
+  <div class="section">
+    <h2>STGAT / Spatio-Temporal Graph Attention Network</h2>
+    <p>Huang et al., ICCV 2019 — 图注意力自动学习邻域重要性</p>
+  </div>
+
+  <div class="card">
+    <h3>What — 什么是 STGAT？</h3>
+    <p>STGAT 将图注意力（Graph Attention Network, GAT）引入轨迹预测，用<strong>注意力权重自动学习</strong>不同邻域行人的重要性，替代 Social-STGCNN 中基于距离的固定权重。核心创新是让每对交互独立计算注意力系数，实现端到端可学习的邻域重要性估计。</p>
+  </div>
+
+  <div class="callout blue">
+    <strong>Why — 为什么需要图注意力？</strong>
+    传统方法用距离阈值定义邻域（如 5m 以内），但距离不能完全反映交互重要性。一个快速接近的行人即使在 8m 外，对预测的影响也可能超过 2m 外的静止行人。注意力机制让模型从数据中自动学习真正影响预测的因素。
+  </div>
+
+  <div class="card">
+    <h3>How — STGAT 架构详解</h3>
+    <p>编码阶段每个时间步对所有智能体进行空间图注意力，然后跨时间步用 LSTM 编码时序：</p>
+
+    <p><strong>空间图注意力（核心）:</strong></p>
+    <div class="formula">$$e_{ij} = \text{LeakyReLU}\bigl(\mathbf{a}^\top[\mathbf{W}\mathbf{h}_i \mid\mid \mathbf{W}\mathbf{h}_j]\bigr)$$</div>
+    <div class="formula">$$\alpha_{ij} = \frac{\exp(e_{ij})}{\sum_{k \in \mathcal{N}_i} \exp(e_{ik})}$$</div>
+    <div class="formula">$$\mathbf{h}_i' = \sigma\Bigl(\sum_{j \in \mathcal{N}_i} \alpha_{ij} \cdot \mathbf{W}\mathbf{h}_j\Bigr)$$</div>
+
+    <p>其中 $\mathbf{h}_i$ 是智能体 $i$ 的隐状态，$\mathbf{W}$ 是可学习权重矩阵，$\mathbf{a}$ 是注意力向量。注意力系数 $\alpha_{ij}$ 表示智能体 $j$ 对智能体 $i$ 的影响程度，由网络自动学习。</p>
+
+    <p><strong>多头注意力版本:</strong></p>
+    <div class="formula">$$\mathbf{h}_i' = \parallel_{k=1}^{K} \sigma\Bigl(\sum_{j \in \mathcal{N}_i} \alpha_{ij}^k \cdot \mathbf{W}^k \mathbf{h}_j\Bigr)$$</div>
+    <p>使用 $K$ 个独立注意力头，结果拼接得到最终输出，增强模型的表达能力。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>图注意力的直观理解</h3>
+    <p>场景：行人在十字路口，多人同时交互。</p>
+    <pre><code><span class="cmt">       A (慢走，远)</span>
+       <span class="cmt">│</span>
+       <span class="cmt">│ α_{AB} = 0.1  (低权重：远且慢)</span>
+       <span class="cmt">│</span>
+  C ───●─── B
+  (快跑，近)
+       <span class="cmt">│ α_{CB} = 0.7  (高权重：近且快，可能碰撞)</span>
+       <span class="cmt">│</span>
+       D (静止，远)
+         α_{DB} = 0.2  (中权重：虽远但可能变向)
+
+注意力权重自动学习，不需要手工设计距离阈值。</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>定量结果（ETH/UCY, ADE/FDE @K=20）</h3>
+    <table>
+      <thead>
+        <tr><th>场景</th><th>ADE ↓</th><th>FDE ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ETH</td><td>0.65</td><td>1.12</td></tr>
+        <tr><td>HOTEL</td><td>0.35</td><td>0.66</td></tr>
+        <tr><td>UNIV</td><td>0.52</td><td>1.10</td></tr>
+        <tr><td>ZARA1</td><td>0.34</td><td>0.69</td></tr>
+        <tr><td>ZARA2</td><td>0.29</td><td>0.60</td></tr>
+        <tr><td><strong>平均</strong></td><td><strong>0.43</strong></td><td><strong>0.83</strong></td></tr>
+      </tbody>
+    </table>
+    <p>相比 Social-LSTM（ADE ~0.6），STGAT 通过注意力机制显著提升了预测精度。</p>
+  </div>
+
+  <!-- ========== AgentFormer ========== -->
+  <div class="section purple">
+    <h2>AgentFormer / Agent-Aware Transformer + CVAE</h2>
+    <p>Yuan et al., ICCV 2021 — 联合多智能体建模与多模态潜变量</p>
+  </div>
+
+  <div class="card purple">
+    <h3>What — 什么是 AgentFormer？</h3>
+    <p>AgentFormer 是一个将 <strong>Transformer 注意力</strong>与 <strong>CVAE 潜变量</strong>结合的多智能体联合建模框架。核心创新在于让不同智能体在同一个 Transformer 注意力空间中直接交互，同时用 CVAE 建模多模态轨迹分布。</p>
+  </div>
+
+  <div class="callout amber">
+    <strong>Why — 边际预测的问题</strong>
+    传统方法对每个智能体独立预测（边际预测，Marginal Prediction），忽略智能体间的交互一致性。AgentFormer 将所有智能体放入统一注意力空间，实现联合建模（Joint Modeling），保证预测轨迹之间的协调性。
+  </div>
+
+  <div class="card purple">
+    <h3>How — AgentFormer 架构</h3>
+    <p><strong>1. Agent-Aware Transformer 编码器:</strong></p>
+    <p>将所有智能体的所有时间步展平成统一 token 序列，通过 Agent-Aware Self-Attention 实现跨智能体交互：</p>
+    <div class="formula">$$\text{Token}_i^t = [\mathbf{h}_i^t; \mathbf{e}_{\text{agent}}(i); \mathbf{e}_{\text{time}}(t)]$$</div>
+    <div class="formula">$$\mathbf{Q} = \mathbf{W}_q(\mathbf{h} + \mathbf{e}_{\text{agent}} + \mathbf{e}_{\text{time}}), \quad \mathbf{K}, \mathbf{V} \text{ 同理}$$</div>
+
+    <p><strong>2. CVAE 潜变量模块:</strong></p>
+    <div class="formula">$$q(\mathbf{z} \mid \tau_o, \tau_f) = \mathcal{N}(\boldsymbol{\mu}_q, \boldsymbol{\sigma}_q^2) \quad \text{(训练时后验)}$$</div>
+    <div class="formula">$$p(\mathbf{z} \mid \tau_o) = \mathcal{N}(\boldsymbol{\mu}_p, \boldsymbol{\sigma}_p^2) \quad \text{(推理时先验)}$$</div>
+
+    <p><strong>3. 损失函数:</strong></p>
+    <div class="formula">$$\mathcal{L} = \mathcal{L}_{\text{recon}} + \beta \cdot \mathcal{L}_{\text{KL}}, \quad \mathcal{L}_{\text{KL}} = \text{KL}\bigl[q(\mathbf{z}\mid\tau_o,\tau_f) \mid\mid p(\mathbf{z}\mid\tau_o)\bigr]$$</div>
+  </div>
+
+  <div class="card">
+    <h3>边际预测 vs 联合预测</h3>
+    <pre><code><span class="cmt"># 边际预测（独立预测，可能冲突）</span>
+p(τ_A) × p(τ_B) × p(τ_C)
+
+A: ──→  (不管 B)
+B: ──→  (不管 A)
+<span class="red">可能冲突!</span>
+
+<span class="cmt"># 联合预测（AgentFormer，天然协调）</span>
+p(τ_A, τ_B, τ_C | 场景)
+
+A: ──→  (考虑 B 在右)
+B:    →  (让 A 先过)
+<span class="green">自然协调!</span></code></pre>
+  </div>
+
+  <div class="card purple">
+    <h3>定量结果（ETH/UCY, ADE/FDE @K=20）</h3>
+    <table>
+      <thead>
+        <tr><th>场景</th><th>ADE ↓</th><th>FDE ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ETH</td><td>0.45</td><td>0.75</td></tr>
+        <tr><td>HOTEL</td><td>0.14</td><td>0.22</td></tr>
+        <tr><td>UNIV</td><td>0.25</td><td>0.45</td></tr>
+        <tr><td>ZARA1</td><td>0.18</td><td>0.30</td></tr>
+        <tr><td>ZARA2</td><td>0.14</td><td>0.24</td></tr>
+        <tr><td><strong>平均</strong></td><td><strong>0.23</strong></td><td><strong>0.39</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout blue">
+    <strong>Note — 数据集偏差的警示</strong>
+    AgentFormer 在 ETH/UCY 上 ADE 从 0.43 降至 0.23（-47%），但后续研究发现其提升部分来自 Transformer 的强大拟合能力。在更大的 nuScenes/Waymo 数据集上优势缩小，说明在小数据集上的收益需谨慎看待。
+  </div>
+
+  <!-- ========== HiVT ========== -->
+  <div class="section green">
+    <h2>HiVT / Hierarchical Vector Transformer</h2>
+    <p>Zhou et al., CVPR 2022 — 局部-全局层次注意力与向量化表示</p>
+  </div>
+
+  <div class="card green">
+    <h3>What — 什么是 HiVT？</h3>
+    <p>HiVT 采用两个关键设计：<strong>向量化输入表示</strong>和<strong>局部-全局层次注意力</strong>，在效率和精度之间取得优秀平衡。相比全连接 Transformer 将所有 token 两两计算注意力，HiVT 通过层次设计将复杂度从 $O((N \cdot T)^2)$ 降至 $O(N^2 + N \cdot K_{\text{local}}^2)$，同时保持精度不降。</p>
+  </div>
+
+  <div class="callout amber">
+    <strong>Why — 全局注意力的复杂度问题</strong>
+    场景：100 个智能体，每个 8 个历史步。全局注意力的计算量为 $(100 \times 8)^2 = 640,000$ 次点积运算，非常昂贵。HiVT 发现大多数交互是局部的（2m 内），远距离交互可以通过 summary 级别的注意力建模，从而将计算量降低一个数量级。
+  </div>
+
+  <div class="card green">
+    <h3>How — HiVT 四大组件</h3>
+    <p><strong>1. 向量化输入（Vectorized Input）:</strong></p>
+    <p>不使用坐标绝对值，而用位移向量序列：</p>
+    <div class="formula">$$\Delta \mathbf{p} = (\Delta x, \Delta y) \quad \text{位移向量序列}$$</div>
+    <p>优点：天然平移不变性，无需坐标归一化。</p>
+
+    <p><strong>2. 局部编码器（Local Encoder）:</strong></p>
+    <div class="formula">$$\text{复杂度: } O(N \cdot K_{\text{local}}^2), \quad K_{\text{local}} \ll N$$</div>
+    <p>对每个智能体编码其局部上下文（最近 20 个邻居 + 最近 M 条车道线），通过交叉注意力融合。</p>
+
+    <p><strong>3. 全局交互模块（Global Interaction）:</strong></p>
+    <p>所有智能体的 summary 特征进行全局 Self-Attention，建模远距离交互：</p>
+    <div class="formula">$$\text{复杂度: } O(N^2)$$</div>
+
+    <p><strong>4. 多模态解码器:</strong></p>
+    <p>Winner-takes-all（WTA）训练：只惩罚 K 条候选轨迹中最接近真实值的那条。</p>
+  </div>
+
+  <div class="card">
+    <h3>向量化表示 vs 传统坐标</h3>
+    <div class="grid-2">
+      <div>
+        <pre><code><span class="cmt"># 传统坐标表示</span>
+行人 A 在 (100.5, 200.3)
+行人 A 在 (100.8, 200.4)
+
+<span class="red">不同位置的同一行为</span>
+(100.5, 200.3) ≠ (50.2, 80.1)
+<span class="red">需要额外的坐标归一化</span></code></pre>
+      </div>
+      <div>
+        <pre><code><span class="cmt"># 向量化表示</span>
+行人 A 位移 (Δx, Δy) = (0.3, 0.1)
+行人 A 位移 (Δx, Δy) = (0.3, 0.1)
+
+<span class="green">相同行为的向量表示相同</span>
+(0.3, 0.1) = (0.3, 0.1)
+<span class="green">天然平移不变</span></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card green">
+    <h3>定量结果</h3>
+    <p><strong>nuScenes（minADE$_5$/minFDE$_5$/MR$_5$）:</strong></p>
+    <table>
+      <thead>
+        <tr><th>方法</th><th>minADE$_5$ ↓</th><th>minFDE$_5$ ↓</th><th>MR$_5$ ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>LaneGCN</td><td>1.71</td><td>3.78</td><td>0.59</td></tr>
+        <tr><td>AgentFormer</td><td>1.86</td><td>3.89</td><td>0.58</td></tr>
+        <tr><td><strong>HiVT</strong></td><td><strong>1.61</strong></td><td><strong>3.42</strong></td><td><strong>0.54</strong></td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:12px"><strong>Argoverse 1（minADE$_6$/minFDE$_6$/MR$_6$）:</strong></p>
+    <table>
+      <thead>
+        <tr><th>方法</th><th>minADE$_6$ ↓</th><th>minFDE$_6$ ↓</th><th>MR$_6$ ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>LaneGCN</td><td>0.87</td><td>1.36</td><td>0.16</td></tr>
+        <tr><td><strong>HiVT</strong></td><td><strong>0.77</strong></td><td><strong>1.17</strong></td><td><strong>0.13</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========== LaneGCN ========== -->
+  <div class="section amber">
+    <h2>LaneGCN / Lane Graph Convolutional Network</h2>
+    <p>Liang et al., ECCV 2020 — 车道图编码与异构图建模</p>
+  </div>
+
+  <div class="card amber">
+    <h3>What — 什么是 LaneGCN？</h3>
+    <p>LaneGCN 的核心创新是将<strong>高精地图（HD Map）</strong>表示为图结构，与智能体的交互图联合建模。在 LaneGCN 之前，大多数方法要么忽略地图信息，要么将地图栅格化为 BEV 图像用 CNN 处理 —— 两者都无法充分利用道路拓扑结构。</p>
+  </div>
+
+  <div class="callout blue">
+    <strong>Why — 为什么需要地图信息？</strong>
+    车辆轨迹预测高度依赖道路结构：在直道上车辆倾向于直行，在弯道上需要转向，在交叉路口需要决策。忽略地图信息就像在空白场景中预测，无法利用「哪里可以通行」这一关键约束。LaneGCN 通过车道图编码，将地图的结构化信息引入预测。
+  </div>
+
+  <div class="card amber">
+    <h3>How — 车道图编码的核心设计</h3>
+    <p><strong>1. 车道图构建（四类边）:</strong></p>
+    <pre><code>车道线 → 向量化折线节点
+
+四种边类型:
+  ① 前继 (successor): 同一车道的下一段
+  ② 前驱 (predecessor): 同一车道的上一段
+  ③ 左邻 (left neighbor): 左侧相邻车道
+  ④ 右邻 (right neighbor): 右侧相邻车道
+
+  ──→──→──→    车道 1 (前继边)
+  │  │  │
+  ──→──→──→    车道 2 (左/右邻边连接车道 1 和 2)</code></pre>
+
+    <p><strong>2. 四类交互图:</strong></p>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="card">
+        <p><strong>A2A</strong> — Agent-to-Agent 智能体间交互</p>
+        <p><strong>A2L</strong> — Agent-to-Lane 智能体到车道</p>
+      </div>
+      <div class="card">
+        <p><strong>L2L</strong> — Lane-to-Lane 车道间拓扑</p>
+        <p><strong>L2A</strong> — Lane-to-Agent 车道到智能体</p>
+      </div>
+    </div>
+    <pre><code>  ┌───────┐     A2L      ┌───────┐
+  │ Agent  │ ─────────→  │ Lane  │
+  │  节点  │ ←─────────  │  节点 │
+  │        │     L2A      │       │
+  │  A2A   │              │  L2L  │
+  │   ↕    │              │   ↕   │
+  └───────┘              └───────┘</code></pre>
+  </div>
+
+  <div class="card amber">
+    <h3>消息传递与信息传播</h3>
+    <p>LaneGCN 通过多轮消息传递实现信息的跨距离传播：</p>
+    <div class="formula">$$\text{A2A} \rightarrow \text{A2L} \rightarrow \text{L2L} \rightarrow \text{L2A} \rightarrow \text{A2A} \quad \text{（循环）}$$</div>
+
+    <p>效果：智能体通过车道图「看到」远处的道路结构。即使两个智能体距离很远，如果在同一条车道上，信息可以通过 L2L 边传播。</p>
+
+    <pre><code><span class="cmt"># 信息流示例</span>
+1. 智能体看到附近车道 (A2L):  "我在哪条车道上"
+2. 车道间传播 (L2L):            "前方车道是弯还是直"
+3. 车道信息回传智能体 (L2A):    "你前方的车道要左转"
+4. 智能体间交互 (A2A):          "前方车辆在你的车道上"</code></pre>
+  </div>
+
+  <div class="card amber">
+    <h3>定量结果（Argoverse 1）</h3>
+    <table>
+      <thead>
+        <tr><th>方法</th><th>minADE$_6$ ↓</th><th>minFDE$_6$ ↓</th><th>MR$_6$ ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Social-LSTM</td><td>1.87</td><td>3.98</td><td>—</td></tr>
+        <tr><td><strong>LaneGCN</strong></td><td><strong>0.87</strong></td><td><strong>1.36</strong></td><td><strong>0.16</strong></td></tr>
+      </tbody>
+    </table>
+    <p>LaneGCN 通过引入车道图信息，将 minFDE 从传统方法的 ~4m 降至 1.36m，证明了地图对车辆轨迹预测的关键作用。</p>
+  </div>
+
+  <!-- ========== 对比总结 ========== -->
+  <div class="section">
+    <h2>方法对比总结</h2>
+    <p>四种 GNN 方法的核心差异与设计原则</p>
+  </div>
+
+  <div class="card">
+    <h3>四种方法核心差异</h3>
+    <table>
+      <thead>
+        <tr><th>方法</th><th>年份</th><th>图类型</th><th>注意力</th><th>多模态</th><th>地图编码</th><th>主要 benchmark</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>STGAT</td><td>2019</td><td>行人图(GAT)</td><td>图注意力</td><td>Best-of-K</td><td>无</td><td>ETH/UCY</td></tr>
+        <tr><td>AgentFormer</td><td>2021</td><td>全连接(Transformer)</td><td>Self-Attention</td><td>CVAE</td><td>有限</td><td>ETH/UCY</td></tr>
+        <tr><td>HiVT</td><td>2022</td><td>层次(局部+全局)</td><td>多头注意力</td><td>WTA</td><td>向量化</td><td>nuScenes, Argoverse</td></tr>
+        <tr><td>LaneGCN</td><td>2020</td><td>异构图(A+L)</td><td>消息传递</td><td>K 锚点</td><td>车道图</td><td>Argoverse</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card green">
+    <h3>从 GNN 方法中学到的设计原则</h3>
+    <ol>
+      <li><strong>显式交互优于隐式池化</strong>：从池化到图注意力，交互建模质量持续提升</li>
+      <li><strong>地图信息是必要的</strong>：LaneGCN 的车道图编码使 minFDE 从 ~4m 降至 ~1.4m，证明了地图对车辆轨迹预测的关键作用</li>
+      <li><strong>层次设计平衡效率</strong>：HiVT 的局部-全局设计在保持精度的同时将复杂度降低了一个数量级</li>
+      <li><strong>向量化表示优于坐标</strong>：位移向量天然具有平移不变性，减少了不必要的信息冗余</li>
+      <li><strong>联合建模优于独立预测</strong>：AgentFormer 证明了联合多智能体建模的优势</li>
+    </ol>
+  </div>
+
+  <div class="callout red">
+    <strong>为什么向 Transformer 演化？</strong>
+    GNN 方法的核心局限推动了架构转变：图结构需要预定义（距离阈值人为设定）；消息传递受限于有限跳数；难以统一异构信息（智能体/车道/地图）；稀疏图操作导致 GPU 利用率低。Transformer 通过全局注意力、自注意力单层全局交互、统一 token 序列和密集矩阵运算解决了这些问题。
+  </div>
+
+  <!-- ========== 小结 ========== -->
+  <div class="section purple">
+    <h2>小结</h2>
+    <p>关键概念与设计原则回顾</p>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>概念</th><th>要点</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>消息传递 vs 池化</td><td>GNN 显式建模成对交互，保留个体信息</td></tr>
+        <tr><td>STGAT</td><td>图注意力自动学习邻域重要性权重</td></tr>
+        <tr><td>AgentFormer</td><td>Transformer + CVAE 联合多智能体建模</td></tr>
+        <tr><td>HiVT</td><td>局部-全局层次设计，向量化表示，效率和精度兼顾</td></tr>
+        <tr><td>LaneGCN</td><td>车道图编码，A2A/A2L/L2L/L2A 四类交互</td></tr>
+        <tr><td>设计原则</td><td>显式交互、地图必要、层次设计、向量化输入</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flow" style="justify-content:center;margin:20px 0">
+    <div class="flow-node">STGAT</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node amber">AgentFormer</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node green">HiVT</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node purple">LaneGCN</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Transformer</div>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 05 图神经网络预测方法 ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../04-prediction-evolution/index.html">← 04 预测方法演进：从规则到深度学习</a>
+    · <a href="../06-prediction-deep/index.html">下一篇：06 Transformer 与扩散模型预测 →</a>
+  </div>
+</div>
+</body>
+</html>

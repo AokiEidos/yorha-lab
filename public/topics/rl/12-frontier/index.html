@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12 当前前沿与开放问题 / Frontier & Open Problems — 强化学习</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>12 当前前沿与开放问题 / Frontier & Open Problems</h1>
+    <p>Foundation RL Models、Scaling Laws、LLM+RL 融合、稀疏奖励、因果 RL — RL 的未来方向与未解难题</p>
+  </div>
+
+  <!-- Scaling Laws -->
+  <div class="section">
+    <h2>RL 的 Scaling Laws / 规模化趋势</h2>
+    <p>大模型时代，RL 正在经历从"算法驱动"到"算力+数据驱动"的范式转变</p>
+  </div>
+
+  <div class="card">
+    <h3>语言模型的 Scaling Laws 对 RL 的启示</h3>
+    <p style="font-size:12px;color:var(--text-2)">Kaplan et al. (2020) 证明：神经网络的性能（困惑度/损失）与参数数量、数据量、算力呈幂律关系（Power Law）。这启发了 RL 研究者：RL 是否也有类似的 scaling 规律？</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">语言模型 Scaling 的关键发现</p>
+        <ul style="font-size:12px">
+          <li>L(参数) ∝ N^(-α) — 参数越多，loss 越低</li>
+          <li>L(数据) ∝ D^(-β) — 数据越多，loss 越低</li>
+          <li>存在"critical batch size"，超过后 scaling 效率降低</li>
+          <li>计算量（Flops）是最核心的驱动因素</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">RL Scaling 的当前状态</p>
+        <ul style="font-size:12px">
+          <li>LLM 的 Scaling Laws 已建立（scaling 有效）</li>
+          <li>RL 在 robot 领域尚未建立明确的 scaling 规律</li>
+          <li>关键问题：什么样的 RL 数据 scaling 最有效？</li>
+          <li>数据量和数据质量哪个更重要？（答案：质量更重要）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber" style="margin-top:8px">
+    <strong>🎯 RL Scaling 的核心问题</strong>
+    <ul style="margin-top:6px;font-size:12px">
+      <li><strong>什么样的数据？</strong> 预训练（互联网规模的视频/交互数据）vs 专家示范（高质量但少量）</li>
+      <li><strong>什么样的 reward？</strong> 人工标注的偏好 vs 自动环境奖励 vs 合成奖励信号</li>
+      <li><strong>什么样的算法？</strong> Online RL vs Offline RL vs 模仿学习，哪种更能 scaling？</li>
+      <li><strong>什么样的计算分配？</strong> 收集数据 vs 训练模型 vs 评估的算力分配比例</li>
+    </ul>
+  </div>
+
+  <!-- Foundation RL Models -->
+  <div class="section green" style="margin-top:20px">
+    <h2>Foundation RL Models / 机器人基础模型</h2>
+    <p>类似 LLM 在语言领域的"预训练+微调"范式，机器人领域正在构建 Foundation RL Models</p>
+  </div>
+
+  <div class="card green">
+    <h3>VLA / Vision-Language-Action Model — 机器人基础模型的核心架构</h3>
+    <p style="font-size:12px;color:var(--text-2)">VLA 将视觉输入（摄像头）、语言输入（指令）、动作输出统一到一个模型中。核心设计问题：</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">架构选择</p>
+        <ul style="font-size:12px">
+          <li><strong>LLM-backbone</strong>（LLaVA/PaliGemma 扩展）：用 LLM 的推理能力处理视觉和语言，action head 输出离散动作 token</li>
+          <li><strong>从头训练</strong>（RT-2、RT-X）：视觉-语言-动作端到端训练</li>
+          <li><strong>Diffusion backbone</strong>（π₀）：用 Flow Matching 建模动作分布，适合连续控制</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">数据来源</p>
+        <ul style="font-size:12px">
+          <li><strong>互联网视觉数据</strong>：图像理解、场景推理</li>
+          <li><strong>语言数据</strong>：指令理解、常识推理</li>
+          <li><strong>机器人演示</strong>：真实操作数据（RT-1 数据集：130K  demos）</li>
+          <li><strong>仿真数据</strong>：大规模合成数据（PhysRotate、LIBERO）</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow" style="margin-top:12px">
+      <div class="flow-node green">互联网视觉-语言预训练<br><small>LLaVA / PaliGemma / SigLIP</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node amber">机器人数据微调<br><small>RT-2 / OpenVLA / π₀</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">泛化到新任务/环境<br><small>零样本 / 少样本</small></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:8px">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>RT-2 (Google Robotics, 2023)</h3>
+      <p style="font-size:12px;color:var(--text-2)">视觉-语言模型（PaLM-E）直接输出机器人动作 token（在仿真中学习）。RT-2 的核心贡献是：证明了互联网规模的视觉-语言预训练可以迁移到机器人操作，实现零样本泛化到训练时未见过的任务。</p>
+      <div class="callout blue" style="font-size:11px;margin-top:6px">
+        <strong>关键数据</strong><br>
+        训练数据：RT-1 数据集（130K 演示，使用 13 个机器人臂收集）<br>
+        测试泛化：未见过的物体类别、未见过的指令模板
+      </div>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>π₀ (Physical Intelligence, 2024)</h3>
+      <p style="font-size:12px;color:var(--text-2)">基于 Flow Matching 的 VLA 模型。π₀ 的 action head 是一个 diffusion model，从视觉-语言表示条件生成动作序列。在复杂任务（折叠衣物、清理桌子）上展现了通用能力。</p>
+      <div class="formula">$$\mathcal{L}_{\text{FM}} = \mathbb{E}_{t,z_0,\tau}\left[ \mid v_t - v_\theta(z_t, t, c) \mid^2 \right]$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">$z_t$ 是 t 步的动作隐表示，$c$ 是视觉-语言条件（来自 VLM backbone），$v_t$ 是 flow matching 的速度场。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>OpenVLA (NVIDIA, 2024)</h3>
+      <p style="font-size:12px;color:var(--text-2)">开源 VLA 方案，基于 LLaVA 架构（7B 参数），在 100K+ 机器人演示数据上微调。OpenVLA 的优势是开源可复现，支持多种机器人平台。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">代表开源机器人基础模型的重要方向。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--purple)">
+      <h3>GR00T / Unitree-H1 (2024-2025)</h3>
+      <p style="font-size:12px;color:var(--text-2)">2024 年底-2025 年，多个中国公司（宇树、星动纪元等）发布了人形机器人基础模型。GR00T（上海期智研究院）展示了中国在这方面的进展。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">核心挑战：如何从少量真实机器人数据（几千条）扩展到百万条级别的训练数据。</p>
+    </div>
+  </div>
+
+  <!-- LLM + RL -->
+  <div class="section" style="margin-top:20px">
+    <h2>LLM + RL 的深度融合 / LLM as RL Agent Brain</h2>
+    <p>LLM 正在成为 RL Agent 的核心推理引擎，形成了"大模型做规划+小模型做控制"的分层架构</p>
+  </div>
+
+  <div class="card">
+    <h3>Test-time Scaling / OpenAI o1/o3 的推理范式</h3>
+    <p style="font-size:12px;color:var(--text-2)">OpenAI o1/o3 的核心突破是：把 RL 的思想引入 LLM 的推理过程。在测试时（Test-time），模型可以"思考"（生成推理链），然后再输出最终答案。</p>
+    <div class="formula">$$p(\text{answer}\mid x) = \sum_{\text{trajectory}} p(\text{trajectory}\mid x) \cdot p(\text{answer}|\text{trajectory}, x)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">"Thinking" 的过程可以建模为在隐空间（token space）中的探索。搜索/采样多个推理路径，评估每个路径的 quality，选择最优的。这种"测试时计算"（Test-time Compute）的 scaling 和预训练的 scaling 同样重要。</p>
+    <div class="callout blue" style="margin-top:8px;font-size:12px">
+      <strong>o1/o3 的 RL 本质</strong>
+      o1 的训练使用了"过程奖励模型"（PRM / Process Reward Model）来评估每个推理步骤，而不是只评估最终答案。这是 RL 在 token-level 的应用——每个 token 的生成都受到未来累计奖励的监督。
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:8px">
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>LLM 驱动的规划 / LLM as Planner</h3>
+      <p style="font-size:12px;color:var(--text-2)">LLM 生成候选行动计划（Action Sequence），RL 评估和选择最优计划。</p>
+      <ul style="font-size:12px;margin-top:4px">
+        <li><strong>Voyager</strong>（MineDojo）：LLM 生成 Minecraft 中的行动代码，RL 评估代码执行后的效果，保留有效的代码块</li>
+        <li><strong>CodeAct</strong>（2024）：用代码作为动作空间，LLM 直接编写和执行 Python 代码来完成任务</li>
+        <li><strong>ReAct</strong>：交错推理（Reasoning）和行动（Acting），用语言描述"我在做什么，然后执行动作"</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>RL 调优 LLM / RL for LLM Refinement</h3>
+      <p style="font-size:12px;color:var(--text-2)">用 PPO/DPO/GRPO 等 RL 算法微调 LLM 的推理能力。</p>
+      <ul style="font-size:12px;margin-top:4px">
+        <li><strong>Math-Shepherd</strong>：用 PRM 对每个推理步骤打分，PPO 优化整个推理链</li>
+        <li><strong>PRM (Process Reward Model)</strong>：与结果奖励模型（ORM）不同，PRM 对每个中间步骤评分，可以做更细粒度的 credit assignment</li>
+        <li><strong>STaR</strong>：Self-Taught Reasoner，自己生成推理链，筛选正确的作为训练数据</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 开放问题 -->
+  <div class="section red" style="margin-top:20px">
+    <h2>开放科学问题 / Open Scientific Problems</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>稀疏奖励问题 / Sparse Reward Problem</h3>
+      <p style="font-size:12px;color:var(--text-2)">大多数真实任务只有稀疏奖励（只有完成目标才有奖励，如"机器人把杯子放到桌上"）。在稀疏奖励下，RL 无法从随机探索中学到任何东西。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px"><strong>主要研究方向：</strong></p>
+      <ul style="font-size:12px">
+        <li><strong>Hindsight Experience Replay（HER）</strong>：把失败经验"改写"为成功经验学习（Andrychowicz et al., 2017）。如果目标是"把杯子放到桌子 A"，但杯子被放到了桌子 B，就把这个经验的目标重标记为"把杯子放到桌子 B"，这样这次经验就是成功的。</li>
+        <li><strong>自动 Reward Shaping</strong>：从人类演示或语言描述中自动生成 shaped reward</li>
+        <li><strong>Intrinsic Motivation</strong>：让智能体自己产生内在好奇心驱动探索（ICM、Episodic Curiosity）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>样本效率的根本问题 / Fundamental Sample Efficiency</h3>
+      <p style="font-size:12px;color:var(--text-2)">即使是最先进的离线 RL，在真实机器人上仍需要 1-10K 条演示。如何从数百条数据中高效学习？</p>
+      <div class="formula">$$N_{\text{required}} = \frac{\text{complexity of task}}{\text{data efficiency of algorithm} \times \text{model capacity}}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">最有可能的组合：Model-based RL + Offline RL + 预训练的视觉/语言先验。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>安全与约束 / Safety & Constraints</h3>
+      <p style="font-size:12px;color:var(--text-2)">约束 RL（Constrained RL）：智能体在满足安全约束的前提下最大化 reward。</p>
+      <div class="formula">$$\max_\pi \mathbb{E}[r(\pi)] \quad \text{s.t.} \quad \mathbb{E}[c_j(\pi)] \leq b_j, \quad \forall j$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">$c_j$ 是约束函数（如"机器人不能碰撞障碍物"），$b_j$ 是约束边界。主要算法：CPO（Constrained Policy Optimization）、PCPO、Lagrangian 方法。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--purple)">
+      <h3>因果 RL / Causal RL</h3>
+      <p style="font-size:12px;color:var(--text-2)">当前 RL 依赖相关性（Correlation）而非因果性（Causality）：智能体学到的是"在状态 $s$ 下，动作 $a$ 能获得高 reward"，而不是"为什么 $a$ 有效"。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">因果 RL 的核心目标：学习因果模型 $p(s'|do(a), s)$ 而非仅仅 $p(s'|s,a)$。"do" 操作代表"主动干预"而非"被动观察"，这是因果推断的核心概念。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">对迁移和泛化至关重要：如果智能体理解了"为什么"（因果），它可以在新环境中推断正确的新动作，而不只是记忆"什么"（相关性）。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>多模态 RL / Multimodal RL</h3>
+    <p style="font-size:12px;color:var(--text-2)">真实世界的智能体需要处理多种感知输入（视觉、触觉、听觉、力矩、激光雷达等），如何有效融合多模态信息进行决策是重要研究方向。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">当前方法</p>
+        <ul style="font-size:12px">
+          <li>注意力机制（Cross-attention）融合多模态特征</li>
+          <li>Latent fusion：将多模态信息投影到统一隐空间</li>
+          <li>预训练的 CLIP/VLMs 提供视觉-语言先验</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">开放问题</p>
+        <ul style="font-size:12px">
+          <li>触觉信号的时序建模（高频率、高维度）</li>
+          <li>多模态 Reward 的融合（什么信息决定 reward？）</li>
+          <li>模态缺失时的鲁棒性（如视觉传感器失效）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 前沿预测 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>未来 3-5 年的关键预测 / Key Predictions</h2>
+  </div>
+
+  <div class="callout blue">
+    <strong>📅 RL 领域的关键趋势</strong>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th style="width:200px">方向</th><th>预测</th><th>时间线</th></tr>
+      <tr>
+        <td><strong>Foundation RL Model</strong></td>
+        <td>会出现类似 GPT-4 的机器人基础模型，在互联网数据上预训练后可以零样本泛化到新任务（家庭机器人、工厂柔性任务）</td>
+        <td>2026-2028</td>
+      </tr>
+      <tr>
+        <td><strong>LLM+RL 融合架构</strong></td>
+        <td>"大模型做规划+小模型做控制"成为标准架构。LLM 负责任务分解和高层次推理，RL 负责低层次技能执行</td>
+        <td>2025-2027</td>
+      </tr>
+      <tr>
+        <td><strong>离线 → 在线桥梁</strong></td>
+        <td>用少量在线交互补充离线数据（Semi-Online RL）成为工程主流，兼顾安全性和样本效率</td>
+        <td>2025-2026</td>
+      </tr>
+      <tr>
+        <td><strong>多模态统一对齐</strong></td>
+        <td>视觉-语言-动作的统一对齐（类似 RLHF 但多模态）会催生新算法，解决 VLA 模型的对齐问题</td>
+        <td>2026-2028</td>
+      </tr>
+      <tr>
+        <td><strong>具身智能 (Embodied AI)</strong></td>
+        <td>RL + 大规模仿真（如 Isaac Sim、Habitat 3.0）将成为具身智能的标准训练范式，Sim-to-Real 成功率将显著提升</td>
+        <td>2025-2027</td>
+      </tr>
+    </table>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 12 前沿与开放问题 · <a href="../index.html">← 总目录</a> · <a href="../11-rlhf/index.html">← 11 RLHF</a> · 完结
+  </div>
+</div>
+</body>
+</html>

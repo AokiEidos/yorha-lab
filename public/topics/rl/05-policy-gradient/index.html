@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 策略梯度 / Policy Gradient — 强化学习</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters:[
+            {left:'$$',right:'$$',display:true},
+            {left:'$',right:'$',display:false}
+          ], throwOnError:false, trust:true, strict:false
+        });
+      }, 100);
+    });
+  </script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>05 策略梯度 / Policy Gradient</h1>
+    <p>策略梯度定理、REINFORCE、Actor-Critic、GAE — 从 MC 到 TD 的完整方差缩减技术</p>
+  </div>
+
+  <!-- 策略梯度定理 -->
+  <div class="section">
+    <h2>策略梯度定理 / Policy Gradient Theorem</h2>
+    <p>策略梯度是强化学习的核心——直接优化参数化策略 $\pi_\theta(a|s)$，无需 Q 表或价值函数近似</p>
+  </div>
+
+  <div class="card">
+    <h3>目标函数与梯度 / Objective & Gradient</h3>
+    <p style="font-size:12px;color:var(--text-2)">策略梯度方法直接对策略参数 $\theta$ 求梯度。目标是最大化期望累计折扣回报：</p>
+    <div class="formula">$$J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[ \sum_{t=0}^{\infty} \gamma^t r(s_t, a_t) \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">策略梯度定理给出了 $\nabla_\theta J(\theta)$ 的无模型形式：</p>
+    <div class="formula">$$\nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[ \sum_{t=0}^{T} \nabla_\theta \log \pi_\theta(a_t \mid s_t) \cdot G_t \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $G_t = \sum_{l=t}^{T} \gamma^{l-t} r(s_l, a_l)$ 是从时刻 $t$ 开始的折扣回报。无偏估计，但方差极大（因为每个 trajectory 的 $G_t$ 是随机的）。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>策略梯度 vs DQN 的根本区别</strong>
+      DQN（Value-Based）学习 $Q(s,a)$，间接通过 $\epsilon$-greedy 提取策略；策略梯度（Policy-Based）直接学习 $\pi(a|s)$，输出动作概率。策略梯度适合连续动作空间，可以输出随机策略，但收敛慢、方差高。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三种目标函数变体 / Three Objective Variants</h3>
+    <div class="grid-3" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Start-Value</p>
+        <p style="font-size:12px;color:var(--text-2)">$J_1(\theta) = V^{\pi_\theta}(s_0)$，从初始状态的期望价值开始。适合有明确起点的任务（如游戏关卡开始）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Average Value</p>
+        <p style="font-size:12px;color:var(--text-2)">$J_{\text{avgV}}(\theta) = \sum_s d^{\pi_\theta}(s) V^{\pi_\theta}(s)$，按平稳分布加权的平均状态价值。适合持续性任务。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">Average Reward</p>
+        <p style="font-size:12px;color:var(--text-2)">$J_{\text{avgR}}(\theta) = \sum_s d^{\pi_\theta}(s) \sum_a \pi_\theta(a\mid s) r(s,a)$，每步平均即时奖励。适合连续控制任务（Mujoco）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REINFORCE -->
+  <div class="section green" style="margin-top:16px">
+    <h2>REINFORCE / Monte Carlo Policy Gradient (Williams, 1992)</h2>
+    <p>最简单的策略梯度算法——用完整 episode 的回报作为梯度估计，无偏但方差高</p>
+  </div>
+
+  <div class="card green">
+    <h3>REINFORCE 算法 / Algorithm Derivation</h3>
+    <p style="font-size:12px;color:var(--text-2)">REINFORCE 用蒙特卡洛采样估计策略梯度：</p>
+    <div class="formula" style="margin-top:6px">$$\nabla_\theta J \approx \frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^{T_i} \nabla_\theta \log \pi_\theta(a_t^i \mid s_t^i) \cdot G_t^i$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $G_t^i$ 是第 $i$ 个 episode 中时刻 $t$ 的折扣累计回报。直观上：每当轨迹获得了高回报 $G_t$，我们就增加在该状态下选择该动作的概率（正梯度）；获得低回报则减少概率（负梯度）。</p>
+  </div>
+
+  <div class="card">
+    <h3>REINFORCE 完整伪代码</h3>
+    <pre><code><span class="cmt"># REINFORCE 算法</span>
+<span class="kw">Initialize</span>: θ (随机), α (学习率)
+
+<span class="kw">for</span> episode = 1, M <span class="kw">do</span>
+  τ ← collect_trajectory(π_θ)          <span class="cmt"># 采集一条完整轨迹</span>
+
+  <span class="cmt"># 计算每一步的折扣回报 G_t</span>
+  G ← 0
+  <span class="kw">for</span> t = T-1, T-2, ..., 0 <span class="kw">do</span>
+    G ← r_t + γ·G                    <span class="cmt"># 从后向前累加</span>
+    ∇J ← ∇J + ∇_θ log π_θ(a_t|s_t) · G  <span class="cmt"># 累积梯度</span>
+  <span class="kw">end</span>
+
+  θ ← θ + α · ∇J                     <span class="cmt"># 梯度上升更新</span>
+<span class="kw">end</span></code></pre>
+  </div>
+
+  <div class="grid-2" style="margin-top:4px">
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>优点 / Strengths</h3>
+      <ul style="font-size:12px">
+        <li>无偏估计（收敛到局部最优）</li>
+        <li>适合离散/连续动作空间</li>
+        <li>实现简单，理论基础清晰</li>
+        <li>可以自然处理随机策略</li>
+        <li>收敛性有理论保证（策略梯度定理）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>缺点：高方差 / High Variance Problem</h3>
+      <ul style="font-size:12px">
+        <li>每条 trajectory 的 $G_t$ 波动极大</li>
+        <li>需要大量采样才能估计准确的梯度</li>
+        <li>学习速度慢，采样效率低</li>
+        <li>episode 之间方差大，收敛不稳定</li>
+        <li>方差随 episode 长度指数增长（$T$ 越大越严重）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout amber" style="margin-top:8px">
+    <strong>方差缩减是策略梯度的核心问题</strong>
+    原始 REINFORCE 的方差来自：每条轨迹的回报是随机的（环境随机性）、策略的随机性导致不同轨迹的回报不同。解决方向：引入 baseline（不影响无偏性但降低方差）、引入价值函数作为回报的预测（TD 思想）。
+  </div>
+
+  <!-- Actor-Critic -->
+  <div class="section" style="margin-top:16px">
+    <h2>Actor-Critic / 策略梯度 + 价值函数</h2>
+    <p>用价值函数替代 Monte Carlo 回报，将方差从 $O(T)$ 降到 $O(1)$</p>
+  </div>
+
+  <div class="card">
+    <h3>Actor-Critic 框架 / AC Framework</h3>
+    <p style="font-size:12px;color:var(--text-2)">Actor-Critic 结合了策略梯度（Actor）和价值函数（Critic）：</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Actor（策略网络）</p>
+        <p style="font-size:12px;color:var(--text-2)">输出动作概率 $\pi_\theta(a|s)$，通过策略梯度 $\nabla_\theta \log \pi_\theta(a|s) \cdot A(s,a)$ 更新。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Critic（价值网络）</p>
+        <p style="font-size:12px;color:var(--text-2)">估计 $V(s)$ 或 $Q(s,a)$，用 TD error 更新 $\phi$。 Critic 的作用是"减少方差"——用一个预测值替代真实的回报随机变量。</p>
+      </div>
+    </div>
+    <div class="formula" style="margin-top:8px">$$\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t) \quad \text{(TD Error — 兼作优势估计)}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">Actor 的策略梯度用 TD error 替代 Monte Carlo 回报 $G_t$：</p>
+    <div class="formula">$$\nabla_\theta J \approx \sum_t \nabla_\theta \log \pi_\theta(a_t \mid s_t) \cdot \delta_t$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">每步都可以更新（online），无需等待 episode 结束。方差大幅降低（TD error 的方差远小于 Monte Carlo return），但引入了 bias（因为 $V(s)$ 是近似）。</p>
+  </div>
+
+  <div class="card">
+    <h3>优势函数 / Advantage Function</h3>
+    <p style="font-size:12px;color:var(--text-2)">优势函数 $A(s,a) = Q(s,a) - V(s)$ 衡量"在状态 $s$ 下选择动作 $a$ 比平均好多少"：</p>
+    <div class="formula">$$A(s, a) = Q(s, a) - V(s) = r + \gamma V(s') - V(s) = \delta$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">对于 1-step TD，TD error $\delta$ 就是优势函数的无偏估计（如果 $V=V^{\pi}$）。用优势函数替代回报的好处：</p>
+    <ul style="font-size:12px;margin-top:4px">
+      <li>如果 $A > 0$，该动作优于平均，增加选择概率</li>
+      <li>如果 $A < 0$，该动作劣于平均，减少选择概率</li>
+      <li>baseline 不引入 bias（因为 $\mathbb{E}_{a\sim\pi}[A(s,a)] = 0$）</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>A2C / A3C / ACKTR / Actor-Critic 变体对比</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:100px">变体</th><th>核心特点</th><th>并行方式</th><th>更新方式</th></tr>
+      <tr><td>A2C</td><td>Synchronous Advantage AC，同步版 A3C</td><td>多 worker 同步收集数据，然后汇总更新</td><td>每批次更新一次</td></tr>
+      <tr><td>A3C</td><td>Asynchronous Advantage AC（Mnih et al., 2016）</td><td>多个独立进程异步收集数据，共享参数</td><td>每个进程独立更新，不锁</td></tr>
+      <tr><td>ACKTR</td><td>Actor-Critic with Kronecker-factored Trust（Wu et al., 2017）</td><td>可以用多进程</td><td>用 K-FAC 近似自然梯度，更高效</td></tr>
+      <tr><td>GAE</td><td> Generalized Advantage Estimation（Schulman et al., 2016）</td><td>可以和任意并行方式结合</td><td>多种 λ 控制 bias-variance tradeoff</td></tr>
+    </table>
+  </div>
+
+  <!-- 方差缩减 -->
+  <div class="section green" style="margin-top:16px">
+    <h2>方差缩减技术 / Variance Reduction Techniques</h2>
+    <p>REINFORCE 的高方差是核心瓶颈——从 baseline 到 GAE 的完整解决方案</p>
+  </div>
+
+  <div class="card green">
+    <h3>基线 / Baseline — 最简单高效的方差缩减</h3>
+    <p style="font-size:12px;color:var(--text-2)">任意不依赖动作的函数 $b(s)$ 可以作为 baseline，策略梯度保持无偏：</p>
+    <div class="formula">$$\mathbb{E}_{a\sim\pi_\theta}\left[ \nabla_\theta \log \pi_\theta(a\mid s) \cdot b(s) \right] = 0$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">因为 $\mathbb{E}_a[\nabla \log \pi(a)] = 0$（对数梯度在概率分布下的期望为 0）。$b(s)$ 越接近真实回报 $G_t$，方差缩减越多。实践中 $b(s) = V(s)$ 最常用。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:6px">
+      <strong>为什么 $V(s)$ 是最优 baseline？</strong>
+      $b(s)$ 的最优选择是最小化方差的同时不引入 bias。数学上可以证明：$b^*(s) = \mathbb{E}[G_t \mid s]$ 即 $V(s)$ 是最优 baseline（方差最小）。任何其他 $b(s)$ 的方差都 $\geq$ 以 $V(s)$ 为 baseline 的方差。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>n-step 回报 / n-step Return — bias-variance 中间的权衡</h3>
+    <p style="font-size:12px;color:var(--text-2)">Monte Carlo（无 bias，高方差）和 TD（低 bias，高方差）之间的权衡：</p>
+    <div class="formula">$$G_t^{(n)} = r_t + \gamma r_{t+1} + \cdots + \gamma^{n-1} r_{t+n-1} + \gamma^n V(s_{t+n})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">$n=1$：标准 TD，bias 高但方差极低（单步 bootstrap）。$n \to \infty$：Monte Carlo，无 bias 但方差随 $n$ 增大。$n$ 越大，bias 越小（因为 $V(s_{t+n})$ 在 $n$ 步后越来越接近真实值），但方差越大（bootstrap 步数越多，引入的随机性越多）。</p>
+  </div>
+
+  <div class="card">
+    <h3>GAE / Generalized Advantage Estimation (Schulman et al., 2016)</h3>
+    <p style="font-size:12px;color:var(--text-2)">GAE 用几何加权平均所有 n-step 回报，在 bias 和 variance 之间连续调节：</p>
+    <div class="formula">$$\hat{A}_t^{\text{GAE}(\lambda)} = \sum_{l=0}^{\infty} (\gamma\lambda)^l \delta_{t+l}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">展开后，GAE 可以写成加权平均的 n-step 回报：</p>
+    <div class="formula">$$\hat{A}_t^{\text{GAE}} = (1-\lambda) \cdot \bigl[ \delta_t + (\gamma\lambda) \delta_{t+1} + (\gamma\lambda)^2 \delta_{t+2} + \cdots \bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\lambda \in [0,1]$ 控制 bias-variance tradeoff：</p>
+    <div class="grid-2" style="margin-top:6px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">$\lambda = 0$：$\hat{A} = \delta_t$（TD error，bias 最大，方差最小）</p>
+        <p style="font-size:12px;color:var(--text-2)">等同于 1-step TD。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">$\lambda = 1$：$\hat{A} = \sum_l \gamma^l \delta_{t+l} = G_t - V(s_t)$（Monte Carlo，无 bias，方差最大）</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">实践中 $\lambda=0.95$ 或 $\lambda=0.99$ 是常见选择——略微偏向 bias（更稳定）但保留了长视野信息。GAE 的计算代价很低（只需从后向前扫一遍），是当前工业标准。</p>
+  </div>
+
+  <!-- 技巧 -->
+  <div class="section amber" style="margin-top:16px">
+    <h2>策略梯度实用技巧 / Policy Gradient Best Practices</h2>
+    <p>工程实践中让 PG 收敛得更稳定的关键技术</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card amber">
+      <h3>折扣因子 vs GAE horizon</h3>
+      <ul style="font-size:12px">
+        <li><strong>$\gamma$（折扣因子）</strong>：通常 0.99。$\gamma$ 越小，智能体越"短视"，关注即时奖励；$\gamma$ 越大，考虑更长远目标。</li>
+        <li><strong>GAE horizon</strong>：等于 $1/(1-\lambda)$。$\lambda=0.96$ 时 horizon ≈ 25 步。Horizon 太长会导致方差累积。</li>
+        <li><strong>协同调优</strong>：如果 $\gamma=0.99$，GAE horizon 约 100 步。这意味着智能体可以学习 100 步跨度的决策依赖。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>熵正则化 / Entropy Regularization</h3>
+      <p style="font-size:12px;color:var(--text-2)">在损失函数中加入策略熵 $\mathcal{H}(\pi) = -\sum_a \pi(a)\log\pi(a)$：</p>
+      <div class="formula">$$\mathcal{L} = -\mathbb{E}\left[ \log\pi(a\mid s) \cdot A(s,a) \right] + \beta \cdot \mathcal{H}(\pi(\cdot\mid s))$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">熵奖励防止策略过于确定性（过早收敛到次优解）。$\beta$ 通常 0.01-0.1。在连续控制任务（Mujoco）上，熵正则化让探索更充分。</p>
+    </div>
+    <div class="card">
+      <h3>梯度裁剪 / Gradient Clipping</h3>
+      <p style="font-size:12px;color:var(--text-2)">策略梯度方差大，梯度可能出现尖峰。用 max norm clipping 稳定训练：</p>
+      <div class="formula">$$\mathbf{g} \leftarrow \text{clip}(\mathbf{g}, -\delta, \delta)$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">PPO 和 ACKTR 都使用梯度裁剪（通常 max norm = 0.5 或 1.0）。</p>
+    </div>
+    <div class="card">
+      <h3>观测/动作归一化 / Normalization</h3>
+      <p style="font-size:12px;color:var(--text-2)">连续控制任务中，观测和奖励的归一化至关重要：</p>
+      <ul style="font-size:12px">
+        <li>观测归一化：running mean/std 标准化输入</li>
+        <li>奖励归一化：通常 clip 到 $[-10, 10]$</li>
+        <li>优势归一化：$\hat{A}$ 减均值除以 std（最后归一化）</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 05 策略梯度 · <a href="../index.html">← 总目录</a> · <a href="../04-dqn-family/index.html">← 04 DQN家族</a> · <a href="../06-advanced-policy/index.html">下一篇：06 高级策略优化 →</a>
+  </div>
+</div>
+</body>
+</html>

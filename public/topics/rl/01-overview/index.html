@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 综述与历史脉络 / Overview & History — 强化学习</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text-2: #64748b; --text-3: #94a3b8;
+    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --code-bg: #f1f5f9; --code-border: #cbd5e1;
+    --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  .title-bar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 28px; text-align: center; margin-bottom: 20px; }
+  .title-bar h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+  .title-bar p { color: var(--text-2); font-size: 12px; margin-top: 6px; }
+  .section { border-left: 4px solid var(--blue); background: linear-gradient(to right, #eff6ff, transparent); padding: 12px 16px; margin: 20px 0 12px; border-radius: 0 6px 6px 0; }
+  .section.green { border-left-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+  .section.amber { border-left-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+  .section.red { border-left-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+  .section.purple { border-left-color: #7c3aed; background: linear-gradient(to right, #ede9fe, transparent); }
+  .section h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .section p { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 3px solid var(--blue); }
+  .card.green { border-left-color: var(--green); }
+  .card.amber { border-left-color: var(--amber); }
+  .card.red { border-left-color: var(--red); }
+  .card.purple { border-left-color: #7c3aed; }
+  .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .callout { border-radius: 6px; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
+  .callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .callout.purple { background: #ede9fe; border: 1px solid #ddd6fe; color: #5b21b6; }
+  .callout strong { display: block; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+  td { padding: 7px 10px; border: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #f8fafc; }
+  pre { background: var(--code-bg); border: 1px solid var(--code-border); border-left: 3px solid var(--code-border); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; margin: 10px 0; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  .kw { color: #7c3aed; font-weight: 600; }
+  .fn { color: #1d4ed8; }
+  .str { color: #166534; }
+  .cmt { color: #94a3b8; font-style: italic; }
+  .num { color: #b45309; }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 600; margin-right: 4px; }
+  .tag.blue { background: #dbeafe; color: #1e40af; }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.amber { background: #fef3c7; color: #92400e; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.purple { background: #ede9fe; color: #5b21b6; }
+  .formula { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; text-align: center; font-family: 'Times New Roman', serif; font-size: 14px; color: #1e40af; margin: 12px 0; overflow-x: auto; }
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+  .flow-node.green { border-color: var(--green); color: var(--green); }
+  .flow-node.amber { border-color: var(--amber); color: #b45309; }
+  .flow-node.purple { border-color: #7c3aed; color: #5b21b6; }
+  .flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+  .timeline { position: relative; padding-left: 20px; border-left: 2px solid var(--border); margin: 12px 0; }
+  .timeline-item { margin-bottom: 16px; position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -25px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); }
+  .timeline-item.green::before { background: var(--green); }
+  .timeline-item.amber::before { background: var(--amber); }
+  .timeline-item.red::before { background: var(--red); }
+  .timeline-item.purple::before { background: #7c3aed; }
+  .timeline-year { font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .timeline-item.green .timeline-year { color: var(--green); }
+  .timeline-item.amber .timeline-year { color: var(--amber); }
+  .timeline-item.red .timeline-year { color: var(--red); }
+  ul, ol { padding-left: 20px; margin: 6px 0; }
+  li { margin-bottom: 4px; }
+  p { margin-bottom: 8px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 15px; font-weight: 700; margin: 14px 0 8px; }
+  h3 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+  <!-- KaTeX for math rendering -->
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>01 综述与历史脉络 / Overview & History</h1>
+    <p>强化学习的核心问题框架、历史演进、各分支关系与全貌地图</p>
+  </div>
+
+  <!-- 什么是强化学习 -->
+  <div class="section">
+    <h2>什么是强化学习 / What is Reinforcement Learning</h2>
+    <p>强化学习是机器学习三大范式之一，与监督学习、无监督学习并列</p>
+  </div>
+
+  <div class="card">
+    <h3>与监督学习的根本区别</h3>
+    <div class="grid-2">
+      <div>
+        <p><strong>监督学习 / Supervised Learning</strong></p>
+        <ul>
+          <li>有"正确答案"标签，模型从 <em>输入-输出对</em> 中学习</li>
+          <li>每个样本都告诉模型"正确答案是什么"</li>
+          <li>典型任务：图像分类、语音识别、翻译</li>
+        </ul>
+        <p style="margin-top:8px;color:var(--text-2);font-size:12px">→ 人类教师明确告诉 AI 正确决策</p>
+      </div>
+      <div>
+        <p><strong>强化学习 / Reinforcement Learning</strong></p>
+        <ul>
+          <li>没有标签，只有<em>延迟的奖励信号（Reward）</em></li>
+          <li>智能体通过与环境交互，尝试不同动作，观察奖励</li>
+          <li>典型任务：游戏、机器人控制、推荐系统</li>
+        </ul>
+        <p style="margin-top:8px;color:var(--text-2);font-size:12px">→ AI 自己探索，在试错中学习最优决策</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <strong>🎯 核心特征：延迟奖励（Delayed Reward）</strong>
+    一个动作的后果可能延迟很久才显现。比如下棋，当前步的好坏可能要几十步后才见分晓。RL 的核心挑战就是将延迟的奖励正确地归因（Credit Assignment）到之前的关键动作上。
+  </div>
+
+  <div class="card">
+    <h3>强化学习基本框架 / RL Framework</h3>
+    <div class="flow" style="margin-top:10px">
+      <div class="flow-node">智能体<br><small>Agent</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">动作 $a_t$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">环境<br><small>Environment</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">状态 $s_{t+1}$ + 奖励 $r_t$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">智能体<br>(学习)</div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">
+      核心方程：最大化累积折扣奖励 $G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+k}$，其中 $\gamma \in [0,1]$ 为折扣因子（Discount Factor）
+    </p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>核心要素：奖励 / Reward $r_t$</h3>
+      <p style="font-size:12px;color:var(--text-2)">环境的标量反馈信号，描述"当前状态好不好"。可以稀疏（只在任务完成时给 1）也可以密集（每步给信号）。奖励设计是 RL 的关键工程问题。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>核心要素：策略 / Policy $\pi(a|s)$</h3>
+      <p style="font-size:12px;color:var(--text-2)">从状态到动作的映射，可以是确定性的（输出具体动作）或随机性的（输出动作概率分布）。策略是 RL 的"输出"，学习的目标就是找到最优策略。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>核心要素：价值 / Value $V(s)$</h3>
+      <p style="font-size:12px;color:var(--text-2)">状态的价值，衡量从该状态出发能获得多少未来累积奖励。价值函数用于评估策略的优劣，是引导学习方向的关键。</p>
+    </div>
+  </div>
+
+  <!-- 历史时间线 -->
+  <div class="section" style="margin-top:24px">
+    <h2>历史脉络 / Historical Timeline</h2>
+    <p>从心理学动物实验到 AlphaGo，强化学习走过了怎样的演进之路</p>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-year">1950s — 起源</div>
+      <p><strong>行为主义心理学 + 控制理论</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">B.F. Skinner 提出操作性条件反射（Operant Conditioning），为 RL 奠定生物学基础。同期，Howard Bellman 提出动态规划（Dynamic Programming），但当时计算能力不足。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">1980s — 复兴</div>
+      <p><strong>Sutton & Barto 奠定理论基础</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">Richard Sutton 和 Andrew Barto 在 1988 年提出 TD 学习（Temporal Difference Learning），将动态规划与蒙特卡洛方法结合。同期，Watkins 提出 Q-Learning，成为最经典的无模型 RL 算法。</p>
+    </div>
+    <div class="timeline-item green">
+      <div class="timeline-year">1992 — Q-Learning 收敛证明</div>
+      <p><strong>J. Watkins, P. Dayan 证明 Q-Learning 在有限 MDP 下收敛</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">这是 RL 理论的里程碑，证明了在表格形式下 Q-Learning 一定能收敛到最优价值函数。</p>
+    </div>
+    <div class="timeline-item amber">
+      <div class="timeline-year">1993 — 政策梯度首次提出</div>
+      <p><strong>Williams 提出 REINFORCE 算法</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">REINFORCE 是首个直接对策略参数化并用梯度上升优化的方法，开创了策略梯度（Policy Gradient）这一重要分支。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">1999 — 自然梯度学习</div>
+      <p><strong>Amari 提出自然梯度（Natural Gradient）</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">Amari 的工作为后来的 TRPO、ACKTR 提供了数学基础——在黎曼流形上而不是欧氏空间做梯度下降。</p>
+    </div>
+    <div class="timeline-item amber">
+      <div class="timeline-year">2013 — DQN 里程碑</div>
+      <p><strong>Mnih et al. 在 Nature 发表 "Playing Atari with Deep Reinforcement Learning"</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">首次证明深度学习可以和 RL 结合，在 Atari 游戏上超越所有传统方法。核心技术：经验回放（Experience Replay）+ 目标网络（Target Network）。这是深度 RL（Deep RL）的起点。</p>
+    </div>
+    <div class="timeline-item green">
+      <div class="timeline-year">2015 — DQN 改进浪潮</div>
+      <p><strong>Double DQN, Dueling DQN, Prioritized Experience Replay</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">研究者们围绕 DQN 提出了多个关键技术：双 Q 网络解决过估计（Overestimation）、优先级回放提升样本效率、分值网络（Duelling）分离状态价值与优势估计。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2015 — AlphaGo</div>
+      <p><strong>Silver et al., Nature — 结合蒙特卡洛树搜索 + 深度 RL + 专家知识</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">在围棋上首次击败人类顶尖棋手。Policy Network（策略网络）+ Value Network（价值网络）+ Monte Carlo Tree Search（MCTS）的组合成为 RL 在博弈领域的标志性成功。</p>
+    </div>
+    <div class="timeline-item red">
+      <div class="timeline-year">2017 — PPO 成为主流</div>
+      <p><strong>Schulman et al. 提出 Proximal Policy Optimization（PPO）</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">PPO 通过裁剪（Clipping）防止策略更新过大，同时保留了 TRPO 的理论基础，但实现更简单、采样效率更高。OpenAI 将其作为默认算法。</p>
+    </div>
+    <div class="timeline-item purple">
+      <div class="timeline-year">2018 — Soft Actor-Critic（SAC）</div>
+      <p><strong>Haarnoja et al. 提出最大熵 RL 框架</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">SAC 通过最大化策略熵提升探索能力，在连续控制任务上达到 SOTA，同时保持了稳定训练的特性。是 DDPG/TD3 的有力竞争者。</p>
+    </div>
+    <div class="timeline-item green">
+      <div class="timeline-year">2020 — 离线 RL 崛起</div>
+      <p><strong>Kumar et al. 提出 Conservative Q-Learning（CQL）</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">解决了离线 RL 的核心问题：分布偏移（Distribution Shift）。通过保守估计 Q 值，避免对未见动作空间的过估计，从而在实际数据集上稳定学习。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2022 — RLHF 爆发</div>
+      <p><strong>InstructGPT / ChatGPT — RLHF 成为 LLM 对齐标准</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">OpenAI 将 RLHF（Reinforcement Learning from Human Feedback）应用于大语言模型对齐：用 Reward Model 训练的 PPO 策略来对齐模型输出与人类偏好。这成为大模型时代最重要的 RL 应用方向。</p>
+    </div>
+    <div class="timeline-item red">
+      <div class="timeline-year">2023–2025 — Foundation RL Models</div>
+      <p><strong>RT-2, OpenVLA, π₀, Gemini Robotics — 物理世界的基础模型</strong></p>
+      <p style="font-size:12px;color:var(--text-2)">将预训练大模型（VLM/LLM）与机器人控制结合，在互联网规模的视觉-语言数据上预训练后在机器人数据上微调。RL 成为了机器人基础模型的微调手段。</p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- 核心术语 -->
+  <div class="section green">
+    <h2>核心术语速查 / Core Terminology</h2>
+    <p>RL 文献中高频出现的专业概念，中英对照与简要说明</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green">
+      <h3>价值函数类 / Value Functions</h3>
+      <ul style="font-size:12px">
+        <li><strong>价值函数 / Value Function $V^\pi(s)$</strong>：在策略 $\pi$ 下，从状态 $s$ 出发期望获得的累积折扣奖励</li>
+        <li><strong>动作价值函数 / Action-Value Function $Q^\pi(s,a)$</strong>：从状态 $s$ 执行动作 $a$ 后遵循策略 $\pi$ 的期望累积奖励</li>
+        <li><strong>最优价值函数 / Optimal Value Function $V^*(s)$</strong>：所有策略中能达到的最大价值</li>
+        <li><strong>优势函数 / Advantage Function $A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s)$</strong>：衡量动作 $a$ 相对于平均水平的优势程度</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3>策略与更新 / Policy & Update</h3>
+      <ul style="font-size:12px">
+        <li><strong>策略 / Policy $\pi(a|s)$</strong>：给定状态，动作的条件概率分布</li>
+        <li><strong>on-policy vs off-policy</strong>：on-policy 用当前策略收集的样本更新；off-policy 可以用历史数据更新</li>
+        <li><strong>探索-利用权衡 / Exploration-Exploitation Tradeoff</strong>：在已知最优（利用）和探索新可能（探索）之间的权衡</li>
+        <li><strong>策略梯度 / Policy Gradient $\nabla_\theta J(\theta)$</strong>：直接对策略参数求梯度来优化</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>学习范式 / Learning Paradigms</h3>
+      <ul style="font-size:12px">
+        <li><strong>无模型 / Model-Free</strong>：不学习环境转移模型，直接从交互数据中学习策略或价值</li>
+        <li><strong>基于模型 / Model-Based</strong>：先学习环境模型 $p(s_{t+1}|s_t,a_t)$，然后用于规划</li>
+        <li><strong>蒙特卡洛 / Monte Carlo</strong>：用完整轨迹的最终奖励来估计价值，不需要知道环境的完整动态</li>
+        <li><strong>时序差分 / Temporal Difference (TD)</strong>：用当前估计加下一步估计来更新价值，结合了 MC 和 DP 的优点</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>核心问题 / Core Problems</h3>
+      <ul style="font-size:12px">
+        <li><strong>信用分配 / Credit Assignment</strong>：确定序列中哪个动作对最终结果负责</li>
+        <li><strong>方差-偏差权衡 / Variance-Biasness Tradeoff</strong>：MC 高方差低偏差，DP 低方差高偏差，TD 是中间点</li>
+        <li><strong>非平稳性 / Non-Stationarity</strong>：off-policy 下数据分布随策略变化的问题</li>
+        <li><strong>稀疏奖励 / Sparse Reward</strong>：大多数步骤没有奖励信号，只有最终目标有奖励</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- 算法分类图谱 -->
+  <div class="section" style="margin-top:20px">
+    <h2>算法分类图谱 / Algorithm Taxonomy</h2>
+    <p>强化学习主要算法分支及其代表性工作</p>
+  </div>
+
+  <div class="card" style="border-left-color:var(--blue)">
+    <h3>强化学习算法树 / RL Algorithm Tree</h3>
+    <pre><code><span class="cmt"># RL 算法分类树（简化版）</span>
+<span class="kw">Reinforcement Learning</span>
+├── <span class="kw">Model-Based</span> / 基于模型
+│   ├── <span class="fn">World Models</span> (Ha & Schmidhuber, 2019)
+│   ├── <span class="fn">Dreamer</span> (Hafner et al., 2020)
+│   ├── <span class="fn">MuZero</span> (Schrittwieser et al., 2020)
+│   └── <span class="fn">AlphaZero</span> (Silver et al., 2018)
+│
+├── <span class="kw">Model-Free Value-Based</span> / 无模型基于价值
+│   ├── <span class="fn">Q-Learning</span> (Watkins, 1989)
+│   ├── <span class="fn">DQN</span> (Mnih et al., 2015)
+│   ├── <span class="fn">Double DQN</span> (Van Hasselt et al., 2016)
+│   ├── <span class="fn">Dueling DQN</span> (Wang et al., 2016)
+│   ├── <span class="fn">PER</span> (Schaul et al., 2016)
+│   └── <span class="fn">Rainbow</span> (Hessel et al., 2018)
+│
+├── <span class="kw">Model-Free Policy-Based</span> / 无模型基于策略
+│   ├── <span class="fn">REINFORCE</span> (Williams, 1992)
+│   ├── <span class="fn">Actor-Critic</span>
+│   ├── <span class="fn">A2C / A3C</span> (Mnih et al., 2016)
+│   ├── <span class="fn">TRPO</span> (Schulman et al., 2015)
+│   ├── <span class="fn">PPO</span> (Schulman et al., 2017)
+│   └── <span class="fn">ACKTR</span> (Wu et al., 2017)
+│
+└── <span class="kw">Offline / Batch RL</span> / 离线强化学习
+    ├── <span class="fn">BC</span> (Behavioral Cloning)
+    ├── <span class="fn">CQL</span> (Kumar et al., 2020)
+    ├── <span class="fn">IQL</span> (Kostrikov et al., 2022)
+    └── <span class="fn">TD3+BC</span> (Fujimoto et al., 2021)</code></pre>
+  </div>
+
+  <!-- 三种范式对比 -->
+  <div class="callout blue" style="margin-top:12px">
+    <strong>📊 Value-Based vs Policy-Based vs Model-Based</strong>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px">
+      <div>
+        <strong style="color:var(--blue)">Value-Based</strong><br>
+        优点：样本效率高，稳定性好<br>
+        缺点：难以处理连续动作空间，不适合随机策略
+      </div>
+      <div>
+        <strong style="color:var(--green)">Policy-Based</strong><br>
+        优点：适合连续动作，自然处理随机策略<br>
+        缺点：方差高，sample inefficient
+      </div>
+      <div>
+        <strong style="color:var(--amber)">Model-Based</strong><br>
+        优点：样本效率最高，可用于规划<br>
+        缺点：模型误差会累积，误差建模困难
+      </div>
+    </div>
+  </div>
+
+  <!-- 关键公式 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>核心公式速查 / Core Equations</h2>
+    <p>所有 RL 算法的基础</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green">
+      <h3>Bellman 方程 / Bellman Equation</h3>
+      <div class="formula">$$V^\pi(s) = \sum_{a} \pi(a\mid s) \sum_{s', r} p(s', r\mid s, a) \left[ r + \gamma V^\pi(s') \right]$$</div>
+      <p style="font-size:12px;color:var(--text-2)">价值函数的基本约束：当前价值 = 当前奖励 + 折扣后的未来价值。动态规划的核心，所有 RL 算法的基础推导都从这里出发。</p>
+    </div>
+    <div class="card amber">
+      <h3>最优 Bellman 方程 / Optimal Bellman Equation</h3>
+      <div class="formula">$$V^*(s) = \max_a \sum_{s', r} p(s', r\mid s, a) \left[ r + \gamma V^*(s') \right]$$</div>
+      <p style="font-size:12px;color:var(--text-2)">最优价值函数满足的方程。通过对所有动作取最大值（而不是按策略加权），得到最优解。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>策略梯度定理 / Policy Gradient Theorem</h3>
+      <div class="formula">$$\nabla_\theta J(\pi_\theta) = \mathbb{E}_{s \sim d^\pi, a \sim \pi_\theta} \left[ Q^\pi(s, a) \nabla_\theta \log \pi_\theta(a\mid s) \right]$$</div>
+      <p style="font-size:12px;color:var(--text-2)">策略梯度不需要对环境转移建模，直接对策略期望性能求导。梯度与价值函数乘以策略梯度对数概率的期望等价。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>TD 误差 / TD Error</h3>
+      <div class="formula">$$\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$$</div>
+      <p style="font-size:12px;color:var(--text-2)">TD 误差是当前价值与"目标价值"（奖励+下一状态价值）的差。通过最小化 TD 误差来学习价值函数。</p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- RL 的应用场景 -->
+  <div class="section" style="margin-top:20px">
+    <h2>典型应用场景 / Application Domains</h2>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>🎮 游戏 / Games</h3>
+      <ul style="font-size:12px">
+        <li>Atari/StarCraft/Dota2 → AlphaGo/AlphaStar</li>
+        <li>Minecraft / Minecraft → RL agent</li>
+        <li>实时策略游戏决策</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>🤖 机器人控制 / Robotics</h3>
+      <ul style="font-size:12px">
+        <li>机械臂操作（抓取、装配）</li>
+        <li>双足/四足机器人行走</li>
+        <li>自动驾驶决策</li>
+        <li>VLA（视觉-语言-动作模型）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>💬 大语言模型 / LLM</h3>
+      <ul style="font-size:12px">
+        <li>RLHF → InstructGPT / ChatGPT</li>
+        <li>DPO → Llama / Mistral</li>
+        <li>Reward Model 训练</li>
+        <li>LLM 对齐与价值加载</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>📺 推荐系统 / Recommender</h3>
+      <ul style="font-size:12px">
+        <li>用户长期兴趣建模</li>
+        <li>探索-利用平衡</li>
+        <li>Bandit 与序列决策</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>🛡️ 安全与对齐 / Safety</h3>
+      <ul style="font-size:12px">
+        <li>Constrained RL / 约束 RL</li>
+        <li>RLHF / Constitutional AI</li>
+        <li>Cooperative IRL / 对抗鲁棒性</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--purple)">
+      <h3>🧪 科学发现 / Science</h3>
+      <ul style="font-size:12px">
+        <li>药物分子设计</li>
+        <li>材料发现</li>
+        <li>核聚变控制（DeepMind）</li>
+        <li>电路设计</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 工业应用案例 -->
+  <div class="callout green" style="margin-top:16px">
+    <strong>🏭 工业案例速览</strong>
+    <ul style="margin-top:6px;font-size:12px">
+      <li><strong>DeepMind AlphaFold</strong>（生命科学）：将 RL 思想用于蛋白质结构预测</li>
+      <li><strong>Google 数据中心降温</strong>：用 RL 优化制冷系统，节能 40%</li>
+      <li><strong>Waymo / Tesla 自动驾驶</strong>：模仿学习 + RL 微调决策策略</li>
+      <li><strong>OpenAI Five</strong>：Dota2 AI，用大规模 PPO 训练，击败世界冠军</li>
+      <li><strong>ChatGPT / Claude / Gemini</strong>：RLHF 是大模型人类对齐的核心技术</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 01 综述与历史脉络 · <a href="index.html">返回目录</a> · <a href="../02-mdp-foundation/index.html">下一篇：02 MDP 基础 →</a>
+  </div>
+</div>
+</body>
+</html>

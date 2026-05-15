@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 反向过程与DDPM目标 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>03 反向过程与DDPM目标</h1>
+    <p>反向过程与DDPM目标</p>
+  </div>
+
+  <div class="section">
+    <h2>反向过程定义 / Reverse Process Definition</h2>
+    <p>扩散模型的本质：学习从噪声到数据的条件分布</p>
+  </div>
+  <div class="card">
+    <h3>学习的条件分布</h3>
+    <p style="font-size:12px;color:var(--text-2)">Forward Process 是已知的（固定的加噪），Reverse Process 是需要学习的。我们用一个参数化神经网络 $p_\theta(\cdot)$ 来近似真实的反向过程 $q(\cdot)$：</p>
+    <div class="formula">$$p_\theta(x_{t-1} \mid x_t) = \mathcal{N}\Bigl(x_{t-1}; \mu_\theta(x_t, t), \sigma_t^2 \mathbf{I}\Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $\mu_\theta(x_t, t)$ 是神经网络预测的均值，$\sigma_t$ 是与噪声调度相关的标准差。这个高斯分布的参数全部由 $\theta$（UNet/DiT 的权重）决定。</p>
+  </div>
+  <div class="card green">
+    <h3>贝叶斯后验</h3>
+    <p style="font-size:12px;color:var(--text-2)">给定 $x_0$ 和 $x_t$，我们可以精确计算后验 $q(x_{t-1} \mid x_t, x_0)$：</p>
+    <div class="formula">$$q(x_{t-1} \mid x_t, x_0) = \mathcal{N}\Bigl(x_{t-1}; \tilde{\mu}_t(x_t, x_0), \tilde{\sigma}_t^2 \mathbf{I}\Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2)">其中 $\tilde{\mu}_t = \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t}x_0 + \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}x_t$。这就是训练时使用的目标分布。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>为什么是高斯分布？</strong><br>
+      当 $\beta_t$ 足够小时，$q(x_{t-1} \mid x_t)$ 可以被证明近似为高斯分布（中心极限定理）。无论数据分布多复杂，多步小噪声 Markov 链的反向过程仍然是高斯的。
+    </div>
+  </div>
+  <div class="section">
+    <h2>为什么需要反向过程 / Why Learn the Reverse Process</h2>
+    <p>正向加噪容易，但直接从噪声生成数据需要学习——反向过程是扩散模型的核心</p>
+  </div>
+  <div class="card">
+    <h3>Forward Process 的已知性</h3>
+    <p style="font-size:12px;color:var(--text-2)">Forward Process（加噪）是完全已知、无需学习的：</p>
+    <div class="formula">$$q(x_t \mid x_{t-1}) = \mathcal{N}\bigl(x_t; \sqrt{1-\beta_t}\, x_{t-1},\, \beta_t \mathbf{I}\bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">给定任意 $x_0$，我们可以直接算出任意 $x_t$ 的分布（闭式解）。加噪过程不需要参数，完全由噪声调度 $\{\beta_t\}$ 决定。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>关键问题：反向呢？</strong><br>
+      $q(x_{t-1} \mid x_t)$ 才是我们需要建模的分布。理论上，这是真实数据分布的函数——我们不知道，只能用神经网络去近似。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>直接建模的困难</h3>
+    <p style="font-size:12px;color:var(--text-2)">如果我们直接建模 $p_\theta(x_0)$（数据的生成分布）：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">❌ 数据分布复杂</p>
+        <p style="font-size:12px;color:var(--text-2)">自然图像的分布是高维、非结构化的，直接用神经网络拟合需要超大规模参数</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">✅ 条件高斯更好</p>
+        <p style="font-size:12px;color:var(--text-2)">$q(x_{t-1} \mid x_t)$ 在小噪声时近似高斯分布，每步只需预测均值和方差</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">反向过程的每一步都是从一个高斯分布到另一个高斯分布的转换——这远比直接建模整个数据分布简单。每一步只需要预测一个小的偏移，而不是整个数据空间的结构。</p>
+    <div class="callout amber" style="font-size:12px">
+      <strong>多步累积的优势</strong><br>
+      反向过程每次只走一小步（$\beta_t$ 很小），这使得每一步的条件分布足够简单。随着 $T$ 步的累积效果，最终能从纯噪声生成分布良好的数据。类似思想在 GAN 的逐步生成中也有体现。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>变分下界（ELBO）/ Evidence Lower Bound</h2>
+    <p>如何从 $p_\theta(x_0)$ 的对数似然推导出可优化的目标函数</p>
+  </div>
+  <div class="card green">
+    <h3>KL 散度目标推导</h3>
+    <p style="font-size:12px;color:var(--text-2)">对数似然 $\log p_\theta(x_0)$ 可以分解为：</p>
+    <div class="formula">$$\log p_\theta(x_0) = \mathcal{L}_0 + \sum_{t=1}^{T-1} \mathcal{L}_t + \mathcal{L}_T$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中每项 $\mathcal{L}_t = D_{\mathrm{KL}}\bigl(q(x_t \mid x_{t-1}, x_0) \Vert p_\theta(x_t \mid x_{t-1})\bigr)$。这就是 VLB（Variational Lower Bound）。在 DDPM 中，$q(x_t \mid x_{t-1}, x_0) = q(x_t \mid x_{t-1})$（条件独立性），因此 KL 散度简化为直接比较两个高斯分布——有解析解！</p>
+  </div>
+  <div class="card">
+    <h3>DDPM Simple Loss（简化损失）</h3>
+    <p style="font-size:12px;color:var(--text-2)">Ho et al. (2020) 发现：直接预测加入的噪声 $\epsilon$ 比预测均值更简单，效果更好：</p>
+    <div class="formula">$$\mathcal{L}_{\text{simple}} = \mathbb{E}_{t, x_0, \epsilon}\Bigl[ \| \epsilon - \epsilon_\theta(x_t, t) \|^2 \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1-\bar{\alpha}_t} \epsilon$，$\epsilon \sim \mathcal{N}(0, \mathbf{I})$。这个损失在 $t$ 上均匀采样。ImageNet 256×256 的实验证明：简化损失比原始 ELBO 收敛更快、生成质量更高。</p>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>简化损失的物理直觉</strong><br>
+      预测噪声等价于预测"偏离真值的方向"。在 $\bar{\alpha}_t$ 接近 0.5（$t\approx 500$）时，$\epsilon$ 和 $x_0$ 的权重相近，模型需要同时理解语义和细节——这是最难的任务，但也是最有判别性的。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>三种参数化方式 / Three Parameterizations</h2>
+    <p>神经网络预测什么？噪声 $\epsilon$、原始数据 $x_0$、还是速度 $v$？</p>
+  </div>
+  <div class="card amber">
+    <h3>对比表</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:130px">参数化</th><th style="width:100px">预测目标</th><th>优缺点</th></tr>
+      <tr><td><strong>Noise Prediction</strong></td><td>噪声 $\epsilon$</td><td>DDPM 默认，最稳定，训练收敛快，与 DDIM 兼容性好</td></tr>
+      <tr><td><strong>$x$-Prediction</strong></td><td>原始数据 $x_0$</td><td>直接生成 $x_0$，但数值不稳定（$1/\sqrt{\bar{\alpha}_t}$ 在 $t\to 0$ 时很大）</td></tr>
+      <tr><td><strong>$v$-Prediction</strong></td><td>速度向量 $v$</td><td>Stable Diffusion 2+ 采用，$t\to 0$ 时更稳定， $\epsilon$ 和 $x_0$ 的加权平均</td></tr>
+    </table>
+    <div class="formula" style="margin-top:8px">$$v = \sqrt{\bar{\alpha}_t} \cdot \epsilon - \sqrt{1-\bar{\alpha}_t} \cdot x_0$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">$v$-Prediction 预测的是 $\epsilon$ 和 $x_0$ 的加权差，在 $t$ 接近 0 时方差更小，训练更稳定。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>实用建议</strong><br>
+      图像生成任务优先尝试 $v$-prediction（SD2+ 默认），收敛更稳定。Noise prediction 是最通用的选择，与 SDXL/LCM 的蒸馏目标兼容更好。$x$-prediction 在 $T$ 很小（如 $T\leq 10$）时可能更好。
+    </div>
+  </div>
+  <div class="section">
+    <h2>训练与采样算法 / Training and Sampling</h2>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>DDPM 训练</h3>
+      <pre><code><span class="cmt"># DDPM 训练算法（Algorithm 1）</span>
+<span class="kw">while</span> <span class="kw">not</span> converged:
+    x0 ~ q(x0)         <span class="cmt"># 从真实数据采样</span>
+    t ~ Uniform({1, ..., T})  <span class="cmt"># 随机时间步</span>
+    eps ~ N(0, I)     <span class="cmt"># 采样噪声</span>
+    
+    <span class="cmt"># 加噪：利用闭式解</span>
+    xt = sqrt(bar_alpha[t]) * x0 + \
+         sqrt(1 - bar_alpha[t]) * eps
+    
+    <span class="cmt"># 梯度下降：简化损失</span>
+    loss = ||eps - eps_theta(xt, t)||^2
+    theta = theta - lr * grad(loss)</code></pre>
+    </div>
+    <div class="card green">
+      <h3>DDPM 采样</h3>
+      <pre><code><span class="cmt"># DDPM 采样算法（Algorithm 2）</span>
+xT ~ N(0, I)        <span class="cmt"># 从纯噪声开始</span>
+<span class="kw">for</span> t = T, T-1, ..., 1:
+    z ~ N(0, I) <span class="kw">if</span> t > 1 <span class="kw">else</span> z = 0
+    mu = mean(eps_theta(x_t, t))
+    alpha_t = 1 - beta_t
+    sigma_t = sqrt(beta_t)
+    x_{t-1} = (xt - beta_t / \
+               sqrt(1-bar_alpha[t]) * \
+               mu) / sqrt(alpha_t) + \
+               sigma_t * z</code></pre>
+    </div>
+  </div>
+  <div class="callout green" style="font-size:12px;margin-top:12px">
+    <strong>采样复杂度分析</strong><br>
+    DDPM 采样需要 $T$ 次神经网络评估（1000步），每次都是完整的 UNet/DiT 前向传播。在 $T=1000$ 时，采样延迟约为 10-30 秒（取决于硬件）。这个延迟是扩散模型最大的实用瓶颈，也是加速采样研究的根本动机。
+  </div>
+  <div class="section purple">
+    <h2>自动驾驶应用：DriveDiffusion / AD Applications</h2>
+    <p>驾驶视频预测中反向过程的设计选择与实践</p>
+  </div>
+  <div class="card purple">
+    <h3>DriveDiffusion 核心设计</h3>
+    <p style="font-size:12px;color:var(--text-2)">DriveDiffusion（Wayve）是将扩散模型应用于自动驾驶视频预测的先驱工作：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>设计选择</th><th>标准 DDPM</th><th>DriveDiffusion</th></tr>
+      <tr><td>条件类型</td><td>无 / 文本</td><td>BEV 地图、车道线、车辆意图</td></tr>
+      <tr><td>条件注入</td><td>无</td><td>Cross-Attention 在 UNet 中间层</td></tr>
+      <tr><td>时间步 $T$</td><td>1000</td><td>50（DDIM 加速）</td></tr>
+      <tr><td>采样延迟</td><td>~10s（1000步）</td><td>~500ms（50步，实时可行）</td></tr>
+    </table>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>关键洞察</strong><br>
+      DriveDiffusion 的成功关键在于：使用 DDIM 采样将 $T$ 从 1000 步降到 50 步，而质量损失可接受。这使得扩散模型首次在自动驾驶实时感知 pipeline 中成为可能。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>DiT 中的反向过程 / Reverse Process in DiT</h2>
+    <p>Transformer 架构如何实现反向过程的条件注入</p>
+  </div>
+  <div class="card green">
+    <h3>Time Embedding 与条件注入</h3>
+    <pre><code><span class="cmt"># DiT 条件注入（伪代码）</span>
+<span class="kw">class</span> <span class="fn">AdaLN</span>(layer):
+    <span class="kw">def</span> <span class="fn">forward</span>(x, t_emb, c):
+        <span class="cmt"># t_emb: 时间步的sinusoidal encoding</span>
+        <span class="cmt"># c: 额外的条件embedding</span>
+        gamma, beta = <span class="fn">MLP</span>(<span class="fn">concat</span>([t_emb, c]))
+        <span class="cmt"># 残差自适应归一化</span>
+        <span class="kw">return</span> gamma * <span class="fn">LN</span>(x) + beta
+
+<span class="kw">def</span> <span class="fn">DiT_Block</span>(x, t_emb, c):
+    x = x + <span class="fn">AdaLN</span>(<span class="fn">MHA</span>(<span class="fn">LN</span>(x)), t_emb, c)
+    x = x + <span class="fn">AdaLN</span>(<span class="fn">FFN</span>(<span class="fn">LN</span>(x)), t_emb, c)
+    <span class="kw">return</span> x</code></pre>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>AdaLN-Zero 的优势</strong><br>
+      DiT 进一步提出 AdaLN-Zero：初始化时 $\gamma=0$、$\beta=0$，使得每个残差块在训练初期等价于恒等映射，大幅加速收敛。这与 ResNet 的 shortcut 设计理念一脉相承。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 03 反向过程与DDPM目标 · <a href="../index.html">← 总目录</a> · <a href="../02-forward-process/index.html">← 02 前向扩散过程（Forward Process）</a>  · <a href="../04-sampling/index.html">下一篇：04 采样过程与加速采样 →</a>
+  </div>
+</div>
+</body>
+</html>

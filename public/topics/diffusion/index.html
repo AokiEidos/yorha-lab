@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扩散模型技术文档 / Diffusion Model Documentation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text-2: #64748b; --text-3: #94a3b8;
+    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --code-bg: #f1f5f9; --code-border: #cbd5e1;
+    --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  /* Title bar */
+  .title-bar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 28px; text-align: center; margin-bottom: 20px; }
+  .title-bar h1 { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .title-bar p { color: var(--text-2); font-size: 12px; margin-top: 6px; }
+  /* Tab bar */
+  .tab-bar { display: flex; gap: 0; background: var(--card); border: 1px solid var(--border); border-radius: 8px 8px 0 0; overflow: hidden; }
+  .tab-item { padding: 10px 18px; font-size: 12px; font-weight: 500; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .tab-item:hover { color: var(--blue); }
+  .tab-item.active { color: var(--blue); border-bottom-color: var(--blue); background: #f0f7ff; }
+  /* Section */
+  .section { border-left: 4px solid var(--blue); background: linear-gradient(to right, #eff6ff, transparent); padding: 12px 16px; margin: 20px 0 12px; border-radius: 0 6px 6px 0; }
+  .section.green { border-left-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+  .section.amber { border-left-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+  .section.red { border-left-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+  .section h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .section p { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 3px solid var(--blue); }
+  .card.green { border-left-color: var(--green); }
+  .card.amber { border-left-color: var(--amber); }
+  .card.red { border-left-color: var(--red); }
+  .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  /* Callout */
+  .callout { border-radius: 6px; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
+  .callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .callout strong { display: block; margin-bottom: 2px; }
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+  td { padding: 7px 10px; border: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #f8fafc; }
+  /* Code */
+  pre { background: var(--code-bg); border: 1px solid var(--code-border); border-left: 3px solid var(--code-border); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; margin: 10px 0; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  .kw { color: #7c3aed; font-weight: 600; }
+  .fn { color: #1d4ed8; }
+  .str { color: #166534; }
+  .cmt { color: #94a3b8; font-style: italic; }
+  .num { color: #b45309; }
+  /* Tag */
+  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 600; margin-right: 4px; }
+  .tag.blue { background: #dbeafe; color: #1e40af; }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.amber { background: #fef3c7; color: #92400e; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.purple { background: #ede9fe; color: #5b21b6; }
+  /* Formula */
+  .formula { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; text-align: center; font-family: 'Times New Roman', serif; font-size: 14px; color: #1e40af; margin: 12px 0; overflow-x: auto; }
+  .formula sub, .formula sup { font-size: 0.8em; }
+  /* Flowchart */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+  .flow-node.green { border-color: var(--green); color: var(--green); }
+  .flow-node.amber { border-color: var(--amber); color: #b45309; }
+  .flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+  /* Timeline */
+  .timeline { position: relative; padding-left: 20px; border-left: 2px solid var(--border); margin: 12px 0; }
+  .timeline-item { margin-bottom: 16px; position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -25px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); }
+  .timeline-item.amber::before { background: var(--amber); }
+  .timeline-item.green::before { background: var(--green); }
+  .timeline-year { font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .timeline-item.green .timeline-year { color: var(--green); }
+  .timeline-item.amber .timeline-year { color: var(--amber); }
+  /* List */
+  ul, ol { padding-left: 20px; margin: 6px 0; }
+  li { margin-bottom: 4px; }
+  p { margin-bottom: 8px; }
+  /* HR */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  /* Link */
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 15px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+  h3 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+  .index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .index-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; border-left: 3px solid var(--blue); transition: transform 0.15s; }
+  .index-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .index-item.green { border-left-color: var(--green); }
+  .index-item.amber { border-left-color: var(--amber); }
+  .index-item.red { border-left-color: var(--red); }
+  .index-item.purple { border-left-color: #7c3aed; }
+  .index-item h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .index-item p { color: var(--text-2); font-size: 11.5px; margin-bottom: 8px; }
+  .index-item .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+</style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>扩散模型技术文档 / Diffusion Model Documentation</h1>
+    <p>从 DDPM 到世界模型：扩散模型的理论、算法与自动驾驶+大模型应用全景图 · 2025–2026</p>
+  </div>
+
+  <!-- 目录导航 -->
+  <div class="section">
+    <h2>文档索引 / Document Index</h2>
+    <p>共 12 个章节，从扩散基础到世界模型前沿，循序渐进。每个章节均可独立查阅。</p>
+  </div>
+
+  <div class="index-grid">
+    <a href="01-introduction/index.html" class="index-item">
+      <h3>01 生成式AI与扩散模型概述</h3>
+      <p>GAN→VAE→Flow→Diffusion 演进、DDPM 两阶段流程、FID/IS 评估指标、自动驾驶+LLM 视角</p>
+      <div class="tags">
+        <span class="tag blue">入门</span>
+        <span class="tag purple">总览</span>
+      </div>
+    </a>
+    <a href="02-forward-process/index.html" class="index-item green">
+      <h3>02 前向扩散过程</h3>
+      <p>Markov 加噪链、闭式解、噪声调度（Linear/Cosine/Sqrt/LogSNR）、LiDAR 仿真</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+        <span class="tag blue">Forward Process</span>
+      </div>
+    </a>
+    <a href="03-reverse-process/index.html" class="index-item green">
+      <h3>03 反向过程与DDPM目标</h3>
+      <p>ELBO 推导、简化损失、三种参数化（Noise/x/v-Prediction）、DriveDiffusion 应用</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+        <span class="tag amber">DDPM</span>
+      </div>
+    </a>
+    <a href="04-sampling/index.html" class="index-item amber">
+      <h3>04 采样过程与加速采样</h3>
+      <p>Naive DDPM → DDIM → DPMSolver++ → SA-Solver，$T\le10$ 步实时推理策略</p>
+      <div class="tags">
+        <span class="tag amber">采样加速</span>
+        <span class="tag blue">DDIM</span>
+      </div>
+    </a>
+    <a href="05-ldm/index.html" class="index-item amber">
+      <h3>05 潜空间扩散（Latent Diffusion）</h3>
+      <p>VAE 编码器、LDM 目标函数、Cross-Attention、CFG、BEV 语义图生成</p>
+      <div class="tags">
+        <span class="tag amber">架构</span>
+        <span class="tag blue">Stable Diffusion</span>
+      </div>
+    </a>
+    <a href="06-guidance/index.html" class="index-item red">
+      <h3>06 条件引导与Classifier Guidance</h3>
+      <p>Classifier Guidance → CFG 推导、Guidance Scale 调参、BEV 条件注入</p>
+      <div class="tags">
+        <span class="tag red">条件控制</span>
+        <span class="tag blue">CFG</span>
+      </div>
+    </a>
+    <a href="07-architecture/index.html" class="index-item purple">
+      <h3>07 UNet骨干与Transformer变种</h3>
+      <p>UNet/Attention/GN/TimeEmbedding、DiT/AdaLN/MM-DiT、UViT/SiT</p>
+      <div class="tags">
+        <span class="tag purple">架构</span>
+        <span class="tag blue">DiT</span>
+      </div>
+    </a>
+    <a href="08-scheduler/index.html" class="index-item amber">
+      <h3>08 噪声调度器与训练-采样解耦</h3>
+      <p>Scheduler 接口抽象、DDPM/DDIM/DPMSolver++/EulerDiscrete、驾驶场景选择指南</p>
+      <div class="tags">
+        <span class="tag amber">采样</span>
+        <span class="tag green">工程</span>
+      </div>
+    </a>
+    <a href="09-conditional/index.html" class="index-item">
+      <h3>09 条件生成与文生图/视频</h3>
+      <p>CLIP 编码器、QKV Cross-Attention、文本/图像条件、视频 Temporal Attention</p>
+      <div class="tags">
+        <span class="tag blue">多模态</span>
+        <span class="tag green">文生图</span>
+      </div>
+    </a>
+    <a href="10-sdxl/index.html" class="index-item amber">
+      <h3>10 SDXL与高速生图（LCM/DiT）</h3>
+      <p>SDXL Base+Refiner、LCM 蒸馏一致性模型、DiT Scaling Law、车载实时推理</p>
+      <div class="tags">
+        <span class="tag amber">高速生成</span>
+        <span class="tag blue">LCM</span>
+      </div>
+    </a>
+    <a href="11-controlnet/index.html" class="index-item red">
+      <h3>11 ControlNet与可控生成</h3>
+      <p>零卷积、条件图像注入（Edge/Pose/Depth）、T2I-Adapter、高清地图→渲染图</p>
+      <div class="tags">
+        <span class="tag red">可控生成</span>
+        <span class="tag blue">ControlNet</span>
+      </div>
+    </a>
+    <a href="12-frontier/index.html" class="index-item">
+      <h3>12 前沿与开放问题</h3>
+      <p>世界模型（GAIA-1/UniSim）、视频扩散（SVD/W.A.L.T）、3D 生成、Score Matching 理论</p>
+      <div class="tags">
+        <span class="tag blue">前沿</span>
+        <span class="tag purple">开放问题</span>
+      </div>
+    </a>
+  </div>
+
+  <hr>
+
+  <!-- 核心概念速览 -->
+  <div class="section green" style="margin-top:24px">
+    <h2>扩散模型核心概念速查 / Core Concept Map</h2>
+    <p>扩散模型的三大阶段与代表算法对照</p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card green">
+      <h3>Forward Process / 加噪</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">固定 Markov 链，逐步向数据添加高斯噪声</p>
+      <ul style="font-size:12px">
+        <li>$q(x_t \mid x_{t-1}) = \mathcal{N}(\sqrt{1-\beta_t}x_{t-1}, \beta_t\mathbf{I})$</li>
+        <li>闭式解：$q(x_t \mid x_0) = \mathcal{N}(\sqrt{\bar{\alpha}_t}x_0, (1-\bar{\alpha}_t)\mathbf{I})$</li>
+        <li>噪声调度：Linear / Cosine / Sqrt / LogSNR</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3>Reverse Process / 去噪</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">学习条件分布，从噪声逐步重建数据</p>
+      <ul style="font-size:12px">
+        <li>$p_\theta(x_{t-1} \mid x_t)$：UNet / DiT 预测噪声 $\epsilon_\theta$</li>
+        <li>简化损失：$\mathbb{E}[\|\epsilon - \epsilon_\theta\|^2]$</li>
+        <li>参数化：Noise / $x$ / $v$-Prediction</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--purple)">
+      <h3>条件控制 / Conditioning</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">通过条件注入实现受控生成</p>
+      <ul style="font-size:12px">
+        <li>Cross-Attention：文本/图像 → latent</li>
+        <li>CFG：$\hat{\epsilon} = \epsilon_w + s(\epsilon_w - \epsilon_\emptyset)$</li>
+        <li>ControlNet：Edge/Pose/Depth 图控制</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="border-left-color:var(--blue)">
+    <h3>扩散模型标准流程 / Standard Diffusion Pipeline</h3>
+    <div class="flow" style="margin-top:10px">
+      <div class="flow-node">真实数据 $x_0$<br><small>（图像/视频/BEV）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Forward $q$<br><small>逐步加噪 $x_0 \to x_T$</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">纯噪声 $x_T$<br><small>（$T=1000$）</small></div>
+    </div>
+    <div class="flow" style="margin-top:4px">
+      <div class="flow-node amber">$x_T \sim \mathcal{N}(0,\mathbf{I})$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Reverse $p_\theta$<br><small>UNet/DiT 去噪 $x_T \to x_0$</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">生成数据 $\hat{x}_0$<br><small>（新图像/视频/BEV）</small></div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- 技术分支地图 -->
+  <div class="section" style="margin-top:24px">
+    <h2>技术分支地图 / Technology Landscape</h2>
+    <p>从像素到世界模型：扩散模型的技术演进树</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>架构演进</h3>
+      <div class="timeline" style="margin-top:8px">
+        <div class="timeline-item">
+          <div class="timeline-year">2020 — DDPM</div>
+          <p style="font-size:12px;color:var(--text-2)">UNet + noise prediction，ImageNet 256² FID 3.7</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2022 — LDM (SD)</div>
+          <p style="font-size:12px;color:var(--text-2)">VAE latent space + cross-attention，文本生图普及</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2023 — DiT</div>
+          <p style="font-size:12px;color:var(--text-2)">Transformer 替代 UNet，Scaling Law 成立</p>
+        </div>
+        <div class="timeline-item amber">
+          <div class="timeline-year">2024 — SD3 / FLUX</div>
+          <p style="font-size:12px;color:var(--text-2)">MM-DiT，多模态条件融合，文本质量大幅提升</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>采样加速</h3>
+      <div class="timeline" style="margin-top:8px">
+        <div class="timeline-item">
+          <div class="timeline-year">2021 — DDIM</div>
+          <p style="font-size:12px;color:var(--text-2)">非马尔可夫反向过程，$T=50$ 步，10-20× 加速</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2022 — DPMSolver</div>
+          <p style="font-size:12px;color:var(--text-2)">高阶 ODE 求解器，$T=20$ 步可达满意质量</p>
+        </div>
+        <div class="timeline-item amber">
+          <div class="timeline-year">2023 — LCM</div>
+          <p style="font-size:12px;color:var(--text-2)">Latent Consistency Model，$T=4$ 步，蒸馏无需 CG</p>
+        </div>
+        <div class="timeline-item green">
+          <div class="timeline-year">2024 — SDXL-Turbo</div>
+          <p style="font-size:12px;color:var(--text-2)">对抗蒸馏，$T=1-4$ 步，实时生图成为可能</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout blue" style="margin-top:20px">
+    <strong>📚 学习路径建议</strong>
+    如果你是扩散模型初学者，建议按以下顺序阅读：
+    <ol style="margin-top:6px">
+      <li><strong>01 综述</strong> — 建立全局图景，了解 GAN→Diffusion 的演进动机</li>
+      <li><strong>02-03 前向/反向过程</strong> — 掌握 DDPM 数学核心，理解为什么预测噪声等价于学习分布</li>
+      <li><strong>04 采样</strong> — 理解 DDIM 和加速采样为什么 work（SDE/ODE 视角）</li>
+      <li><strong>05-06 LDM + CFG</strong> — Stable Diffusion 的核心机制，工业应用最广泛</li>
+      <li><strong>07 架构</strong> — 理解 UNet 到 DiT 的演进，理解为什么 Transformer 更好 scaling</li>
+      <li><strong>10-11 SDXL + ControlNet</strong> — 当前工业部署最相关的技术组合</li>
+      <li><strong>12 前沿</strong> — 世界模型、视频扩散、3D 生成，展望未来方向</li>
+    </ol>
+  </div>
+
+  <div class="callout green" style="margin-top:12px">
+    <strong>🚗 自动驾驶专项路径</strong>
+    如果你关注扩散模型在自动驾驶中的应用，重点阅读：
+    <ol style="margin-top:6px">
+      <li><strong>02 §自动驾驶</strong> — LiDAR 点云加噪仿真、相机 ISO 噪声建模</li>
+      <li><strong>05 §自动驾驶应用</strong> — BEV 语义图生成、LiDAR-to-camera 跨模态</li>
+      <li><strong>09 §视频扩散</strong> — 驾驶场景视频预测的 temporal consistency</li>
+      <li><strong>10 §车载应用</strong> — 实时场景可视化（延迟 ≤ 100ms）</li>
+      <li><strong>11 §驾驶场景</strong> — HD Map → 渲染图、车道线控制生成</li>
+      <li><strong>12 §自动驾驶前沿</strong> — DriveDreamer 世界模型、DiffusionDrive 端到端规划</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 Off-Policy 连续控制 / Off-Policy RL — 强化学习</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load',function(){setTimeout(function(){renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,trust:true,strict:false});},100);});
+  </script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>07 Off-Policy 连续控制 / Off-Policy RL for Continuous Control</h1>
+    <p>DDPG → TD3 → SAC — 深度确定性/随机策略梯度在连续动作空间的完整演进</p>
+  </div>
+
+  <!-- 连续动作挑战 -->
+  <div class="section">
+    <h2>连续动作空间的挑战 / Continuous Action Space Challenge</h2>
+    <p>离散动作可以用 $\epsilon$-greedy 采样，连续动作空间需要新的探索和策略表示方法</p>
+  </div>
+
+  <div class="card">
+    <h3>连续动作 vs 离散动作 / Continuous vs Discrete</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">离散动作空间</p>
+        <ul style="font-size:12px">
+          <li>动作是互斥的类别（如"上/下/左/右"）</li>
+          <li>$|\mathcal{A}|$ 通常很小（< 20）</li>
+          <li>可以用 softmax 输出概率分布</li>
+          <li>$Q(s,a)$ 可以枚举所有 $a$ 求 max</li>
+          <li>探索可以用 $\epsilon$-greedy</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">连续动作空间</p>
+        <ul style="font-size:12px">
+          <li>动作是连续值（如 $[-1, 1]$ 的电机电压）</li>
+          <li>动作空间无限，$\max_a Q(s,a)$ 无法枚举</li>
+          <li>需要确定性策略或高斯策略</li>
+          <li>探索策略和目标策略需要不同</li>
+          <li>典型场景：机器人控制、无人车、无人机</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>为什么 $Q(s,a)$ 在连续空间更难？</strong>
+      离散空间：$\max_a Q(s,a)$ 可以精确计算（枚举所有动作）。连续空间：$a$ 是无限集合，无法枚举。解决方案：用神经网络近似一个"最优动作" $a^*(s) = \arg\max_a Q(s,a)$，这正是 Actor-Critic 在连续控制中的核心思想。
+    </div>
+  </div>
+
+  <!-- DDPG -->
+  <div class="section green" style="margin-top:16px">
+    <h2>DDPG / 深度确定性策略梯度 (Silver et al., 2014; Lillicrap et al., 2015)</h2>
+    <p>将 DQN 的深度 Q 学习扩展到连续动作空间——确定性策略 + off-policy 学习</p>
+  </div>
+
+  <div class="card green">
+    <h3>核心思想：确定性策略 + Off-Policy 学习</h3>
+    <p style="font-size:12px;color:var(--text-2)">DDPG 的关键观察：连续动作意味着无法像离散空间那样通过枚举求 $\max_a Q$。解决方案是让策略是确定性的 $\mu(s)$，直接输出最优动作 $a = \mu(s)$，而 $Q(s, a)$ 在该动作上被估计。</p>
+    <div class="formula" style="margin-top:8px">$$Q(s, a) \approx r + \gamma Q\bigl(s', \mu(s')\bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">确定性策略的优势：可以在 $Q$ 函数上直接做梯度上升来优化策略。</p>
+    <div class="formula" style="margin-top:6px">$$\nabla_\theta \mu \approx \mathbb{E}\Bigl[ \nabla_a Q(s,a) \big|_{a=\mu(s)} \cdot \nabla_\theta \mu(s) \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">这叫"确定性策略梯度"（Deterministic Policy Gradient，Silver et al., 2014）。它比随机策略梯度需要的样本少（因为不需要对动作积分）。</p>
+  </div>
+
+  <div class="card">
+    <h3>DDPG 算法完整伪代码</h3>
+    <pre><code><span class="cmt"># DDPG 算法</span>
+<span class="kw">Initialize</span>:
+  Q(s,a; θᴬ) <span class="cmt"># Critic 网络</span>
+  μ(s; θᵘ)  <span class="cmt"># Actor 网络（确定性策略）</span>
+  Q̄, μ̄      <span class="cmt"># Target 网络</span>
+  Replay Buffer R
+
+<span class="kw">for</span> episode = 1, M <span class="kw">do</span>
+  s ← env.reset()
+  <span class="cmt"># 探索：加噪声到确定性策略</span>
+  a ← clamp(μ(s) + \mathcal{N}(0, σ), a_{low}, a_{high})
+
+  <span class="kw">for</span> t = 1, T <span class="kw">do</span>
+    s', r ← env.step(a)
+    R.push((s, a, r, s'))
+
+    s ← s'
+    <span class="cmt"># 从 buffer 采样 batch</span>
+    batch ← R.sample(B)
+
+    <span class="cmt"># 更新 Critic（TD error）</span>
+    y ← r + γ · Q̄(s', μ̄(s'); θᴬ⁻)
+    L_Q ← (Q(s,a;θᴬ) − y)²
+    θᴬ ← Adam(∇_θᴬ L_Q)
+
+    <span class="cmt"># 更新 Actor（策略梯度）</span>
+    L_μ ← −Q(s, μ(s); θᴬ)           <span class="cmt"># 梯度上升</span>
+    θᵘ ← Adam(∇_θᵘ L_μ)
+
+    <span class="cmt"># 软更新 target 网络</span>
+    μ̄ ← τ·μ + (1−τ)·μ̄
+    Q̄ ← τ·Q + (1−τ)·Q̄
+  <span class="kw">end</span>
+<span class="kw">end</span></code></pre>
+  </div>
+
+  <div class="grid-2" style="margin-top:4px">
+    <div class="card">
+      <h3>DDPG 的探索策略</h3>
+      <p style="font-size:12px;color:var(--text-2)">确定性策略本身没有随机性（给定状态输出固定动作），因此需要在动作上加噪声来探索。常用方法：</p>
+      <ul style="font-size:12px">
+        <li><strong>OU 噪声</strong>（Ornstein-Uhlenbeck）：时间相关的噪声，适合物理系统（惯性系统），保持动作的连续性</li>
+        <li><strong>高斯噪声</strong>：独立同分布，更简单但在某些任务上不如 OU 噪声</li>
+        <li><strong>噪声网络（NoisyNet）</strong>：在网络权重上加入可学习的噪声，让探索自动适应</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>DDPG 的常见问题</h3>
+      <ul style="font-size:12px">
+        <li><strong>过估计（Overestimation）</strong>：和 DQN 一样，Q 函数可能过度估计，导致策略退化</li>
+        <li><strong>对超参数敏感</strong>：目标网络更新率 $\tau$、探索噪声 $\sigma$</li>
+        <li><strong>不稳定</strong>： Critic 和 Actor 同时学习，两者相互影响</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TD3 -->
+  <div class="section" style="margin-top:16px">
+    <h2>TD3 / Twin Delayed DDPG (Fujimoto et al., 2018) — DDPG 的改良版</h2>
+    <p>三个核心技术解决了 DDPG 的过度估计和不稳定问题</p>
+  </div>
+
+  <div class="card">
+    <h3>TD3 的三个核心技术 / Three Key Improvements</h3>
+    <div class="grid-3" style="margin-top:8px">
+      <div class="card" style="border-left-color:var(--blue);margin-bottom:0">
+        <h3 style="color:var(--blue)">1. 双 Critic（Clipped Double Q）</h3>
+        <p style="font-size:12px;color:var(--text-2)">训练两个独立的 Q 网络 $Q_1, Q_2$，用两者中较小的值作为 target：</p>
+        <div class="formula" style="font-size:11px;margin-top:4px">$$y = r + \gamma \min\bigl(Q_1(s', \mu(s')),\; Q_2(s', \mu(s'))\bigr)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">类似 Double DQN 的思想，用较小估计对抗过度估计。两个 Critic 各自独立学习，选择较小值作为目标。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--green);margin-bottom:0">
+        <h3 style="color:var(--green)">2. 延迟策略更新</h3>
+        <p style="font-size:12px;color:var(--text-2)">Critic 的更新频率远高于 Actor（通常每一步更新一次 Critic，每两步更新一次 Actor）。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">原因：Actor 的梯度来自 Critic，如果 Critic 不准确（Q 值波动大），Actor 的梯度就是噪声。延迟 Actor 更新让 Critic 有更多时间稳定。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--amber);margin-bottom:0">
+        <h3 style="color:var(--amber)">3. 目标策略平滑</h3>
+        <p style="font-size:12px;color:var(--text-2)">在目标动作上加小噪声，然后取平均：</p>
+        <div class="formula" style="font-size:11px;margin-top:4px">$$a_{\text{target}} = \mu_{\text{target}}(s') + \mathrm{clip}\bigl(\epsilon, -\epsilon, +\epsilon\bigr)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">平滑了 Q 函数的尖峰，提高了泛化能力，对近似误差更鲁棒。</p>
+      </div>
+    </div>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>三者协同效果</strong>
+      TD3 = 双 Critic（解决过度估计）+ 延迟更新（减少策略更新的噪声）+ 目标平滑（减少函数近似误差）。三个改进单独都有帮助，组合起来在 Mujoco 任务上比 DDPG 提升 2-3 倍。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>TD3 vs DDPG：完整对比</h3>
+    <table style="font-size:12px">
+      <tr><th>改进</th><th>DDPG</th><th>TD3</th><th>效果</th></tr>
+      <tr><td>Critic 数量</td><td>1 个 Q 网络</td><td>2 个 Q 网络（双 Critic）</td><td>减少过度估计</td></tr>
+      <tr><td>目标计算</td><td>$\max_{a'} Q(s', a')$</td><td>$\min(Q_1, Q_2)$</td><td>避免过度乐观的 target</td></tr>
+      <tr><td>Actor 更新频率</td><td>每步更新</td><td>每 2 步更新</td><td>更稳定的策略梯度</td></tr>
+      <tr><td>目标动作</td><td>$\mu_{\text{target}}(s')$</td><td>$\mu_{\text{target}}(s') + \text{noise}$</td><td>减少函数近似误差</td></tr>
+      <tr><td>推荐学习率</td><td>3e-4</td><td>3e-4（相同）</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <!-- SAC -->
+  <div class="section green" style="margin-top:16px">
+    <h2>SAC / 软 Actor-Critic (Haarnoja et al., 2018) — 最大熵 RL</h2>
+    <p>将最大熵原则引入 off-policy 学习，让策略保持适度随机——自动调节探索-利用权衡</p>
+  </div>
+
+  <div class="card green">
+    <h3>最大熵框架 / Maximum Entropy Framework</h3>
+    <p style="font-size:12px;color:var(--text-2)">最大熵 RL 的目标是同时最大化期望回报和策略熵：</p>
+    <div class="formula">$$J(\pi) = \mathbb{E}_{(s,a)\sim d^\pi}\Bigl[ r(s,a) + \alpha \cdot \mathcal{H}\bigl(\pi(\cdot\mid s)\bigr) \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\mathcal{H}(\pi) = -\sum_a \pi(a\mid s) \log \pi(a\mid s)$ 是策略熵，$\alpha$ 是温度参数（Temperature），控制探索-利用的权衡。最大熵鼓励策略保持随机，这自然解决了探索问题。</p>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>为什么最大熵更好？</strong>
+      <ul style="margin-top:4px">
+        <li><strong>自动探索</strong>：熵项自动鼓励策略保持随机，不需要手动调节探索噪声</li>
+        <li><strong>鲁棒性</strong>：高熵策略在不同状态下更一致地探索，不容易陷入局部最优</li>
+        <li><strong>理论上</strong>：最大熵 RL 可以看作概率分布优化的特例，类似于玻尔兹曼分布</li>
+        <li><strong>收敛性</strong>：最大熵目标可以证明比标准 RL 更容易收敛到好的策略</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>SAC 的自动温度调节 / Automatic Temperature Adjustment</h3>
+    <p style="font-size:12px;color:var(--text-2)">SAC 的一个关键创新是自动学习温度参数 $\alpha$，不需要手工调参：</p>
+    <div class="formula">$$\mathcal{L}(\alpha) = \mathbb{E}_{a\sim\pi}\bigl[ -\alpha \cdot \log\pi(a\mid s) - \alpha \cdot \mathcal{H}_{\text{target}} \bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\mathcal{H}_{\text{target}}$ 是目标熵（通常是动作空间维度的负值，如 $-\dim(\mathcal{A})$）。通过这个损失函数，$\alpha$ 自动调整：当策略太随机（熵高于目标）时 $\alpha$ 减小（减少探索鼓励）；当策略太确定性（熵低于目标）时 $\alpha$ 增大（增加探索）。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">$\alpha$ 过大：</p>
+        <p style="font-size:12px;color:var(--text-2)">策略太随机，无法利用已有知识。熵损失增大，梯度推动 $\alpha$ 减小。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">$\alpha$ 过小：</p>
+        <p style="font-size:12px;color:var(--text-2)">策略太确定性，容易陷入局部最优。熵损失减小，梯度推动 $\alpha$ 增大。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>SAC vs DDPG/TD3 完整对比</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:100px">特性</th><th>DDPG</th><th>TD3</th><th>SAC</th></tr>
+      <tr><td>策略类型</td><td>确定性</td><td>确定性</td><td>随机（高斯）</td></tr>
+      <tr><td>探索方式</td><td>外部噪声（OU/高斯）</td><td>外部噪声 + target 平滑</td><td>自然随机 + 最大熵</td></tr>
+      <tr><td>Critic 数量</td><td>1</td><td>2（双 Q）</td><td>2（双 Q）</td></tr>
+      <tr><td>目标策略</td><td>确定性</td><td>确定性 + 噪声</td><td>随机（重参数化采样）</td></tr>
+      <tr><td>温度参数</td><td>无</td><td>无</td><td>自动学习 $\alpha$</td></tr>
+      <tr><td>收敛稳定性</td><td>较低</td><td>中等</td><td>较高</td></tr>
+      <tr><td>最终性能</td><td>基准</td><td>比 DDPG 好 2-3×</td><td>通常最优</td></tr>
+      <tr><td>超参数敏感性</td><td>高</td><td>中等</td><td>低（自动 $\alpha$）</td></tr>
+    </table>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>何时选哪个？</strong>
+      <ul style="margin-top:4px">
+        <li><strong>SAC</strong>（首选）：需要稳定探索、动作空间大或复杂、非平稳环境。SAC 在大多数 Mujoco 任务上是最强的 off-policy 算法。</li>
+        <li><strong>TD3</strong>（次选）：需要确定性策略（输出固定动作，适合精确控制）、计算资源有限。TD3 比 DDPG 稳定得多，推荐在 DDPG 的任何场景用 TD3 替代。</li>
+        <li><strong>DDPG</strong>：基本不推荐了，TD3 在所有维度都优于 DDPG。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 收敛对比 -->
+  <div class="section amber" style="margin-top:16px">
+    <h2>连续控制算法全景对比 / Comprehensive Comparison</h2>
+  </div>
+
+  <div class="card amber">
+    <h3>Mujoco 任务上的性能对比（代表性结果）</h3>
+    <table style="font-size:11.5px">
+      <tr><th>算法</th><th>HalfCheetah</th><th>Walker2d</th><th>Humanoid</th><th>Ant</th><th>特点</th></tr>
+      <tr><td>DDPG</td><td>~11000</td><td>~3500</td><td>~2000</td><td>~3000</td><td>基准但不稳定</td></tr>
+      <tr><td>TD3</td><td>~13000</td><td>~5500</td><td>~4500</td><td>~6000</td><td>稳定、高样本效率</td></tr>
+      <tr><td>SAC</td><td>~14000</td><td>~6500</td><td>~11000</td><td>~12000</td><td>自动探索、最稳定</td></tr>
+      <tr><td>PPO（on-policy）</td><td>~12000</td><td>~4000</td><td>~6000</td><td>~5000</td><td>无需 replay buffer</td></tr>
+    </table>
+    <p style="font-size:11px;color:var(--text-2);margin-top:4px">注：分数为不同随机种子下最终性能的典型值（越高越好）。SAC 在 Humanoid、Ant 等困难任务上通常领先。</p>
+  </div>
+
+  <!-- off-policy 分析 -->
+  <div class="section" style="margin-top:16px">
+    <h2>Off-Policy 学习的深度分析 / Deep Dive</h2>
+  </div>
+
+  <div class="card">
+    <h3>为什么 Off-Policy 如此强大？</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Off-Policy 的优势</p>
+        <ul style="font-size:12px">
+          <li><strong>数据复用</strong>：每条经验可以被多个策略使用，样本效率远高于 on-policy</li>
+          <li><strong>探索-利用分离</strong>：behavior policy 可以足够随机（探索），而 target policy 可以更贪婪（利用）</li>
+          <li><strong>历史数据</strong>：可以融合不同策略产生的数据，适合真实世界数据收集</li>
+          <li><strong>DDPG/TD3/SAC</strong>：都可以用过去的经验持续学习</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">Off-Policy 的风险：分布偏移</p>
+        <ul style="font-size:12px">
+          <li>Replay buffer 中的数据来自旧策略</li>
+          <li>当新策略偏离旧策略太远时，Q 函数估计会不准（OOD 问题）</li>
+          <li>这正是 PPO 的 on-policy 方法更稳定的原因</li>
+          <li>解决：SAC 的最大熵框架减轻了这个问题（策略保持随机）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>确定性 vs 随机策略 / Deterministic vs Stochastic Policy</h3>
+    <table style="font-size:12px">
+      <tr><th>维度</th><th>确定性策略 $\mu(s)$</th><th>随机策略 $\pi(a|s)$</th></tr>
+      <tr><td>输出</td><td>单个动作值 $a$</td><td>动作的概率分布 $\pi(a|s)$</td></tr>
+      <tr><td>探索</td><td>需要外部噪声（OU/高斯）</td><td>自然随机（自动探索）</td></tr>
+      <tr><td>梯度计算</td><td>$\nabla_\theta \mu(s)$（直接）</td><td>重参数化技巧（在高斯情况下）</td></tr>
+      <tr><td>收敛保证</td><td>较弱</td><td>更强（随机策略空间更平滑）</td></tr>
+      <tr><td>适用算法</td><td>DDPG, TD3</td><td>SAC, PPO</td></tr>
+    </table>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 07 Off-Policy 连续控制 · <a href="../index.html">← 总目录</a> · <a href="../06-advanced-policy/index.html">← 06 高级策略优化</a> · <a href="../08-model-based/index.html">下一篇：08 基于模型的方法 →</a>
+  </div>
+</div>
+</body>
+</html>

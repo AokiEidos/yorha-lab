@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>04 预测方法演进：从规则到深度学习 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+  <style>
+    :root {
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #7c3aed;
+      --bg: #f8fafc;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans SC', 'Inter', sans-serif;
+      font-size: 13px;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+    .title-bar {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 28px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .title-bar h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .title-bar .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+    .section {
+      border-left: 4px solid var(--blue);
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+    }
+    .section.green { border-left-color: var(--green); }
+    .section.amber { border-left-color: var(--amber); }
+    .section.red { border-left-color: var(--red); }
+    .section.purple { border-left-color: var(--purple); }
+    .section h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      border-left: 3px solid var(--blue);
+    }
+    .card.green { border-left-color: var(--green); }
+    .card.amber { border-left-color: var(--amber); }
+    .card.red { border-left-color: var(--red); }
+    .card.purple { border-left-color: var(--purple); }
+    .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .card p { color: var(--text); margin-bottom: 8px; }
+    .card p:last-child { margin-bottom: 0; }
+    .formula {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 12px 18px;
+      text-align: center;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .callout {
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .callout.amber { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--amber); }
+    .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid var(--blue); }
+    .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid var(--green); }
+    .callout.red { background: #fef2f2; border: 1px solid #fecaca; border-left: 3px solid var(--red); }
+    .callout.purple { background: #f5f3ff; border: 1px solid #ddd6fe; border-left: 3px solid var(--purple); }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin: 12px 0;
+    }
+    th {
+      background: #f8fafc;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    td {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid #94a3b8;
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 12px 0;
+    }
+    pre code { background: none; padding: 0; }
+    .tag {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag.blue { background: #dbeafe; color: #1d4ed8; }
+    .tag.green { background: #dcfce7; color: #15803d; }
+    .tag.amber { background: #fef3c7; color: #b45309; }
+    .tag.purple { background: #ede9fe; color: #6d28d9; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .nav-footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 24px;
+    }
+    .nav-footer a { color: var(--blue); text-decoration: none; margin: 0 8px; }
+    .nav-footer a:hover { text-decoration: underline; }
+    .mermaid { font-size: 11px; }
+    .flow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+    .flow-node { background: white; border: 2px solid var(--blue); border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 600; text-align: center; }
+    .flow-node.green { border-color: var(--green); }
+    .flow-node.amber { border-color: var(--amber); }
+    .flow-node.red { border-color: var(--red); }
+    .flow-node.purple { border-color: var(--purple); }
+    .flow-arrow { color: var(--text-secondary); font-size: 16px; font-weight: bold; }
+    .txt { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+    .txt code { font-size: 11px; }
+    h4 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+    ul, ol { padding-left: 20px; margin-bottom: 10px; }
+    li { margin-bottom: 4px; }
+    .ascii-art {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="title-bar">
+  <h1>04 预测方法演进：从规则到深度学习</h1>
+  <div class="subtitle">RNN → GNN → Transformer → Diffusion → VLA 的完整脉络</div>
+</div>
+
+<div class="card amber">
+  <strong>⚙️ 前置知识</strong>
+  <div>本章节涉及以下基础知识：<a href="../03-prediction-metrics/index.html">03 评估指标体系</a>、轨迹预测问题定义。建议先掌握这些内容后再继续。</div>
+</div>
+
+<!-- ============================================
+     SECTION 1: What is trajectory prediction evolution?
+     ============================================ -->
+<div class="section">
+  <h2>What is this — 十年技术演化的全景</h2>
+  <p>轨迹预测在过去十年（2016—2025）经历了五次重大范式转换。每次转换都不是偶然——而是前一代方法的核心瓶颈驱动了下一代方法的探索。这不是"新=好"的简单替换，而是在<strong>表达能力</strong>、<strong>计算成本</strong>和<strong>数据需求</strong>之间的持续重新权衡。</p>
+
+  <div class="flow" style="margin-top:16px;">
+    <div class="flow-node">RNN/LSTM<br/><span style="font-size:11px;color:#64748b">2016-2018</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node green">GNN/STG<br/><span style="font-size:11px;color:#64748b">2018-2021</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node amber">Transformer<br/><span style="font-size:11px;color:#64748b">2021-2023</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node red">Diffusion<br/><span style="font-size:11px;color:#64748b">2022-2024</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node purple">VLA/LLM<br/><span style="font-size:11px;color:#64748b">2024+</span></div>
+  </div>
+
+  <div class="callout blue" style="margin-top:12px;">
+    <strong>💡 核心驱动力</strong>
+    每一代方法被替代的根本原因：<strong>表达能力不足</strong>或<strong>建模方式与物理本质不匹配</strong>。新方法解决了旧方法的核心瓶颈，但在其他维度引入新的权衡。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 2: Complete Timeline
+     ============================================ -->
+<div class="section purple">
+  <h2>完整时间线 / Complete Timeline</h2>
+  <div class="ascii-art">2016 ──── Social-LSTM [Alahi et al.]
+           首个深度学习轨迹预测, 社会池化
+
+2018 ──── Social-GAN [Gupta et al.]
+           GAN 引入多模态采样
+           ├── Social-STGCNN [Mohamed et al., 2020]
+           │   时空图 CNN, 图结构替代池化
+           │
+2019 ──── STGAT [Huang et al.]
+           │   时空图注意力网络
+           ├── Trajectron++ [Salzmann et al., 2020]
+           │   CVAE + GNN 异构图
+           │
+2020 ──── LaneGCN [Liang et al.]
+           │   车道图编码, 向量化地图
+           ├── HiVT [Zhou et al., 2022]
+           │   向量化交互 + 局部-全局注意力
+           │
+2021 ──── AgentFormer [Yuan et al.]
+           │   Transformer + CVAE 联合建模
+           ├── TNT [Zhao et al.]
+           │   目标条件预测, 锚点机制
+           │
+2022 ──── MTR [Shi et al.]
+           │   多模态 Transformer, 意图锚点
+           ├── MID [Gu et al.]
+           │   首个 Diffusion 轨迹预测
+           ├── QCNet [Zhou et al., 2023]
+           │   查询式 Transformer, Waymo SOTA
+           │
+2023 ──── CTG [Zhong et al.]
+           │   联合多智能体 Diffusion
+           ├── GameFormer [Huang et al.]
+           │   博弈论 + Transformer
+           ├── MotionDiffuser [Jiang et al.]
+           │   Diffusion 联合预测
+           │
+2024 ──── Diffusion-ES [Zhong et al.]
+           │   Diffusion + 进化搜索
+           ├── LLM-based prediction
+           │   语言模型驱动预测
+           ├── DriveVLM [Tian et al.]
+           │   VLA 端到端包含预测
+           │
+2025 ──── World Model Prediction
+           世界模型驱动的预测
+           下一帧生成 → 轨迹推理</div>
+</div>
+
+<!-- ============================================
+     SECTION 3: Generation 1 - RNN/LSTM
+     ============================================ -->
+<div class="section">
+  <h2>第一代：RNN/LSTM 时代（2016-2018）</h2>
+
+  <h4>What — 定义与概述</h4>
+  <p>2016年之前，轨迹预测主要依赖手工特征（恒速模型、社会力模型等）。Social-LSTM（Alahi et al., CVPR 2016）首次将深度学习引入轨迹预测，用 <strong>LSTM 序列模型</strong>自动学习时序模式，并用<strong>社会池化（Social Pooling）</strong>机制编码邻域智能体的隐状态。</p>
+
+  <h4>Why — 动机与问题</h4>
+  <p>手工特征无法捕捉复杂的交互模式。社会池化让模型首次看到"周围有人在"——但这个"看到"是粗粒度的。</p>
+  <div class="callout red">
+    <strong>🚫 核心瓶颈：池化丢失个体区分</strong>
+    Social-LSTM 的网格池化将邻域所有智能体的隐状态混合为一个向量，无法区分"前方慢车"和"旁边快车"对预测的不同影响。长距离依赖也因 LSTM 的梯度消失而受限。
+  </div>
+
+  <h4>How — 技术细节</h4>
+  <p><strong>Social-LSTM</strong> 的核心结构：每个智能体有一个独立的 LSTM，$t$ 时刻的隐状态 $h_t^i$ 由上一时刻自身隐状态和池化向量 $p_t^i$ 更新：</p>
+  <div class="formula">$$h_t^i = \mathrm{LSTM}\bigl(h_{t-1}^i, x_t^i, p_t^i\bigr)$$</div>
+  <p>其中池化向量 $p_t^i$ 通过网格划分邻域空间，将落在同一格子的智能体隐状态求和：</p>
+  <div class="formula">$$p_t^i = \sum_{j \in \mathcal{N}_i} \mathbf{1}_{\mathrm{grid}}(x_t^j) \cdot h_{t-1}^j$$</div>
+
+  <p><strong>Social-GAN</strong>（CVPR 2018）引入了 GAN 框架，为轨迹预测注入多模态采样能力。判别器区分真实轨迹与生成轨迹，生成器学习输出多样化轨迹。</p>
+
+  <h4>典型性能（ETH/UCY，ADE/FDE @K=20）</h4>
+  <table>
+    <tr><th>方法</th><th>ADE ↓</th><th>FDE ↓</th></tr>
+    <tr><td>Social-LSTM</td><td>1.09</td><td>2.35</td></tr>
+    <tr><td>Social-GAN</td><td>0.58</td><td>1.18</td></tr>
+  </table>
+  <div class="callout amber">
+    <strong>⚠️ 注意</strong>
+    2018年的 Social-GAN 将 ADE 从 1.09 降至 0.58，GAN 的多模态建模是关键。但池化结构始终是瓶颈。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 4: Generation 2 - GNN/STG
+     ============================================ -->
+<div class="section green">
+  <h2>第二代：GNN/时空图时代（2018-2021）</h2>
+
+  <h4>What — 定义与概述</h4>
+  <p>GNN/时空图方法用<strong>图结构</strong>替代社会池化：每个智能体是图的节点，交互关系是边，通过<strong>消息传递（Message Passing）</strong>聚合邻域信息。图结构是显式的、可学习的——不再有池化的信息损失。</p>
+
+  <h4>Why — 动机与问题</h4>
+  <p>社会池化将所有邻域智能体的信息压缩为单一向量，丢失了个体差异。图结构天然支持成对交互建模——每条边对应一对智能体之间的关系，边上的特征可以是距离、相对速度等物理量。</p>
+  <div class="callout blue">
+    <strong>💡 图结构的核心优势</strong>
+    消息传递允许智能体在多轮迭代中聚合越来越远的邻域信息。图拓扑本身是可学习的——可以学习到"影响权重"而不用手工定义邻域半径。
+  </div>
+
+  <h4>How — 技术细节</h4>
+  <p><strong>Social-STGCNN</strong>（CVPR 2020）将空间（智能体间）和时间（时间步间）同时建模为图：时空图的邻接矩阵随时间变化，每帧的图结构不同。</p>
+  <p><strong>STGAT</strong>（ICCV 2019）引入注意力机制：为每条边学习一个注意力权重，自动判断不同邻域智能体的重要程度：</p>
+  <div class="formula">$$e_{ij} = \mathrm{LeakyReLU}\bigl(\mathbf{a}^T[\mathbf{W}h_i \| \mathbf{W}h_j]\bigr)$$$$\alpha_{ij} = \frac{\exp(e_{ij})}{\sum_{k \in \mathcal{N}_i} \exp(e_{ik})}$$</div>
+  <p><strong>AgentFormer</strong>（ICCV 2021）结合 Transformer 注意力机制与 CVAE 潜变量，通过时序感知注意力在每个时间步建模智能体间的交互关系。</p>
+  <p><strong>LaneGCN</strong>（ECCV 2020）将 HD Map 表示为车道图，边表示车道段间的连接关系，实现了向量化地图编码。</p>
+
+  <h4>典型性能（ETH/UCY，ADE/FDE @K=20）</h4>
+  <table>
+    <tr><th>方法</th><th>ADE ↓</th><th>FDE ↓</th></tr>
+    <tr><td>Social-STGCNN</td><td>0.44</td><td>0.75</td></tr>
+    <tr><td>STGAT</td><td>0.44</td><td>0.79</td></tr>
+    <tr><td>AgentFormer</td><td>0.39</td><td>0.73</td></tr>
+  </table>
+  <div class="callout amber">
+    <strong>⚠️ GNN 的瓶颈</strong>
+    图结构需要预定义邻域（如距离阈值），无法动态调整关注范围。消息传递的感受野受图的跳数限制，远距离智能体的交互需要多轮传播，效率受限。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 5: Generation 3 - Transformer
+     ============================================ -->
+<div class="section amber">
+  <h2>第三代：Transformer 时代（2021-2023）</h2>
+
+  <h4>What — 定义与概述</h4>
+  <p>Transformer 用<strong>全局自注意力</strong>替代局部图结构——任意两个智能体（和地图元素）之间可以直接交互，无需多跳传播。这解决了 GNN 的全局建模问题，但也引入了 $O(N^2)$ 的计算复杂度。</p>
+
+  <h4>Why — 动机与问题</h4>
+  <p>GNN 的消息传递是局部的：智能体 $A$ 看到智能体 $B$，需要经过多轮迭代才能传递全局信息。Transformer 的全局注意力允许每个位置直接看到所有其他位置，一步完成信息聚合。</p>
+  <div class="callout blue">
+    <strong>💡 全局注意力的意义</strong>
+    从 $K$ 跳传播 → $1$ 步聚合。这意味着无论智能体相距多远，信息传递路径长度恒定为 1。这是建模复杂城市交叉口场景的关键。
+  </div>
+
+  <h4>How — 技术细节</h4>
+  <p><strong>MTR</strong>（NeurIPS 2022）提出多模态 Transformer，用<strong>意图锚点（intent anchor）</strong>查询多种未来轨迹：</p>
+  <div class="formula">$$\mathbf{Q}_k = \mathbf{K}_k + \mathbf{P}_k$$</div>
+  <p>其中 $\mathbf{P}_k$ 是第 $k$ 个意图锚点的位置编码，多个锚点覆盖不同的运动模式（直行、左转、右转等）。</p>
+
+  <p><strong>QCNet</strong>（CVPR 2023）采用两阶段设计：场景编码 → 轨迹解码，是 Waymo Open Challenge 冠军方案。查询式设计让每条轨迹解码都基于全局场景编码，实现了高效的多模态预测。</p>
+
+  <p><strong>GameFormer</strong>（ICCV 2023）将博弈论引入 Transformer：智能体之间的交互建模为序贯博弈，每层的查询-键交互模拟策略迭代。</p>
+
+  <h4>典型性能（nuScenes，minADE$_5$/minFDE$_5$）</h4>
+  <table>
+    <tr><th>方法</th><th>minADE$_5$ ↓</th><th>minFDE$_5$ ↓</th><th>MR$_5$ ↓</th></tr>
+    <tr><td>LaneGCN</td><td>1.71</td><td>3.78</td><td>0.59</td></tr>
+    <tr><td>HiVT</td><td>1.61</td><td>3.42</td><td>0.54</td></tr>
+    <tr><td>MTR</td><td>1.44</td><td>3.15</td><td>0.46</td></tr>
+    <tr><td>QCNet</td><td>1.32</td><td>2.89</td><td>0.41</td></tr>
+  </table>
+  <div class="callout red">
+    <strong>🚫 Transformer 的局限</strong>
+    1. 锚点/回归模式仍受限——输出 K 条轨迹，需要预设模式数；2. 多模态建模依赖 argmax 或 Winner-takes-all 训练，模式覆盖性不如生成模型；3. $O(N^2)$ 复杂度在大规模场景（如高速百车）中成为瓶颈。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 6: Generation 4 - Diffusion
+     ============================================ -->
+<div class="section red">
+  <h2>第四代：Diffusion 时代（2022-2024）</h2>
+
+  <h4>What — 定义与概述</h4>
+  <p>Diffusion 方法用<strong>去噪扩散过程</strong>直接建模轨迹的连续概率分布。每次前向加噪后，模型学习从噪声中恢复轨迹分布。Diffusion 天然具备多模态能力——每次采样产生不同的轨迹，且无需预定义模式数。</p>
+
+  <h4>Why — 动机与问题</h4>
+  <p>Transformer 的多模态依赖于离散的锚点或有限的模式数。Diffusion 的概率建模是连续的——可以覆盖从直行到急刹的全部轨迹空间，而非从预设的 K 个模态中选择。</p>
+  <div class="callout blue">
+    <strong>💡 Diffusion 的核心优势</strong>
+    <strong>天然多模态</strong>：每次采样产生不同轨迹，无模式坍缩风险；<strong>灵活约束注入</strong>：通过 Classifier Guidance 在推理时可以注入任意约束（车道边界、安全距离），无需重训练。
+  </div>
+
+  <h4>How — 技术细节</h4>
+  <p><strong>MID</strong>（CVPR 2022）是首个 Diffusion 轨迹预测方法，Transformer 编码器 + Diffusion 解码器。轨迹 $\tau$ 经过 $T$ 步前向加噪：</p>
+  <div class="formula">$$q(\tau_t \mid \tau_{t-1}) = \mathcal{N}\bigl(\tau_t; \sqrt{1-\beta_t} \tau_{t-1}, \beta_t \mathbf{I}\bigr)$$</div>
+  <p>训练目标是预测噪声 $\epsilon_\theta(\tau_t, t, s)$，其中 $s$ 是场景上下文。推理时从纯噪声开始，通过 $T$ 步去噪得到预测轨迹。</p>
+
+  <p><strong>CTG</strong>（2023）提出联合多智能体 Diffusion + Classifier Guidance，实现多智能体协同预测与约束满足。约束满足率达到 92%。</p>
+
+  <p><strong>Diffusion-ES</strong>（2024）将 Diffusion 与进化搜索结合，通过约束满足引导采样，约束满足率提升至 97%。</p>
+
+  <p><strong>LED</strong>（2023）将扩散过程移到潜空间（VAE latent），大幅减少推理步数，在保持多模态的同时实现实时预测。</p>
+
+  <h4>典型性能（nuScenes，minADE$_5$）</h4>
+  <table>
+    <tr><th>方法</th><th>minADE$_5$ ↓</th><th>MR$_5$ ↓</th><th>约束满足率 ↑</th></tr>
+    <tr><td>MID</td><td>1.51</td><td>0.48</td><td>—</td></tr>
+    <tr><td>CTG</td><td>1.18</td><td>0.38</td><td>92%</td></tr>
+    <tr><td>Diffusion-ES</td><td>1.15</td><td>0.36</td><td>97%</td></tr>
+  </table>
+  <div class="callout amber">
+    <strong>⚠️ 当前瓶颈</strong>
+    推理速度是最大障碍：标准 100 步去噪需要 100—500ms，远超实时要求（通常需要 ≤50ms）。LED 通过潜空间扩散部分缓解，但精度有所下降。另一个局限是纯数值轨迹生成缺乏对场景高层语义的理解。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 7: Generation 5 - VLA/LLM
+     ============================================ -->
+<div class="section purple">
+  <h2>第五代：VLA/LLM 时代（2024+）</h2>
+
+  <h4>What — 定义与概述</h4>
+  <p>VLA（Vision-Language-Action）方法利用大语言模型和视觉-语言-动作模型的世界知识和推理能力，将轨迹预测从"数值回归"提升到"场景理解 + 轨迹生成"。这是当前最前沿的探索方向。</p>
+
+  <h4>Why — 动机与问题</h4>
+  <p>Diffusion 解决了多模态问题，但它不理解"为什么"——它只知道轨迹的数值分布，不知道场景的高层语义（为什么前车会急刹？为什么行人会在此处横穿？）。LLM 的世界知识提供了语义理解的突破口。</p>
+  <div class="callout blue">
+    <strong>💡 VLA 的核心价值</strong>
+    <strong>语义理解</strong>：能理解"前方施工标志 → 车辆可能减速"这类因果关系；<strong>泛化能力</strong>：预训练知识让模型在罕见场景（如事故现场）也能做出合理预测；<strong>端到端统一</strong>：感知-预测-规划可以在同一个 VLA 模型中联合建模。
+  </div>
+
+  <h4>主流方向</h4>
+  <div class="grid-2">
+    <div class="card purple">
+      <h3>语言条件轨迹预测</h3>
+      <p>用自然语言描述场景意图（如"前方车辆准备左转"），引导轨迹生成。语言提供了丰富的语义标签，可用于半监督学习。</p>
+    </div>
+    <div class="card purple">
+      <h3>LLM 作为运动规划器</h3>
+      <p>将场景描述输入 LLM，让 LLM 推理出合理轨迹。这是最激进的路线——将端到端驾驶问题完全交给 LLM。</p>
+    </div>
+    <div class="card purple">
+      <h3>世界模型驱动预测</h3>
+      <p>通过预测下一帧视频/BEV，隐式包含运动预测。世界模型在隐空间中生成未来场景，轨迹从场景中提取。</p>
+    </div>
+    <div class="card purple">
+      <h3>端到端 VLA（DriveVLM 等）</h3>
+      <p>将感知、预测、规划统一在一个 VLA 框架中。DriveVLM 是典型代表，在端到端 Pipeline 中包含轨迹预测模块。</p>
+    </div>
+  </div>
+
+  <h4>现状评估</h4>
+  <div class="callout amber">
+    <strong>⚠️ VLA 在轨迹预测上的现状</strong>
+    VLA 的数值指标尚未超过专用 Transformer/Diffusion 模型。但在场景理解和泛化能力上展现出独特优势。这是快速发展的前沿方向，预计 2025—2026 年会有重大突破。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 8: Performance Evolution
+     ============================================ -->
+<div class="section">
+  <h2>性能演化曲线 / Performance Evolution</h2>
+
+  <h4>ETH/UCY（行人，ADE @K=20）</h4>
+  <div class="ascii-art">ADE (m) ↓
+1.2 │ ■ Social-LSTM (2016)
+    │
+1.0 │
+    │
+0.8 │
+    │
+0.6 │     ■ Social-GAN (2018)
+    │
+0.4 │          ■ STGCNN (2020)  ■ AgentFormer (2021)
+    │                               ■ MID (2022)
+    │                                    ■ LED (2023)
+0.3 │─────────────────────────────────────────────────
+    │
+    └────┬────┬────┬────┬────┬────┬────┬────→ 年份
+        2016 2017 2018 2019 2020 2021 2022 2023
+
+从 1.09 → 0.36，6 年降低 67%
+但 2021 年后提升趋缓 → ETH/UCY 接近饱和</div>
+
+  <h4>nuScenes（车辆，minADE$_5$）</h4>
+  <div class="ascii-art">minADE₅ (m) ↓
+3.0 │
+    │
+2.5 │
+    │
+2.0 │ ■ LaneGCN (2020)
+    │
+1.5 │      ■ HiVT (2022)  ■ MTR (2022)
+    │                          ■ QCNet (2023)
+    │                               ■ CTG (2023)
+1.0 │──────────────────────────── ■ Diffusion-ES (2024)
+    │
+    └────┬────┬────┬────┬────┬────→ 年份
+        2020 2021 2022 2023 2024
+
+从 1.71 → 1.15，4 年降低 33%
+Diffusion 方法在约束满足率上优势明显</div>
+
+  <div class="callout blue">
+    <strong>💡 关键观察</strong>
+    ETH/UCY 基准在 2021 年后提升趋于平缓，说明该数据集已接近饱和（行人轨迹相对简单，预测难度有上限）。nuScenes/Waymo 等车辆数据集仍在快速进步，说明高动态复杂场景的预测仍有很大提升空间。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 9: Why Each Paradigm Was Replaced
+     ============================================ -->
+<div class="section green">
+  <h2>为什么每次范式被替代 / Why Each Paradigm Was Replaced</h2>
+  <table>
+    <tr><th>范式转换</th><th>旧方法瓶颈</th><th>新方法解法</th><th>引入的代价</th></tr>
+    <tr><td>手工 → RNN</td><td>无法学习复杂模式</td><td>LSTM 自动学习时序</td><td>需要标注数据</td></tr>
+    <tr><td>RNN → GNN</td><td>池化丢失个体信息</td><td>图结构显式建模交互</td><td>图构建成本</td></tr>
+    <tr><td>GNN → Transformer</td><td>局部图、固定拓扑</td><td>全局注意力、动态交互</td><td>$O(N^2)$ 计算</td></tr>
+    <tr><td>Transformer → Diffusion</td><td>离散锚点、有限模式</td><td>连续分布、无限模式</td><td>推理速度慢</td></tr>
+    <tr><td>Diffusion → VLA</td><td>纯数值、缺语义</td><td>世界知识、推理能力</td><td>模型巨大、验证困难</td></tr>
+  </table>
+  <div class="callout amber">
+    <strong>⚠️ 重要结论</strong>
+    没有一种方法在所有维度上都是最优的。每次转换都是在表达能力、计算成本和数据需求之间的重新权衡。选择取决于具体的应用约束：实时性要求高 → Transformer；多模态要求高 → Diffusion；泛化能力要求高 → VLA。
+  </div>
+</div>
+
+<!-- ============================================
+     SECTION 10: Summary
+     ============================================ -->
+<div class="section">
+  <h2>小结 / Summary</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>五代演化</h3>
+      <div class="flow">
+        <div class="flow-node">RNN</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node green">GNN</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber">Trans</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node red">Diff</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node purple">VLA</div>
+      </div>
+      <p style="font-size:12px;">RNN → GNN → Transformer → Diffusion → VLA</p>
+    </div>
+    <div class="card amber">
+      <h3>核心 trade-off</h3>
+      <ul>
+        <li>表达能力 vs 计算成本</li>
+        <li>多模态 vs 推理速度</li>
+        <li>语义理解 vs 数据需求</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>每代驱动力</h3>
+      <p>上一代的核心瓶颈推动了下一代的探索。每一代都不是凭空出现，而是针对上一代的具体问题提出的解决方案。</p>
+    </div>
+    <div class="card purple">
+      <h3>当前前沿</h3>
+      <ul>
+        <li><strong>Transformer</strong>：精度最高，实时性好</li>
+        <li><strong>Diffusion</strong>：多模态最好，约束灵活</li>
+        <li><strong>VLA</strong>：语义最强，泛化最强</li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>性能一览表</h4>
+  <table>
+    <tr><th>基准</th><th>代表方法</th><th>指标</th><th>当前最优</th></tr>
+    <tr><td>ETH/UCY（行人）</td><td>LED</td><td>ADE @K=20</td><td>0.36m</td></tr>
+    <tr><td>nuScenes（车辆）</td><td>Diffusion-ES</td><td>minADE$_5$</td><td>1.15m</td></tr>
+    <tr><td>Waymo Open</td><td>QCNet</td><td>minADE</td><td>领先</td></tr>
+  </table>
+</div>
+
+<hr>
+<div class="nav-footer">
+  <a href="../index.html">← 总目录</a>
+  · <a href="../03-prediction-metrics/index.html">← 03 评估指标体系</a>
+  · <a href="../05-prediction-gnn/index.html">下一篇：05 图神经网络预测方法 →</a>
+</div>
+
+</div>
+</body>
+</html>

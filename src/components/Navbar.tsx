@@ -1,10 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
+
+  // 用 ref 追踪定时器，避免状态更新导致的竞态
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const topicOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearOpenTimer = () => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  };
+
+  const clearTopicOpenTimer = () => {
+    if (topicOpenTimer.current) {
+      clearTimeout(topicOpenTimer.current);
+      topicOpenTimer.current = null;
+    }
+  };
 
   return (
     <nav
@@ -80,14 +99,23 @@ export function Navbar() {
 
         {/* 右侧图标组 */}
         <div className="flex items-center gap-1">
-          {/* 博文下拉触发器 */}
-          <div style={{ position: 'relative' }}>
+          {/* 博文下拉 */}
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={() => {
+              clearOpenTimer();
+              setOpen(true);
+            }}
+            onMouseLeave={() => {
+              clearOpenTimer();
+              openTimer.current = setTimeout(() => setOpen(false), 200);
+            }}
+          >
             <div
               className="nav-link"
               style={{
                 background: open ? 'rgba(255,255,255,0.2)' : undefined,
               }}
-              onMouseEnter={() => setOpen(true)}
               onClick={() => setOpen(!open)}
             >
               <i className="fa-solid fa-book-open" style={{ fontSize: '12px' }}></i>
@@ -102,7 +130,6 @@ export function Navbar() {
               ></i>
             </div>
 
-            {/* 下拉菜单 */}
             {open && (
               <div
                 style={{
@@ -120,7 +147,6 @@ export function Navbar() {
                   overflow: 'hidden',
                   zIndex: 2000,
                 }}
-                onMouseLeave={() => setOpen(false)}
               >
                 <a href="/posts/diffusion-index" className="nav-dropdown-item">
                   <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
@@ -137,6 +163,75 @@ export function Navbar() {
                 <a href="/archives" className="nav-dropdown-item">
                   <i className="fa-solid fa-list-ul" style={{ fontSize: '12px', color: 'rgba(0,200,255,0.8)' }}></i>
                   全部博文
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* 专题下拉 */}
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={() => {
+              clearTopicOpenTimer();
+              setTopicOpen(true);
+            }}
+            onMouseLeave={() => {
+              clearTopicOpenTimer();
+              topicOpenTimer.current = setTimeout(() => setTopicOpen(false), 200);
+            }}
+          >
+            <div
+              className="nav-link"
+              style={{
+                background: topicOpen ? 'rgba(255,255,255,0.2)' : undefined,
+              }}
+              onClick={() => setTopicOpen(!topicOpen)}
+            >
+              <i className="fa-solid fa-layer-group" style={{ fontSize: '12px' }}></i>
+              <span>专题</span>
+              <i
+                className="fa-solid fa-chevron-down"
+                style={{
+                  fontSize: '10px',
+                  transition: 'transform 0.2s',
+                  transform: topicOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+              ></i>
+            </div>
+
+            {topicOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  minWidth: '200px',
+                  background: 'rgba(20, 20, 30, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                  overflow: 'hidden',
+                  zIndex: 2000,
+                }}
+              >
+                <a href="/topics/ad-prediction-planning" className="nav-dropdown-item">
+                  <i className="fa-solid fa-car" style={{ fontSize: '12px', color: 'rgba(59,130,246,0.8)' }}></i>
+                  自动驾驶预测与规划
+                </a>
+                <a href="/topics/diffusion" className="nav-dropdown-item">
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: '12px', color: 'rgba(34,197,94,0.8)' }}></i>
+                  Diffusion 模型
+                </a>
+                <a href="/topics/rl" className="nav-dropdown-item">
+                  <i className="fa-solid fa-brain" style={{ fontSize: '12px', color: 'rgba(245,158,11,0.8)' }}></i>
+                  强化学习
+                </a>
+                <a href="/topics/vla" className="nav-dropdown-item">
+                  <i className="fa-solid fa-robot" style={{ fontSize: '12px', color: 'rgba(124,58,237,0.8)' }}></i>
+                  VLA 模型
                 </a>
               </div>
             )}

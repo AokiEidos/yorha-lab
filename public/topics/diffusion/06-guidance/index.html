@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 条件引导与Classifier Guidance — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>06 条件引导与Classifier Guidance</h1>
+    <p>条件引导与Classifier Guidance</p>
+  </div>
+
+  <div class="section">
+    <h2>为什么需要条件引导 / Why Conditional Generation</h2>
+    <p>无条件扩散只能生成"随机图像"——条件引导让我们控制生成内容</p>
+  </div>
+  <div class="card">
+    <h3>无条件生成的局限性</h3>
+    <p style="font-size:12px;color:var(--text-2)">纯扩散模型（如 DDPM）在 $p_\theta(x_0)$ 上训练，可以生成高质量图像，但无法控制生成内容：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">❌ 随机采样</p>
+        <p style="font-size:12px;color:var(--text-2)">每次采样都从纯噪声开始，生成内容完全随机，无法指定类别、文本或布局</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">✅ 条件生成</p>
+        <p style="font-size:12px;color:var(--text-2)">给定条件 $y$（文本、类别、深度图），生成符合该条件的图像</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">在真实应用中，我们几乎总是需要控制生成结果：文生图需要文本条件，医疗影像需要器官边界条件，自动驾驶需要 HD 地图条件。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>条件注入的本质</strong><br>
+      条件生成的核心是修改 reverse process：$p_\theta(x_{t-1} \mid x_t) \to p_\theta(x_{t-1} \mid x_t, y)$。网络的输入从 $(x_t, t)$ 变为 $(x_t, t, c)$，其中 $c$ 是条件 $y$ 的嵌入表示。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>条件注入的三种方式</h3>
+    <p style="font-size:12px;color:var(--text-2)">实际应用中，条件注入主要有三种策略：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th style="width:100px">方式</th><th>实现</th><th>代表模型</th></tr>
+      <tr><td><strong>隐式条件</strong></td><td>直接 concat $(x_t, c)$ 输入 UNet</td><td>原始 DDPM 条件版</td></tr>
+      <tr><td><strong>Cross-Attention</strong></td><td>$c$ 通过 attention 注入 UNet 中间层</td><td>Stable Diffusion</td></tr>
+      <tr><td><strong>梯度引导</strong></td><td>利用外部分类器的梯度引导生成</td><td>Classifier Guidance</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">后面章节将详细讲解这三种方式，特别是 Classifier Guidance 和 CFG（Classifier-Free Guidance），后者是当前文生图模型的标准。</p>
+    <div class="callout amber" style="font-size:12px">
+      <strong>CFG 的优势</strong><br>
+      Classifier-Free Guidance (CFG) 不需要单独的分类器，直接通过无条件模型和条件模型的线性组合实现引导，训练简单、部署方便，是 SD 系列的核心技术。
+    </div>
+  </div>
+  <div class="section">
+    <h2>条件扩散模型 / Conditional Diffusion</h2>
+    <p>无条件扩散模型无法控制生成内容——条件扩散通过学习 $p_\theta(x_{t-1} \mid x_t, y)$ 实现条件生成</p>
+  </div>
+  <div class="card">
+    <h3>条件扩散的概率建模</h3>
+    <p style="font-size:12px;color:var(--text-2)">给定条件 $y$（文本、类别、深度图等），条件扩散模型学习：</p>
+    <div class="formula">$$p_\theta(x_{t-1} \mid x_t, y) = \mathcal{N}\Bigl(x_{t-1}; \mu_\theta(x_t, t, y), \sigma_t^2 \mathbf{I}\Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">训练目标变为：</p>
+    <div class="formula">$$\mathcal{L}_{\text{cond}} = \mathbb{E}_{t, x_0, y, \epsilon}\Bigl[ \| \epsilon - \epsilon_\theta(x_t, t, y) \|^2 \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">条件注入的方式有两种：<strong>隐式条件</strong>（通过 $\epsilon_\theta(x_t, t, y)$ 隐式学习条件分布）和<strong>显式条件</strong>（通过 classifier 引导）。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>条件的类型</strong><br>
+      文本（text）：CLIP embedding → Cross-Attention；类别（class）：embedding lookup → AdaLN；深度图（depth）：编码后 concat → UNet 输入；边界（canny）：编码后 concat → UNet 输入。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>Classifier Guidance / 分类器引导</h2>
+    <p>通过预训练分类器的梯度引导扩散模型朝目标类别移动，实现高质量条件生成</p>
+  </div>
+  <div class="card green">
+    <h3>梯度推导</h3>
+    <p style="font-size:12px;color:var(--text-2)">Classifier Guidance 的核心是利用预训练分类器 $p_\phi(y \mid x_t)$ 的梯度来引导扩散过程。目标分布变为：</p>
+    <div class="formula">$$\hat{p}(x_{t-1} \mid x_t, y) \propto p_\theta(x_{t-1} \mid x_t) \cdot p_\phi(y \mid x_{t-1})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">取对数并使用一阶近似：</p>
+    <div class="formula">$$\nabla_{x_{t-1}} \log \hat{p}(x_{t-1} \mid x_t, y) \approx \nabla_{x_{t-1}} \log p_\theta(x_{t-1} \mid x_t) + \nabla_{x_{t-1}} \log p_\phi(y \mid x_{t-1})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">在采样时加入分类器梯度：</p>
+    <div class="formula">$$\mu_{y} = \mu + s \cdot \sigma_t^2 \nabla_{x_t} \log p_\phi(y \mid x_t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $s$ 是 guidance scale（引导强度），控制条件的重要程度。当 $s=0$ 时等价于无条件扩散。</p>
+  </div>
+  <div class="card">
+    <h3>Classifier Guidance 的局限性</h3>
+    <div class="grid-3">
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">需要单独训练分类器</p>
+        <p style="font-size:12px;color:var(--text-2)">分类器 $p_\phi(y \mid x_t)$ 必须在噪声图像上训练，过程复杂</p>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">多分类任务计算量大</p>
+        <p style="font-size:12px;color:var(--text-2)">每个类别需要一个分类器，或一个多分类器需要多次前向传播</p>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">梯度噪声大</p>
+        <p style="font-size:12px;color:var(--text-2)">$x_t$ 是噪声图像，分类器梯度估计不稳定</p>
+      </div>
+    </div>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>CFG 解决了这些问题</strong><br>
+      Classifier-Free Guidance (CFG) 无需单独的分类器，而是通过联合训练无条件模型和条件模型来隐式实现引导。CFG 更简单、更通用，是当前文生图模型的标准配置。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>CFG 隐式分类器视角 / CFG as Implicit Classifier</h2>
+    <p>CFG 本质上是在扩散模型中隐式实现了一个分类器，训练和采样都更简单</p>
+  </div>
+  <div class="card amber">
+    <h3>CFG 的隐式分类器解释</h3>
+    <p style="font-size:12px;color:var(--text-2)">从隐式分类器角度：</p>
+    <div class="formula">$$\nabla_{x_t} \log p(y \mid x_t) \approx \epsilon_\theta(x_t, t, y) - \epsilon_\theta(x_t, t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这意味着条件与无条件预测的差值隐式地给出了分类器的梯度。因此 CFG 的采样公式变为：</p>
+    <div class="formula">$$\tilde{\epsilon}_\theta = \epsilon_\theta(x_t, t) + w \cdot (\epsilon_\theta(x_t, t, y) - \epsilon_\theta(x_t, t))$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $w$ 控制引导强度。当 $w=7.5$ 时，生成质量通常最优。</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>Guidance Scale $w$</th><th>生成质量</th><th>多样性</th><th>适用场景</th></tr>
+      <tr><td>$w < 5$</td><td>模糊、多样</td><td>高</td><td>探索性生成</td></tr>
+      <tr><td>$w = 7$-$9$</td><td>清晰、符合条件</td><td>中等</td><td>文生图默认</td></tr>
+      <tr><td>$w > 12$</td><td>过饱和、artifacts</td><td>低</td><td>精确控制</td></tr>
+    </table>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>Guidance Scale 的调节经验</strong><br>
+      $w$ 过大（如 $>15$）会导致图像过饱和、出现非自然纹理。$w$ 过小（如 $<5$）会导致图像模糊、条件遵从度低。SD 默认 $w=7.5$，是质量和多样性的折中。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>BEV 条件注入实践 / BEV Conditional Injection</h2>
+    <p>自动驾驶中如何通过 CFG 实现 BEV 语义图生成</p>
+  </div>
+  <div class="card purple">
+    <h3>BEV 条件引导的设计</h3>
+    <p style="font-size:12px;color:var(--text-2)">在自动驾驶场景，BEV 生成需要多条件引导：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--purple)">HD 地图条件</p>
+        <p style="font-size:12px;color:var(--text-2)">车道线、边界、路口拓扑 → 编码为 token → Cross-Attention</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">自车意图条件</p>
+        <p style="font-size:12px;color:var(--text-2)">转向、加速、停车 → one-hot 编码 → AdaLN</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">生成时使用：</p>
+    <div class="formula">$$\tilde{\epsilon}_\theta = (1+w) \cdot \epsilon_\theta(z_t, t, c_{\text{BEV}}, c_{\text{intent}}) - w \cdot \epsilon_\theta(z_t, t)$$</div>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>实践建议</strong><br>
+      BEV 生成通常需要 $w=5\text{--}8$。过高会导致生成结果过度依赖地图而失去真实性；过低会导致生成结果与地图不一致。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>GPT-4V 扩散蒸馏 / GPT-4V Diffusion Distillation</h2>
+    <p>视觉-语言模型的知识如何通过扩散模型蒸馏</p>
+  </div>
+  <div class="card green">
+    <h3>知识蒸馏流程</h3>
+    <p style="font-size:12px;color:var(--text-2)">GPT-4V 的视觉理解能力可以通过扩散模型蒸馏到更小的模型中：</p>
+    <div class="formula">$$\mathcal{L}_{\mathrm{distill}} = \mathbb{E}_{x \sim p_{\text{GPT-4V}}, t}\Bigl[ \lVert \epsilon_\theta(x_t, t, c) - \epsilon_{\text{GPT-4V}}(x_t, t, c) \rVert^2 \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $\epsilon_{\text{GPT-4V}}$ 是从 GPT-4V 的视觉特征提取的"教师"噪声预测。这个过程将多模态大模型的视觉推理能力迁移到扩散模型中。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>IP-Adapter 等方法</strong><br>
+      IP-Adapter（用于 Stable Diffusion）通过 cross-attention 机制将图像编码器的特征注入 UNet，实现"图像条件"。类似地，GPT-4V 的视觉特征可以通过蒸馏的方式注入扩散模型，实现更强的视觉理解条件注入。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 06 条件引导与Classifier Guidance · <a href="../index.html">← 总目录</a> · <a href="../05-ldm/index.html">← 05 潜空间扩散（Latent Diffusion Models）</a>  · <a href="../07-architecture/index.html">下一篇：07 UNet 骨干网络与 Transformer 变种 →</a>
+  </div>
+</div>
+</body>
+</html>

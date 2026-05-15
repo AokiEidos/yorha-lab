@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 离线强化学习 / Offline RL — 强化学习</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>10 离线强化学习 / Offline Reinforcement Learning</h1>
+    <p>分布偏移、CQL、IQL、TD3+BC、水平相似性 — 从固定数据集中学习最优策略的完整理论和技术</p>
+  </div>
+
+  <!-- 问题定义 -->
+  <div class="section">
+    <h2>问题定义 / Problem Definition</h2>
+    <p>离线 RL（Batch RL）从固定数据集 $\mathcal{D} = \{(s_i, a_i, r_i, s_i')\}$ 中学习，不允许与环境交互——工业应用的刚需</p>
+  </div>
+
+  <div class="card">
+    <h3>为什么离线 RL 是刚需 / Why Offline RL is Critical</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">可以立刻利用的历史数据</p>
+        <ul style="font-size:12px">
+          <li>机器人演示数据（人工操控收集）</li>
+          <li>推荐系统用户日志（数亿条）</li>
+          <li>自动驾驶测试里程（Waymo 超过 3000 万英里）</li>
+          <li>医疗治疗记录（临床试验数据）</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">在线 RL 的现实障碍</p>
+        <ul style="font-size:12px">
+          <li>机器人手术：试错成本极高，不能让 AI 随便动刀</li>
+          <li>自动驾驶：事故风险不可接受</li>
+          <li>推荐系统：无法做随机实验（伤害用户体验）</li>
+          <li>数据中心：不能随机调节制冷系统（可能宕机）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分布偏移 -->
+  <div class="section red" style="margin-top:20px">
+    <h2>分布偏移 / Distribution Shift — Offline RL 的根本挑战</h2>
+    <p>离线数据集中的每个 $(s,a)$ 都服从数据分布 $\beta(s,a)$，但学到的策略可能会选择分布外的动作</p>
+  </div>
+
+  <div class="card red">
+    <h3>OOD 问题的数学描述 / Out-of-Distribution Problem</h3>
+    <p style="font-size:12px;color:var(--text-2)">数据集 $\mathcal{D}$ 由某个行为策略（behavior policy）$\pi_\beta$ 产生。Offline RL 学到的目标策略 $\pi_\theta$ 往往与 $\pi_\beta$ 不同：</p>
+    <div class="formula">$$\pi_\beta(a\mid s) \neq \pi_\theta(a\mid s) \quad \Rightarrow \quad \text{distribution shift}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">在数据分布内（In-Sample），价值估计是准确的；但对于 $\pi_\theta$ 选择的 OOD 动作，Q 函数是外推的（extrapolation），误差可能任意大。</p>
+    <div class="callout amber" style="margin-top:8px;font-size:12px">
+      <strong>为什么 Q-Learning 在离线设定下会崩溃？</strong>
+      Q-Learning 用 $\max_a Q(s', a)$ 估计未来价值。当 $\pi_\theta$ 选择了一个 OOD 动作 $a'$ 时，$Q(s', a')$ 的值是 Q 网络的外推值——这个值可能是任意正数（过估计）！如果 OOD 动作恰好有最高的 Q 值，策略就会选择它，然后在真实环境中灾难性失败。
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:8px">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>支持度 vs 分布内的差距</h3>
+      <p style="font-size:12px;color:var(--text-2)"><strong>支持度内（In-Support）</strong>：状态-动作对在 $\pi_\beta$ 的支持内，Q 函数有训练数据支撑，误差可控。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px"><strong>支持度外（Out-of-Support / OOD）</strong>：从未被 $\pi_\beta$ 访问过的 $(s,a)$，Q 函数的外推误差无法保证。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>过度估计的级联效应</h3>
+      <p style="font-size:12px;color:var(--text-2)">$Q(s,a) = \mathbb{E}[r] + \gamma \mathbb{E}_{s'}\Bigl[\max_{a'} Q(s', a')\big]$</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">若某 OOD 动作在 $s'$ 处被 Q 网络赋予高值，策略会选它；然后在真实环境中该动作实际效果差，导致下一状态更差，恶性循环。</p>
+    </div>
+  </div>
+
+  <!-- 解决方案分类 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>解决方案分类 / Three Solution Approaches</h2>
+    <p>离线 RL 的研究围绕三个方向展开：约束策略、约束价值、约束模型</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>1. 约束策略 / Policy Constraint</h3>
+      <p style="font-size:12px;color:var(--text-2)">让 $\pi_\theta$ 接近 $\pi_\beta$，限制策略偏移的范围。KL 散度或 MMD 作为约束。</p>
+      <div class="formula">$$\pi_\theta \approx \arg\max_\pi \mathbb{E}_{s\sim\beta}[Q(s, \pi)] \quad \text{s.t.} \quad D_{\text{KL}}(\pi \mid \pi_\beta) \leq \epsilon$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">代表：BC、BRAC、AWAC。优点是简单；缺点是只能达到 $\pi_\beta$ 的上界，无法超越数据。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>2. 约束价值 / Value Constraint</h3>
+      <p style="font-size:12px;color:var(--text-2)">让 Q 函数对 OOD 动作保守估计，避免策略选择高估的动作。</p>
+      <div class="formula">$$\hat{Q} \leftarrow \text{conservative update} \quad \Rightarrow \quad \pi_\theta(a\mid s) \propto \exp(\hat{Q}(s,a))$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">代表：CQL（Conservative Q-Learning）。核心思想：强制 Q 值在 OOD 区域低估。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>3. 约束模型 / Model Constraint</h3>
+      <p style="font-size:12px;color:var(--text-2)">学习环境转移模型 $\hat{p}(s'|s,a)$，只在模型认为可靠的区域内做规划。</p>
+      <div class="formula">$$\hat{p}(s'\mid s,a) \text{ uncertain} \Rightarrow \text{reduce rollout depth}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">代表：MOReL、MOPO。挑战是模型误差本身；组合离线+在线（semi-online）是当前研究前沿。</p>
+    </div>
+  </div>
+
+  <!-- CQL -->
+  <div class="section" style="margin-top:20px">
+    <h2>CQL / Conservative Q-Learning (Kumar et al., 2020)</h2>
+    <p>CQL 是第一个在大规模离散动作任务（Atari）和连续控制任务（Mujoco）上都显著超越 BC 的离线 RL 算法</p>
+  </div>
+
+  <div class="card">
+    <h3>CQL 的数学推导 / Conservative Q-Learning Derivation</h3>
+    <p style="font-size:12px;color:var(--text-2)">CQL 的目标是学习一个保守的 Q 函数 $\hat{Q}$，使得对任意动作 $a$（包括 OOD 动作）都有 $\hat{Q}(s,a) \leq Q^{\pi_\beta}(s,a)$（真实价值的上界）：</p>
+    <div class="formula">$$\mathcal{L}_{\text{CQL}}(\theta) = \underbrace{\mathbb{E}_{s,a\sim\mathcal{D}}\left[ \frac{1}{2}\left( Q_\theta(s,a) - \mathcal{B}^\pi Q_\theta(s,a) \right)^2 \right]}_{\text{标准 TD 损失}} + \underbrace{\alpha \cdot \mathbb{E}_{s\sim\mathcal{D}, a\sim\pi_\beta}\left[ Q_\theta(s,a) \right]}_{\text{数据分布 Q 值降低}} - \underbrace{\alpha \cdot \mathbb{E}_{s\sim\mathcal{D}, a\sim\tilde{\pi}}\left[ Q_\theta(s,a) \right]}_{\text{采样分布 Q 值提高}}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\tilde{\pi}$ 是从当前策略采样的动作（可能包含 OOD）。简化形式：</p>
+    <div class="formula">$$\mathcal{L}_{\text{CQL}} = \mathbb{E}_{(s,a)\sim\mathcal{D}}\left[ -\alpha \cdot Q(s,a) \right] + \mathbb{E}_{s\sim\mathcal{D}, a\sim\tilde{\pi}}\left[ \alpha \cdot Q(s,a) \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">第一项（降低）作用于数据集中的动作——真实数据里的动作应该被保守估计；第二项（提高）作用于当前策略的动作——防止 Q 值过低导致策略退化。通过调整 $\alpha$，CQL 找到一个平衡点：保守但仍然比数据策略更好的 Q 函数。</p>
+  </div>
+
+  <!-- IQL -->
+  <div class="section green" style="margin-top:20px">
+    <h2>IQL / 隐式 Q 学习 (Kostrikov et al., 2022)</h2>
+    <p>IQL 不直接学习 Q 函数，而是用 expectile regression 学习优势函数的隐式版本，然后通过优势加权的 IL 提取策略</p>
+  </div>
+
+  <div class="card green">
+    <h3>Expectile Regression / 分位数回归</h3>
+    <p style="font-size:12px;color:var(--text-2)">IQL 的核心是用 expectile regression 学习 $V$ 和 $A$，而不是直接学习 $Q$。给定回报分布，expectile $\tau$ 估计的是该分布的 $\tau$-分位值：</p>
+    <div class="formula">$$L_\tau^E(V) = \mathbb{E}_y\left[ \mid \tau - \mathbb{1}(y - V) \mid \cdot (y - V)^2 \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">$\tau=0.5$ 时退化为均值（标准 MSE）；$\tau \to 1$ 时关注高回报（上分位）；$\tau \to 0$ 时关注低回报（下分位）。IQL 用两个 expectile——$V$（$\tau=0.5$，接近均值）和 $A$ 高分位——来构建优势函数。</p>
+    <div class="formula">$$\hat{A}(s,a) = \hat{Q}_{\text{high}}(s,a) - \hat{V}(s)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">高分位 Q 估计避免了 OOD 动作的过度估计（因为高分位是从数据分布中估计的上界）。然后用 Expectile 加权的模仿学习提取策略：</p>
+    <div class="formula">$$\pi(a\mid s) \propto \pi_\beta(a\mid s) \cdot \exp(\hat{A}(s,a) / \tau)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">IQL 在 D4RL benchmark 上的 Antmaze 等困难任务中表现优异（~90% 专家水平）。</p>
+  </div>
+
+  <!-- TD3+BC -->
+  <div class="section amber" style="margin-top:20px">
+    <h2>TD3+BC / 简单即强大 (Fujimoto & Gu, 2021)</h2>
+    <p>Fujimoto 发现：在 TD3 的基础上加一个简单的 BC 正则化，效果可以和 CQL 媲美</p>
+  </div>
+
+  <div class="card amber">
+    <h3>TD3+BC 损失函数</h3>
+    <div class="formula">$$\mathcal{L}_{\text{TD3+BC}}(\theta) = \mathcal{L}_{\text{TD3}}(\theta) + \lambda \cdot \mathbb{E}_{(s,a)\sim\mathcal{D}}\left[ \mid \pi_\theta(s) - a \mid^2 \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">第一个项是标准 TD3 损失（双 Q + target network），第二个项是简单的行为克隆正则化（策略输出与数据动作的距离）。这个简单的组合在 D4RL 上与 CQL 性能相当，而且：</p>
+    <ul style="font-size:12px;margin-top:6px">
+      <li>不需要额外的超参数（$\lambda$ 可以设为固定值，如 2.5）</li>
+      <li>实现极为简单，不需要重要性采样或加权</li>
+      <li>对数据分布的质量更鲁棒</li>
+    </ul>
+  </div>
+
+  <!-- D4RL & 评估 -->
+  <div class="section" style="margin-top:20px">
+    <h2>D4RL Benchmark / 数据集与评估标准</h2>
+  </div>
+
+  <div class="card">
+    <h3>D4RL 数据集设计 / Dataset Design</h3>
+    <p style="font-size:12px;color:var(--text-2)">D4RL（Fu et al., 2020）是离线 RL 的标准 benchmark，提供了多种质量的数据集：</p>
+    <div class="grid-3" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Medium</p>
+        <p style="font-size:12px;color:var(--text-2)">由中等策略（50-80% 专家水平）收集的数据，约 100 万步。代表真实场景中最常见的数据质量。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Medium-Expert</p>
+        <p style="font-size:12px;color:var(--text-2)">50% 中等策略 + 50% 专家策略的数据。测试算法在混合数据中提取专家知识的能力。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">Medium-Replay</p>
+        <p style="font-size:12px;color:var(--text-2)">用 replay buffer 中历史数据（含低质量数据）构成的数据集。测试算法在低质量数据上的鲁棒性。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout blue" style="margin-top:8px">
+    <strong>📊 主要算法在 D4RL 上的表现（Normalized Score, 0=随机, 100=专家）</strong>
+    <table style="font-size:11.5px;margin-top:8px">
+      <tr><th>算法</th><th>HalfCheetah-M</th><th>Hopper-M</th><th>Walker2d-M</th><th>AntMaze-M</th><th>Adroit-M</th></tr>
+      <tr><td>BC</td><td>34.6</td><td>27.6</td><td>16.3</td><td>0.0</td><td>0.3</td></tr>
+      <tr><td>CQL</td><td>59.1</td><td>98.4</td><td>79.2</td><td>74.1</td><td>45.9</td></tr>
+      <tr><td>IQL</td><td>78.3</td><td>110.1</td><td>98.8</td><td>91.2</td><td>57.5</td></tr>
+      <tr><td>TD3+BC</td><td>59.1</td><td>98.7</td><td>88.3</td><td>84.5</td><td>44.6</td></tr>
+      <tr><td>DT（Decision Transformer）</td><td>42.6</td><td>61.5</td><td>74.0</td><td>79.0</td><td>——</td></tr>
+    </table>
+    <p style="font-size:11px;color:var(--text-2);margin-top:4px">IQL 在大多数任务上领先；TD3+BC 简单有效；Decision Transformer（用 Transformer 建模序列）代表了离线 RL 的另一种范式。</p>
+  </div>
+
+  <!-- Decision Transformer -->
+  <div class="section purple" style="margin-top:20px">
+    <h2>Decision Transformer / 序列建模方法 (Chen et al., 2021)</h2>
+    <p>将离线 RL 重新定义为序列建模问题：用自回归模型直接预测动作序列，绕过 Q 函数</p>
+  </div>
+
+  <div class="card purple">
+    <h3>Decision Transformer 的思路</h3>
+    <p style="font-size:12px;color:var(--text-2)">传统 RL 是"价值驱动"（value-driven）：先学 Q 函数，再从 Q 推出策略。DT 是"序列建模"（sequence modeling）：把离线数据看成序列，用 GPT 风格的自回归模型预测下一步。</p>
+    <div class="formula">$$\hat{a}_t = \text{Transformer}\Bigl( R_{t}, s_{t}, a_{t}, R_{t+1}, s_{t+1}, \ldots, R_{1}, s_{1} \Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">输入是"回报-to-go"（未来期望回报）和历史状态-动作序列，输出是当前动作。通过在高质量轨迹上训练，DT 可以学习复杂的策略模式，无需显式 Q 函数或 TD 误差。DT 的优势在于对长程依赖建模能力强，适合稀疏奖励任务。</p>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 10 离线强化学习 · <a href="../index.html">← 总目录</a> · <a href="../09-multi-agent/index.html">← 09 多智能体</a> · <a href="../11-rlhf/index.html">下一篇：11 RLHF →</a>
+  </div>
+</div>
+</body>
+</html>

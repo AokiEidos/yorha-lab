@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自动驾驶预测与规划 — 技术文档系列</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text-2: #64748b; --text-3: #94a3b8;
+    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --code-bg: #f1f5f9; --code-border: #cbd5e1;
+    --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  /* Title bar */
+  .title-bar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 28px; text-align: center; margin-bottom: 20px; }
+  .title-bar h1 { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .title-bar p { color: var(--text-2); font-size: 12px; margin-top: 6px; }
+  /* Section */
+  .section { border-left: 4px solid var(--blue); background: linear-gradient(to right, #eff6ff, transparent); padding: 12px 16px; margin: 20px 0 12px; border-radius: 0 6px 6px 0; }
+  .section.green { border-left-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+  .section.amber { border-left-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+  .section.red { border-left-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+  .section h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .section p { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 3px solid var(--blue); }
+  .card.green { border-left-color: var(--green); }
+  .card.amber { border-left-color: var(--amber); }
+  .card.red { border-left-color: var(--red); }
+  .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  /* Callout */
+  .callout { border-radius: 6px; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
+  .callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+  td { padding: 7px 10px; border: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #f8fafc; }
+  /* Code */
+  pre { background: var(--code-bg); border: 1px solid var(--code-border); border-left: 3px solid var(--code-border); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; margin: 10px 0; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  .kw { color: #7c3aed; font-weight: 600; }
+  .fn { color: #1d4ed8; }
+  .str { color: #166534; }
+  .cmt { color: #94a3b8; font-style: italic; }
+  .num { color: #b45309; }
+  /* Tag */
+  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 600; margin-right: 4px; }
+  .tag.blue { background: #dbeafe; color: #1e40af; }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.amber { background: #fef3c7; color: #92400e; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.purple { background: #ede9fe; color: #5b21b6; }
+  /* Formula */
+  .formula { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; text-align: center; font-family: 'Times New Roman', serif; font-size: 14px; color: #1e40af; margin: 12px 0; overflow-x: auto; }
+  .formula sub, .formula sup { font-size: 0.8em; }
+  /* Flowchart */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+  .flow-node.green { border-color: var(--green); color: var(--green); }
+  .flow-node.amber { border-color: var(--amber); color: #b45309; }
+  .flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+  /* Timeline */
+  .timeline { position: relative; padding-left: 20px; border-left: 2px solid var(--border); margin: 12px 0; }
+  .timeline-item { margin-bottom: 16px; position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -25px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); }
+  .timeline-item.amber::before { background: var(--amber); }
+  .timeline-item.green::before { background: var(--green); }
+  .timeline-year { font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .timeline-item.green .timeline-year { color: var(--green); }
+  .timeline-item.amber .timeline-year { color: var(--amber); }
+  /* List */
+  ul, ol { padding-left: 20px; margin: 6px 0; }
+  li { margin-bottom: 4px; }
+  p { margin-bottom: 8px; }
+  /* HR */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  /* Link */
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 15px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+  h3 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+  /* Index grid */
+  .index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .index-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; border-left: 3px solid var(--blue); transition: transform 0.15s; }
+  .index-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .index-item.green { border-left-color: var(--green); }
+  .index-item.amber { border-left-color: var(--amber); }
+  .index-item.red { border-left-color: var(--red); }
+  .index-item.purple { border-left-color: #7c3aed; }
+  .index-item h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .index-item p { color: var(--text-2); font-size: 11.5px; margin-bottom: 8px; }
+  .index-item .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>自动驾驶预测与规划技术文档 / Autonomous Driving Prediction & Planning</h1>
+    <p>覆盖自动驾驶预测与规划从感知到端到端全栈技术脉络 · 2024–2026</p>
+  </div>
+
+  <!-- 目录导航 -->
+  <div class="section">
+    <h2>文档索引 / Document Index</h2>
+    <p>共 12 个章节，从轨迹预测基础到 VLA 前沿，循序渐进。每个章节均可独立查阅。</p>
+  </div>
+
+  <div class="index-grid">
+    <a href="01-overview/index.html" class="index-item">
+      <h3>01 自动驾驶预测与规划算法全景</h3>
+      <p>感知-预测-规划-控制完整技术栈、各模块关系图谱、行业技术路线演进</p>
+      <div class="tags">
+        <span class="tag blue">入门</span>
+        <span class="tag purple">全景</span>
+      </div>
+    </a>
+    <a href="02-prediction-problem/index.html" class="index-item green">
+      <h3>02 轨迹预测问题定义与数学形式化</h3>
+      <p>Agent、Scene Context、多模态分布、Brownian Bridge、意图与交互联合建模</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+        <span class="tag blue">预测</span>
+      </div>
+    </a>
+    <a href="03-prediction-metrics/index.html" class="index-item green">
+      <h3>03 评估指标体系</h3>
+      <p>ADE / FDE、Miss Rate、minAP、碰撞率、质控指标与工业落地关注点</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+      </div>
+    </a>
+    <a href="04-prediction-evolution/index.html" class="index-item amber">
+      <h3>04 预测方法演进：从规则到深度学习</h3>
+      <p>Physics-Based → Social Pooling → CNN / RNN 序列建模、行为识别与场景演化</p>
+      <div class="tags">
+        <span class="tag amber">prediction</span>
+        <span class="tag blue">深度学习</span>
+      </div>
+    </a>
+    <a href="05-prediction-gnn/index.html" class="index-item amber">
+      <h3>05 图神经网络预测方法</h3>
+      <p>STGCNN、STGAT、LaneGCN、VectorNet、时空图建模与图注意力机制</p>
+      <div class="tags">
+        <span class="tag amber">GNN</span>
+      </div>
+    </a>
+    <a href="06-prediction-deep/index.html" class="index-item purple">
+      <h3>06 Transformer 与扩散模型预测</h3>
+      <p>MTR、QCNet、MID、CTG 与多模态轨迹生成、Conditional Flow 与 Score-based</p>
+      <div class="tags">
+        <span class="tag purple">多模态</span>
+        <span class="tag amber">扩散模型</span>
+      </div>
+    </a>
+    <a href="07-planning-foundation/index.html" class="index-item">
+      <h3>07 规划方法演进：从搜索到优化</h3>
+      <p>A* / RRT → Lattice / MPC、规划问题数学形式化、代价函数设计</p>
+      <div class="tags">
+        <span class="tag blue">规划</span>
+        <span class="tag purple">经典</span>
+      </div>
+    </a>
+    <a href="08-model-based-planning/index.html" class="index-item green">
+      <h3>08 Model-Based 规划：MPC、EM Planner</h3>
+      <p>MPC、EM Planner、IPOPT、Osqp、Ego-PCM 与学习式规划范式转变</p>
+      <div class="tags">
+        <span class="tag green">规划</span>
+        <span class="tag blue">优化</span>
+      </div>
+    </a>
+    <a href="09-learning-planning/index.html" class="index-item amber">
+      <h3>09 Learning-Based 规划：RL、IL 与扩散规划器</h3>
+      <p>Diffuser、Decision Diffuser、SafeDiffuser、Imitation Learning、生成式规划</p>
+      <div class="tags">
+        <span class="tag amber">RL</span>
+        <span class="tag amber">IL</span>
+      </div>
+    </a>
+    <a href="10-e2e/index.html" class="index-item red">
+      <h3>10 端到端自动驾驶：UniAD 与全栈联合学习</h3>
+      <p>End-to-End 联合感知-预测-规划、UniAD、TransFusion、ST-P3、PixOne</p>
+      <div class="tags">
+        <span class="tag red">SOTA</span>
+        <span class="tag blue">端到端</span>
+      </div>
+    </a>
+    <a href="11-vla/index.html" class="index-item red">
+      <h3>11 VLA 与世界模型：下一代端到端自动驾驶</h3>
+      <p>Vision-Language-Action Model、World Model、Foundation Model for Driving</p>
+      <div class="tags">
+        <span class="tag red">VLA</span>
+        <span class="tag red">Foundation Model</span>
+      </div>
+    </a>
+    <a href="12-deployment/index.html" class="index-item">
+      <h3>12 端到端方案工程落地挑战</h3>
+      <p>延迟、算力、Corner Case、仿真验证、安全保障与量产落地关键</p>
+      <div class="tags">
+        <span class="tag blue">工程</span>
+        <span class="tag purple">开放问题</span>
+      </div>
+    </a>
+  </div>
+
+  <hr>
+
+  <!-- 技术架构总览 -->
+  <div class="section green" style="margin-top:24px">
+    <h2>自动驾驶技术架构速查 / Architecture Quick Reference</h2>
+    <p>感知-预测-规划-控制的四大模块关系</p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card green">
+      <h3>感知 / Perception</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">传感器融合、目标检测、SLAM、在线高精地图</p>
+      <ul style="font-size:12px">
+        <li>LiDAR / Camera 融合</li>
+        <li>3D Detection (PointPillars、CenterPoint)</li>
+        <li>Semantic Map、HD Map 构建</li>
+        <li>Occupancy / Flow</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3>预测 / Prediction</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">多智能体轨迹预测、意图识别、交互建模</p>
+      <ul style="font-size:12px">
+        <li>Single-Agent / Multi-Agent 预测</li>
+        <li>GNN (LaneGCN、AgentFormer)</li>
+        <li>Transformer (TNT、MTR)</li>
+        <li>Diffusion (CTG、GoalFlow)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>规划 / Planning</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">路径规划、轨迹优化、行为决策</p>
+      <ul style="font-size:12px">
+        <li>Search (A*、RRT、RRT*)</li>
+        <li>Optimization (Lattice、MPC)</li>
+        <li>RL / IL (PPO、Diffuser)</li>
+        <li>End-to-End (UniAD、ST-P3)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="border-left-color:var(--blue)">
+    <h3>自动驾驶标准技术栈 / Standard AD Stack</h3>
+    <div class="flow" style="margin-top:10px">
+      <div class="flow-node">感知<br><small>Perception</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">预测<br><small>Prediction</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">规划<br><small>Planning</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">控制<br><small>Control</small></div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">
+      端到端方案将预测与规划统一建模，以数据驱动替代模块化设计，实现全栈可微优化
+    </p>
+  </div>
+
+  <hr>
+
+  <!-- 学习路径建议 -->
+  <div class="callout blue" style="margin-top:20px">
+    <strong>📚 学习路径建议</strong>
+    如果你是自动驾驶预测与规划方向的研究者或工程师，建议按以下顺序阅读：
+    <ol style="margin-top:6px">
+      <li><strong>01 全景</strong> — 建立感知-预测-规划-控制全局图景</li>
+      <li><strong>02–03 预测基础</strong> — 掌握轨迹预测问题定义与评估指标</li>
+      <li><strong>04–06 预测方法</strong> — 从传统方法到 GNN、Transformer、扩散模型的完整技术脉络</li>
+      <li><strong>07–08 规划基础</strong> — 理解 A*/RRT → Lattice/MPC 的经典规划范式</li>
+      <li><strong>09 学习式规划</strong> — RL、IL 与扩散规划器如何改变传统规划范式</li>
+      <li><strong>10–11 端到端 + VLA</strong> — 全栈联合学习与世界模型，产业最前沿方向</li>
+      <li><strong>12 工程落地</strong> — 量产必须解决的延迟、Corner Case 与安全保障问题</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 自动驾驶预测与规划算法全景 — 自动驾驶预测与规划</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left:'$$', right:'$$', display: true},
+        {left:'$', right:'$', display: false}
+      ],
+      throwOnError: false, trust: true, strict: false
+    });
+  }, 100);
+});
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+.title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+.title-bar h1{font-size:20px;font-weight:700}
+.title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+.section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+.section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+.section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+.section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+.section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+.section h2{font-size:15px;font-weight:700}
+.section p{color:var(--text-2);font-size:12px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+.card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+.card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+.callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+
+table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+td{padding:7px 10px;border:1px solid var(--border)}
+tr:nth-child(even) td{background:#f8fafc}
+pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre code{background:none;padding:0}
+.kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+.formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+.flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+.flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin-bottom:4px}
+p{margin-bottom:8px}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+h1{font-size:18px;font-weight:700;margin-bottom:8px}
+h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+.ascii-diagram{background:#1e293b;color:#e2e8f0;font-family:var(--mono);font-size:10.5px;line-height:1.4;padding:14px 16px;border-radius:8px;overflow-x:auto;white-space:pre;margin:12px 0}
+.ascii-diagram .layer{color:#93c5fd}
+.ascii-diagram .arrow{color:#f59e0b}
+.ascii-diagram .label{color:#86efac}
+/* tech-* components for semantic layout */
+.tech-grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0}
+.tech-data-block{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px}
+.tech-data-block .block-title{font-weight:600;color:var(--text);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.tech-badge{font-family:var(--mono);font-size:10px;background:#f1f5f9;border:1px solid var(--code-border);color:var(--text-2);padding:1px 5px;border-radius:4px}
+.tech-canvas{background:#f1f5f9;border:1px solid var(--code-border);border-radius:6px;position:relative;padding:2px 0;overflow:hidden;margin:10px 0}
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>01 自动驾驶预测与规划算法全景</h1>
+    <p>基于感知-预测-规划-控制的完整技术栈</p>
+  </div>
+
+  <!-- What: 什么是自动驾驶技术栈 -->
+  <div class="section">
+    <h2>从传感器到执行：完整技术栈 / Full Stack from Sensor to Actuation</h2>
+    <p>自动驾驶系统的核心任务是让车辆在没有人类干预的情况下安全、高效地从 A 点到达 B 点。这个看似简单的目标，背后需要一整套复杂的技术栈协同工作。</p>
+  </div>
+
+  <div class="card" style="text-align:center">
+  <div class="card" style="text-align:center">
+    <h3 style="margin-bottom:16px">自动驾驶全栈技术架构</h3>
+    <div class="tech-canvas" style="padding:16px 0;min-height:320px">
+      <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:280px">
+        <!-- Layer 1: Sensor -->
+        <rect x="40" y="20" width="160" height="60" rx="8" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="120" y="45" font-family="Noto Sans SC,sans-serif" font-size="13" fill="#1e40af" font-weight="700" text-anchor="middle">传感器层</text>
+        <text x="120" y="62" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">Sensor Layer</text>
+        <text x="220" y="50" font-family="Noto Sans SC,sans-serif" font-size="10" fill="#64748b">LiDAR / Camera / Radar / IMU / GPS</text>
+        <text x="220" y="66" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#94a3b8">多传感器融合：时间同步 + 空间标定</text>
+        <line x1="120" y1="80" x2="120" y2="110" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Layer 2: Perception -->
+        <rect x="40" y="110" width="160" height="60" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+        <text x="120" y="135" font-family="Noto Sans SC,sans-serif" font-size="13" fill="#166534" font-weight="700" text-anchor="middle">感知层</text>
+        <text x="120" y="152" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">Perception</text>
+        <text x="220" y="130" font-family="Noto Sans SC,sans-serif" font-size="10" fill="#64748b">3D 检测 / 语义分割 / BEV 感知</text>
+        <text x="220" y="146" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#94a3b8">输出：3D 检测框、语义地图、车道线</text>
+        <line x1="120" y1="170" x2="120" y2="200" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Layer 3: Prediction -->
+        <rect x="40" y="200" width="160" height="60" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+        <text x="120" y="225" font-family="Noto Sans SC,sans-serif" font-size="13" fill="#92400e" font-weight="700" text-anchor="middle">预测层</text>
+        <text x="120" y="242" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">Prediction</text>
+        <text x="220" y="220" font-family="Noto Sans SC,sans-serif" font-size="10" fill="#64748b">轨迹预测 / 意图识别 / 交互建模</text>
+        <text x="220" y="236" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#94a3b8">输出：每个交通参与者的未来轨迹分布</text>
+        <line x1="120" y1="260" x2="120" y2="290" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Right side: Planning + Control + Actuation stacked -->
+        <rect x="500" y="20" width="200" height="50" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+        <text x="600" y="42" font-family="Noto Sans SC,sans-serif" font-size="12" fill="#991b1b" font-weight="700" text-anchor="middle">规划层 Planning</text>
+        <text x="600" y="56" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#64748b" text-anchor="middle">路由规划 / 行为规划 / 运动规划</text>
+
+        <rect x="500" y="80" width="200" height="50" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+        <text x="600" y="102" font-family="Noto Sans SC,sans-serif" font-size="12" fill="#5b21b6" font-weight="700" text-anchor="middle">控制层 Control</text>
+        <text x="600" y="116" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#64748b" text-anchor="middle">PID / MPC / LQR</text>
+
+        <rect x="500" y="140" width="200" height="50" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+        <text x="600" y="162" font-family="Noto Sans SC,sans-serif" font-size="12" fill="#475569" font-weight="700" text-anchor="middle">执行层 Actuation</text>
+        <text x="600" y="176" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#64748b" text-anchor="middle">线控底盘 (Drive-by-Wire)</text>
+
+        <!-- Connection lines -->
+        <line x1="200" y1="50" x2="500" y2="45" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="200" y1="140" x2="500" y2="105" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="200" y1="230" x2="500" y2="155" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="600" y1="70" x2="600" y2="80" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="600" y1="130" x2="600" y2="140" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 L2,4 Z" fill="#94a3b8"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <!-- 各层职责边界 -->
+  <div class="section purple">
+    <h2>各层的职责边界 / Layer Responsibilities</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card purple">
+      <h3>感知层 Perception</h3>
+      <p>感知层的任务是<span style="color:var(--purple);font-weight:600">"看懂世界"</span>。从原始传感器数据中提取结构化信息——哪里有车、行人、障碍物，车道线在哪里，交通信号灯是什么状态。</p>
+      <p>核心技术是 <strong>BEV 感知（Bird's Eye View Perception）</strong>，即将多个摄像头的 2D 图像投影到统一的鸟瞰视角表示。</p>
+      <div class="callout blue">
+        <strong>代表工作</strong>BEVFormer（Li et al., 2022）使用时空 Transformer 在 BEV 空间做 3D 检测和分割，将多摄像头信息统一到自车坐标系下。
+      </div>
+    </div>
+    <div class="card purple">
+      <h3>预测层 Prediction</h3>
+      <p>预测层的任务是<span style="color:var(--purple);font-weight:600">"预测未来"</span>。给定当前所有交通参与者的历史轨迹和地图信息，预测每个参与者在未来 5-8 秒内的运动轨迹。</p>
+      <p>这是一个天然的<span style="color:var(--red);font-weight:600">多模态问题（Multi-modal Problem）</span>——同一个路口，前方车辆可能直行、左转或右转，每种都是合理的。预测层需要输出轨迹的概率分布，而非单一预测。</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card purple">
+      <h3>规划层 Planning</h3>
+      <p>规划层的任务是<span style="color:var(--purple);font-weight:600">"决定怎么走"</span>。基于感知结果和预测分布，为自车规划一条安全、高效、舒适的行驶轨迹。</p>
+      <p>规划分三个层级：</p>
+      <ul>
+        <li><strong>路由规划（Route Planning）</strong>：全局地图上找最优路径（类似导航）</li>
+        <li><strong>行为规划（Behavior Planning）</strong>：决定高层策略（变道、让行、超车）</li>
+        <li><strong>运动规划（Motion Planning）</strong>：生成具体轨迹点（位置、速度、加速度）</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3>控制层 Control</h3>
+      <p>控制层的任务是<span style="color:var(--purple);font-weight:600">"精确执行"</span>。将规划层输出的期望轨迹转化为车辆底层的油门、刹车和转向角指令。</p>
+      <p>常用方法：</p>
+      <ul>
+        <li><strong>PID 控制</strong>（Proportional-Integral-Derivative）：简单跟踪</li>
+        <li><strong>MPC</strong>（Model Predictive Control）：考虑车辆动力学约束的最优跟踪</li>
+        <li><strong>LQR</strong>（Linear Quadratic Regulator）：线性二次调节</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- 四大模块职责对比 -->
+  <div class="section green">
+    <h2>感知 / 预测 / 规划 / 控制：四大模块职责 / Four Module Responsibilities</h2>
+    <p>模块化方案将自动驾驶系统拆解为独立模块，每个模块有明确的输入输出接口。</p>
+  </div>
+
+  <div class="card green">
+    <table>
+      <thead>
+        <tr>
+          <th>模块</th>
+          <th>核心问题</th>
+          <th>输入</th>
+          <th>输出</th>
+          <th>延迟要求</th>
+          <th>典型方法</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>感知</strong></td>
+          <td>环境在哪</td>
+          <td>原始传感器数据</td>
+          <td>3D 检测框、语义地图</td>
+          <td>&lt; 100ms</td>
+          <td>BEVFormer, BEVFusion</td>
+        </tr>
+        <tr>
+          <td><strong>预测</strong></td>
+          <td>未来如何</td>
+          <td>检测结果 + 历史轨迹 + HD Map</td>
+          <td>多模态轨迹分布</td>
+          <td>&lt; 50ms</td>
+          <td>MTR, QCNet, MID</td>
+        </tr>
+        <tr>
+          <td><strong>规划</strong></td>
+          <td>自车怎么走</td>
+          <td>预测结果 + 地图 + 目标</td>
+          <td>自车未来轨迹</td>
+          <td>&lt; 50ms</td>
+          <td>Lattice, MPC, Diffuser</td>
+        </tr>
+        <tr>
+          <td><strong>控制</strong></td>
+          <td>如何执行</td>
+          <td>规划轨迹 + 车辆状态</td>
+          <td>油门 / 刹车 / 转向</td>
+          <td>&lt; 10ms</td>
+          <td>PID, MPC, LQR</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <div class="flow">
+      <div class="flow-node">感知</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">预测</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">规划</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">控制</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">执行</div>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <strong>直接感知 → 规划路径</strong>在某些简化场景下，感知结果可以直接传给规划模块，跳过显式预测步骤。这种做法降低了延迟，但牺牲了预测模块提供的未来意图建模能力。
+  </div>
+
+  <hr>
+
+  <!-- 模块化 vs 端到端 -->
+  <div class="section amber">
+    <h2>模块化 vs 端到端：两大范式 / Modular vs End-to-End</h2>
+    <p>这是自动驾驶算法架构的核心 trade-off，两种范式各有优劣。</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card amber">
+      <h3>模块化方案 Modular Approach</h3>
+      <div class="flow" style="justify-content:flex-start">
+        <div class="flow-node" style="font-size:11px">传感器</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber" style="font-size:11px">感知</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber" style="font-size:11px">预测</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber" style="font-size:11px">规划</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber" style="font-size:11px">控制</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="font-size:11px">执行</div>
+      </div>
+      <p><strong>优点：</strong></p>
+      <ol>
+        <li><strong>可解释性强</strong>：每个模块有明确的输入输出接口，出问题可以定位到具体模块</li>
+        <li><strong>独立评估</strong>：感知精度（mAP）、预测精度（minADE）、规划安全性（碰撞率）分别衡量</li>
+        <li><strong>团队协作</strong>：感知团队、预测团队、规划团队可以并行开发</li>
+        <li><strong>安全验证</strong>：每个模块可以单独做单元测试和安全验证</li>
+        <li><strong>增量升级</strong>：可以单独升级某个模块而不影响其他模块</li>
+      </ol>
+      <p><strong>缺点：</strong></p>
+      <ol>
+        <li><strong>信息瓶颈（Information Bottleneck）</strong>：感知→预测之间只传递检测框，丢失大量原始传感器信息</li>
+        <li><strong>误差级联（Error Cascading）</strong>：感知漏检直接导致预测和规划失败，误差逐级放大</li>
+        <li><strong>目标不对齐</strong>：感知优化 mAP 但规划需要"对规划有影响的检测"</li>
+        <li><strong>手工接口设计</strong>：模块间接口是人为设计的，未必是信息传递最优方式</li>
+      </ol>
+    </div>
+
+    <div class="card purple">
+      <h3>端到端方案 End-to-End Approach</h3>
+      <div class="flow" style="justify-content:flex-start">
+        <div class="flow-node" style="font-size:11px">传感器</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node purple" style="font-size:11px">统一神经网络</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node purple" style="font-size:11px">规划 / 控制</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-2)">感知特征 → 预测特征 → 规划特征 → 控制信号，端到端梯度反传</p>
+      <p><strong>优点：</strong></p>
+      <ol>
+        <li><strong>无信息损失</strong>：所有信息在统一特征空间中流转，不需要瓶颈接口</li>
+        <li><strong>目标一致</strong>：整个系统端到端优化最终驾驶质量指标</li>
+        <li><strong>自动学习表示</strong>：模型自动学习对规划最有用的中间表示</li>
+        <li><strong>梯度直通</strong>：规划需求可以反传到感知层</li>
+      </ol>
+      <p><strong>缺点：</strong></p>
+      <ol>
+        <li><strong>不可解释</strong>：中间表示不再有明确语义，出了事故难以定位原因</li>
+        <li><strong>难以验证</strong>：无法对子模块做单元测试</li>
+        <li><strong>数据饥渴</strong>：需要大量带规划标签的驾驶数据</li>
+        <li><strong>监管挑战</strong>：向监管机构证明黑箱系统安全性极其困难</li>
+        <li><strong>灾难性失败</strong>：一旦失败整个系统同时失效，没有 fallback</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card green">
+    <table>
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th>模块化</th>
+          <th>端到端</th>
+          <th>混合方案</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>信息保留</strong></td>
+          <td>低（接口瓶颈）</td>
+          <td>高（特征直传）</td>
+          <td>中高</td>
+        </tr>
+        <tr>
+          <td><strong>可解释性</strong></td>
+          <td>高</td>
+          <td>低</td>
+          <td>中</td>
+        </tr>
+        <tr>
+          <td><strong>误差模式</strong></td>
+          <td>级联放大</td>
+          <td>全局失效</td>
+          <td>可控</td>
+        </tr>
+        <tr>
+          <td><strong>评估难度</strong></td>
+          <td>低（逐模块）</td>
+          <td>高（端到端）</td>
+          <td>中</td>
+        </tr>
+        <tr>
+          <td><strong>数据需求</strong></td>
+          <td>中（各模块独立标注）</td>
+          <td>高（需驾驶标签）</td>
+          <td>中高</td>
+        </tr>
+        <tr>
+          <td><strong>迭代速度</strong></td>
+          <td>快（单模块升级）</td>
+          <td>慢（全系统训练）</td>
+          <td>中</td>
+        </tr>
+        <tr>
+          <td><strong>安全验证</strong></td>
+          <td>较容易</td>
+          <td>极困难</td>
+          <td>可行</td>
+        </tr>
+        <tr>
+          <td><strong>上限性能</strong></td>
+          <td>受限于接口</td>
+          <td>理论最优</td>
+          <td>接近最优</td>
+        </tr>
+        <tr>
+          <td><strong>工业现状</strong></td>
+          <td>主流（大多数公司）</td>
+          <td>趋势（Tesla, Wayve）</td>
+          <td>前沿（UniAD, VAD）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout amber">
+    <strong>工业界的务实选择</strong>大多数公司目前采用"模块化主架构 + 端到端辅助"的<strong>混合方案（Hybrid Approach）</strong>。例如 UniAD（Li et al., 2023）保留了感知→预测→规划的模块化结构，但允许端到端梯度流通；工业部署中通常在端到端模型之上叠加一个传统的安全校验层（Safety Checker）作为兜底。
+  </div>
+
+  <hr>
+
+  <!-- 核心挑战 -->
+  <div class="section red">
+    <h2>核心挑战 / Core Challenges</h2>
+    <p>自动驾驶从研究到落地面临四大核心挑战。</p>
+  </div>
+
+  <div class="card red">
+    <h3>挑战一：长尾场景 Long-tail Scenarios</h3>
+    <p>自动驾驶最大的技术挑战不是"99% 的常见场景"，而是"1% 的长尾场景"。一个系统可能在 99.9% 的时间里表现完美，但那 0.1% 的失败——异形载具、倒地行人、未标注的施工区域——就可能导致严重事故。</p>
+    <div class="card" style="margin-top:10px">
+      <div class="ascii-diagram" style="font-size:9.5px">频率
+ ↑
+ ████████
+ █████████████
+ ███████████████████
+ █████████████████████████████
+ ███████████████████████████████████████████████████████████████→ 场景复杂度
+ ├──────────┤├─────────────────────────────────────────────────┤
+  常见场景(99%)              长尾场景(1%)
+  直行/简单变道               异形车辆/施工区/紧急避让
+  数据充足                     数据极度稀缺
+  所有方法都做得好              真正的技术分水岭</div>
+    </div>
+    <p><strong>数据层面</strong>：长尾场景在训练数据中出现频率极低（可能百万帧才一次），传统均匀采样训练无法充分学习。解决思路包括：重要性采样（oversampling rare cases）、数据增强（augmentation）、仿真生成（simulation）、<strong>世界模型（World Model）</strong>生成。</p>
+    <p><strong>评估层面</strong>：离线 benchmark 的测试集也受长尾偏斜影响，一个模型可能 minADE 指标很好但在罕见场景中崩溃。这也是为什么<strong>闭环评估（closed-loop evaluation）</strong>越来越受重视。</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card amber">
+      <h3>挑战二：实时性 Real-time Constraints</h3>
+      <p>自动驾驶系统需要在严格的时间约束下运行。从传感器采集到控制执行，整个流水线的总延迟通常需要控制在 <strong>100-200ms</strong> 以内。</p>
+      <table>
+        <thead>
+          <tr><th>模块</th><th>典型延迟预算</th><th>主要瓶颈</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>感知</td><td>50-80ms</td><td>BEV 特征提取、3D 检测</td></tr>
+          <tr><td>预测</td><td>20-50ms</td><td>多智能体交互建模</td></tr>
+          <tr><td>规划</td><td>20-50ms</td><td>轨迹搜索 / 优化</td></tr>
+          <tr><td>控制</td><td>5-10ms</td><td>通常不是瓶颈</td></tr>
+        </tbody>
+      </table>
+      <div class="callout amber">
+        <strong>Diffusion 模型的实时性挑战</strong>标准 Diffusion 推理需要 50-100 步去噪，单次推理耗时 100-500ms，对预测和规划层都超出了延迟预算。加速方向包括 DDIM 少步采样、一致性蒸馏、TensorRT 部署优化等。
+      </div>
+    </div>
+
+    <div class="card red">
+      <h3>挑战三：安全性 Safety</h3>
+      <p>自动驾驶的安全性要求远超其他 AI 应用。航空领域的安全标准是每飞行小时 $10^{-9}$ 级的灾难性失效率。自动驾驶尚未有统一标准，但业界普遍认为至少需要比人类驾驶安全 10 倍以上才能被公众接受。</p>
+      <div class="callout red">
+        <strong>概率模型的安全困境</strong>深度学习模型本质上输出概率分布，无法提供硬安全保证。即使模型在 99.99% 的情况下输出安全轨迹，剩下的 0.01%（每百万次决策中 100 次不安全）对自动驾驶而言仍不可接受。这催生了<strong>混合安全架构</strong>——用学习模型做提议，用传统方法做安全校验。
+      </div>
+    </div>
+  </div>
+
+  <div class="card green">
+    <h3>挑战四：数据稀缺与标注成本 Data Scarcity and Annotation Cost</h3>
+    <p>预测和规划相比感知的额外困难在于：轨迹标注需要跟踪时间序列（不只是标注单帧），规划标注需要人类专家的驾驶决策（而非简单的框标注）。这也是为什么自监督学习和仿真数据在预测规划领域越来越重要。</p>
+    <table>
+      <thead>
+        <tr><th>数据类型</th><th>获取难度</th><th>标注成本</th><th>规模现状</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2D 图像标注（检测框）</td><td>易</td><td>~$0.5/帧</td><td>数亿帧</td></tr>
+        <tr><td>3D 点云标注（3D 框）</td><td>中</td><td>~$5/帧</td><td>数千万帧</td></tr>
+        <tr><td>轨迹标注（未来运动）</td><td>中</td><td>~$2/轨迹</td><td>数百万条</td></tr>
+        <tr><td>驾驶行为标注（规划）</td><td>难</td><td>需要专家</td><td>数十万段</td></tr>
+        <tr><td>长尾场景标注</td><td>极难</td><td>需要合成</td><td>极少</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+
+  <!-- 本系列文档结构 -->
+  <div class="section green">
+    <h2>本系列文档的定位与结构 / Series Structure</h2>
+    <p>本系列覆盖自动驾驶的<strong>预测-规划-端到端</strong>三大核心模块，从 2016 年的 Social-LSTM 到 2025 年的 VLA 端到端，完整梳理 10 年技术演化。</p>
+  </div>
+
+  <div class="card green">
+    <table>
+      <thead>
+        <tr><th>模块</th><th>章节内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>模块一：基础</strong></td><td>01 自动驾驶算法全景图（本章）<br>02 轨迹预测问题定义<br>03 评估指标体系</td></tr>
+        <tr><td><strong>模块二：轨迹预测演化</strong></td><td>01 轨迹预测演化全景图<br>02 早期深度学习方法（Social-LSTM / GAN / STGCNN）<br>03 图神经网络方法（STGAT / AgentFormer / HiVT / LaneGCN）</td></tr>
+        <tr><td><strong>模块三：深度预测方法</strong></td><td>01 Transformer 时代（MTR / QCNet / GameFormer）<br>02 概率方法与 Diffusion 预测（MID / CTG / Diffusion-ES）<br>03 地图编码技术<br>04 VLA/LLM 驱动的轨迹预测</td></tr>
+        <tr><td><strong>模块四：运动规划</strong></td><td>01 运动规划演化全景<br>02 Diffusion Planner 深度解析</td></tr>
+        <tr><td><strong>模块五：端到端自动驾驶</strong></td><td>01 端到端演化全景<br>02 UniAD 深度解析<br>03 端到端部署挑战</td></tr>
+        <tr><td><strong>模块六：评估方法论</strong></td><td>01 评估方法论<br>02 学术 vs 工业界视角</td></tr>
+        <tr><td><strong>模块七：附录</strong></td><td>目录索引与阅读路径<br>术语表<br>推荐阅读列表</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout blue">
+    <strong>与已有系列的关系</strong>本系列与已有的 <strong>Diffusion 系列</strong> 和 <strong>VLA 系列</strong> 互为补充：
+    <ul style="margin:6px 0 0 16px">
+      <li><strong>Diffusion 系列</strong> 的轨迹预测和运动规划章节从 Diffusion 的视角讲解应用。本系列从自动驾驶视角完整覆盖从 RNN 到 Diffusion 的全部技术演化</li>
+      <li><strong>VLA 系列</strong> 的自动驾驶章节覆盖了 VLA 在自动驾驶中的应用。本系列关注预测和规划的技术脉络，在 VLA 相关内容上与其交叉引用</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <!-- 小结 -->
+  <div class="section">
+    <h2>小结 / Summary</h2>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>概念</th><th>要点</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>技术栈</strong></td><td>传感器 → 感知 → 预测 → 规划 → 控制 → 执行，串行流水线</td></tr>
+        <tr><td><strong>四大模块</strong></td><td>感知（看懂世界）、预测（预测未来）、规划（决定怎走）、控制（精确执行）</td></tr>
+        <tr><td><strong>模块化优势</strong></td><td>可解释、可评估、可验证、团队协作、增量迭代</td></tr>
+        <tr><td><strong>端到端优势</strong></td><td>无信息损失、目标一致、自动表示学习、梯度直通</td></tr>
+        <tr><td><strong>核心 trade-off</strong></td><td>可解释性/安全验证 vs 性能上限/信息保留</td></tr>
+        <tr><td><strong>四大挑战</strong></td><td>长尾场景、实时性、安全性、数据稀缺</td></tr>
+        <tr><td><strong>工业现状</strong></td><td>混合方案为主：模块化主架构 + 端到端辅助 + 安全兜底</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 01 自动驾驶预测与规划算法全景 ·
+    <a href="../index.html">← 总目录</a>
+
+    · <a href="../02-prediction-problem/index.html">下一篇：02 轨迹预测问题定义与数学形式化 →</a>
+  </div>
+</div>
+</body>
+</html>

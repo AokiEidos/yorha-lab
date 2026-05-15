@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 潜空间扩散（Latent Diffusion Models） — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>05 潜空间扩散（Latent Diffusion Models）</h1>
+    <p>潜空间扩散（Latent Diffusion Models）</p>
+  </div>
+
+  <div class="section">
+    <h2>为什么需要 Latent Diffusion？ / The Problem of Pixel Space</h2>
+    <p>直接在像素空间进行扩散的巨大计算成本催生了 Latent Diffusion</p>
+  </div>
+  <div class="card">
+    <h3>像素空间的计算量瓶颈</h3>
+    <p style="font-size:12px;color:var(--text-2)">DDPM 等原始扩散模型在像素空间（$512\times512\times3$）操作。假设使用 Stable Diffusion 级别的 UNet：</p>
+    <div class="formula">$$N_{\text{pixel}} = H \times W \times C = 512 \times 512 \times 3 = 786{,}432 \text{ tokens}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Self-Attention 的计算复杂度为 $O(N^2)$：</p>
+    <div class="formula">$$\text{FLOPs}_{\text{attn}} \approx 2 \cdot N^2 \cdot d = 2 \cdot (786{,}432)^2 \cdot 1024 \approx 1.3 \times 10^{15}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这意味着单次前向传播需要约 1 PetaFLOP，在消费级 RTX 3090（~30 TFLOPs）上需要数十秒。</p>
+    <div class="callout red" style="font-size:12px">
+      <strong>关键矛盾</strong><br>
+      像素空间的高维表示包含大量感官细节（纹理、颜色等），但扩散模型真正需要学习的是语义结构（物体形状、空间关系、光照等）。后者可以在更低维的空间中有效表达。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>语义压缩的可行性</h3>
+    <p style="font-size:12px;color:var(--text-2)">视觉信息的语义内容和像素细节是可以分离的：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">语义层（低维）</p>
+        <p style="font-size:12px;color:var(--text-2)">物体类别、空间布局、光照方向、材质属性 → 可以压缩到 $8\times$ 下采样</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">细节层（高维）</p>
+        <p style="font-size:12px;color:var(--text-2)">纹理纹理、颜色噪声、微小瑕疵 → 可以在 VAE decode 时恢复</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">VAE 的 latent space 恰好抓住了语义层而丢弃了细节层，这正是 LDM 的核心洞察：在 latent space 做扩散即可学到语义，而细节由 VAE 解码器补全。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>LDM 的核心价值</strong><br>
+      LDM = VAE（语义压缩）+ Diffusion（语义生成）+ Decoder（细节重建）。将"生成语义"和"重建细节"解耦，分别由更擅长的模块处理。
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Pixel Space vs Latent Space / 计算量分析</h2>
+    <p>在原始像素空间进行扩散需要巨大的计算资源——Latent Diffusion (LDM) 通过 VAE 将扩散过程转移到低维潜在空间，实现 8 倍下采样</p>
+  </div>
+  <div class="card">
+    <h3>计算量对比</h3>
+    <p style="font-size:12px;color:var(--text-2)">对于 $512\times512\times 3$ 的图像，Pixel Space 的 token 数量为：</p>
+    <div class="formula">$$N_{\text{pixel}} = H \times W = 512 \times 512 = 262{,}144 \text{ tokens}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">而在 VAE 下采样率 $s=8$ 时，latent space 尺寸为 $64\times 64 \times C$（$C=4$ for SD）：</p>
+    <div class="formula">$$N_{\text{latent}} = \frac{H}{s} \times \frac{W}{s} \times C = 64 \times 64 \times 4 = 16{,}384 \text{ tokens}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">计算量减少约 $262144/16384 = 16\times$，这是 Stable Diffusion 能在消费级 GPU 上运行的关键。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>LDM 的核心洞察</strong><br>
+      扩散模型的计算量集中于 UNet/DiT 的 self-attention 机制（$O(H^2W^2)$）。将扩散过程从像素空间搬到 latent 空间，本质上是在保持语义信息的前提下大幅降低序列长度，使 Transformer 风格的架构成为可能。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>VAE 编码器与解码器 / VAE Encoder and Decoder</h2>
+    <p>LDM 使用变分自编码器（VAE）将图像压缩到 latent 空间，并在生成时重建</p>
+  </div>
+  <div class="card green">
+    <h3>VAE 的数学形式</h3>
+    <p style="font-size:12px;color:var(--text-2)">VAE 的编码器 $E$ 将图像 $x$ 映射到 latent 空间：</p>
+    <div class="formula">$$z = E(x) = \mu_\phi(x) + \sigma_\phi(x) \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, \mathbf{I})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">解码器 $D$ 从 latent 重构图像：$\hat{x} = D(z)$。训练时使用重建损失 + KL 正则化：</p>
+    <div class="formula">$$\mathcal{L}_{\text{VAE}} = \| x - D(E(x)) \|^2 + D_{\mathrm{KL}}(\mathcal{N}(\mu, \sigma) \| \mathcal{N}(0, \mathbf{I}))$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">LDM 使用预训练的 KL-VAE（如 SD 中使用的 VAE），确保 latent 空间的斑状结构（patchy structure）有利于扩散模型学习。</p>
+  </div>
+  <div class="card">
+    <h3>Latent 空间的几何直觉</h3>
+    <p style="font-size:12px;color:var(--text-2)">VAE 的 latent 空间应该满足：</p>
+    <div class="grid-3">
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">✅ 连续性</p>
+        <p style="font-size:12px;color:var(--text-2)">相近的 latent 向量解码为相似的图像</p>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">✅ 完整性</p>
+        <p style="font-size:12px;color:var(--text-2)">任意采样都能生成有意义图像</p>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--text-3)">✅ 稀疏性</p>
+        <p style="font-size:12px;color:var(--text-2)">语义概念分布在低维流形上</p>
+      </div>
+    </div>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>为什么不用 autoencoder 重建，而用 VAE？</strong><br>
+      普通 AE 的 latent 空间不连续（黑洞），无法随机采样。VAE 通过 KL 正则化强制 latent 分布接近 $\mathcal{N}(0, \mathbf{I})$，保证空间连续性，使得从噪声生成成为可能。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>LDM 目标函数 / LDM Objective</h2>
+    <p>Latent Diffusion 在 latent space 中执行前向扩散和反向学习，显著降低计算复杂度</p>
+  </div>
+  <div class="card amber">
+    <h3>LDM 训练目标</h3>
+    <p style="font-size:12px;color:var(--text-2)">LDM 的训练目标与标准 DDPM 相同，但操作空间从像素空间变为 latent 空间：</p>
+    <div class="formula">$$\mathcal{L}_{\text{LDM}} = \mathbb{E}_{t, z_0, \epsilon}\Bigl[ \| \epsilon - \epsilon_\theta(z_t, t, c) \|^2 \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $z_t = \sqrt{\bar{\alpha}_t} z_0 + \sqrt{1-\bar{\alpha}_t} \epsilon$，$c$ 是条件向量（如 CLIP text embedding）。注意：$z_0 = E(x_0)$ 是从原始图像通过 VAE 编码得到的。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>LDM 计算优势</strong><br>
+      因为 $z_t$ 的维度（$64\times64\times4=16384$）远小于原始图像（$512\times512\times3=786432$），UNet/DiT 的计算量降低约 $8\times$（考虑下采样和 channel 数的综合效果）。
+    </div>
+  </div>
+  <div class="section">
+    <h2>Cross-Attention 条件注入 / Cross-Attention Mechanism</h2>
+    <p>文本、语义图、分割掩码等条件通过 Cross-Attention 注入 UNet</p>
+  </div>
+  <div class="card">
+    <h3>Cross-Attention QKV 计算</h3>
+    <p style="font-size:12px;color:var(--text-2)">UNet 的 decoder 层引入 Cross-Attention 模块，将条件向量 $c$ 注入生成过程：</p>
+    <div class="formula">$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d}}\right) V$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $Q = W_Q \cdot x_t$（来自 UNet 特征），$K = W_K \cdot c$（来自条件，如 CLIP text embedding），$V = W_V \cdot c$。维度匹配：$Q \in \mathbb{R}^{H_w \times d}$，$K, V \in \mathbb{R}^{L_c \times d}$（$L_c$ 是条件 token 长度）。</p>
+    <pre><code><span class="cmt"># Cross-Attention 在 UNet Decoder 中的位置</span>
+<span class="kw">class</span> <span class="fn">CrossAttention</span>:
+    <span class="kw">def</span> <span class="fn">forward</span>(<span class="nm">self</span>, <span class="nm">x</span>, <span class="nm">c</span>):
+        Q = <span class="nm">self</span>.W_Q(x)                    <span class="cmt"># (B, N, d) B=batch, N=spatial, d=dim</span>
+        K = <span class="nm">self</span>.W_K(c)                    <span class="cmt"># (B, L, d) L=text tokens</span>
+        V = <span class="nm">self</span>.W_V(c)                    <span class="cmt"># (B, L, d)</span>
+        <span class="kw">return</span> <span class="fn">softmax</span>(Q @ K.transpose(-2,-1) / sqrt(d)) @ V</code></pre>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>条件注入的重要性</strong><br>
+      Cross-Attention 让扩散模型能够"看到"条件信息（文本、深度图、姿态等）。没有条件注入的扩散模型只能生成"随机噪声"，无法控制生成内容。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>Classifier-Free Guidance (CFG) / 隐式分类器引导</h2>
+    <p>通过无条件与条件预测的线性组合，实现无需独立分类器的高质量条件生成</p>
+  </div>
+  <div class="card green">
+    <h3>CFG 推导</h3>
+    <p style="font-size:12px;color:var(--text-2)">CFG 的核心思想：无条件模型 $\epsilon_\theta(x_t, t)$ 和条件模型 $\epsilon_\theta(x_t, t, c)$ 可以通过线性组合实现：</p>
+    <div class="formula">$$\tilde{\epsilon}_\theta = (1 + w) \cdot \epsilon_\theta(x_t, t, c) - w \cdot \epsilon_\theta(x_t, t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $w$ 是 guidance scale（引导强度）。当 $w=0$ 时，$\tilde{\epsilon} = \epsilon_\theta(x_t, t)$（无条件）；当 $w>1$ 时，条件影响增强，生成更符合条件但可能多样性降低。</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th style="width:60px">$w$</th><th>效果</th><th>典型用途</th></tr>
+      <tr><td>0-1</td><td>弱引导，接近无条件生成</td><td>艺术探索</td></tr>
+      <tr><td>7-9</td><td>标准引导强度</td><td>文生图默认设置</td></tr>
+      <tr><td>12-15</td><td>强引导，细节丰富但可能有 artifacts</td><td>需要精确控制时</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>CFG 的实际计算</strong><br>
+      训练时：随机丢弃条件 $c$（通常概率 10%），使模型同时学到条件和 unconditional 预测。采样时：需要两次前向传播（条件 + 无条件），因此 CFG 使计算量增加约 30%（而非两倍）。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>自动驾驶应用：BEV 生成 / AD Applications</h2>
+    <p>LDM 在自动驾驶感知中的 BEV 语义图生成与跨模态条件注入</p>
+  </div>
+  <div class="card purple">
+    <h3>BEV 语义图生成</h3>
+    <p style="font-size:12px;color:var(--text-2)">Bird's Eye View (BEV) 语义图是自动驾驶感知的关键输出。LDM 可以根据文本描述（如"有车辆在右侧车道"）生成对应的 BEV 地图：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>模态</th><th>条件注入方式</th><th>代表工作</th></tr>
+      <tr><td>文本</td><td>CLIP Text Encoder → Cross-Attention</td><td>BEVGen</td></tr>
+      <tr><td>LiDAR 点云</td><td>PointNet 编码 → Concat with $z_t$</td><td>BEVGen</td></tr>
+      <tr><td>前方相机图像</td><td>Cross-Attention with visual features</td><td>UniSim</td></tr>
+      <tr><td>HD 地图</td><td>Map token → Cross-Attention</td><td>DriveDiffusion</td></tr>
+    </table>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>LiDAR-to-Camera 跨模态生成</strong><br>
+      LDM 的一个重要应用是根据 LiDAR 深度信息生成对应的相机视角图像，实现跨模态数据增强。这种生成可用于仿真数据构建，或在相机故障时提供备份感知。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 05 潜空间扩散（Latent Diffusion Models） · <a href="../index.html">← 总目录</a> · <a href="../04-sampling/index.html">← 04 采样过程与加速采样</a>  · <a href="../06-guidance/index.html">下一篇：06 条件引导与Classifier Guidance →</a>
+  </div>
+</div>
+</body>
+</html>

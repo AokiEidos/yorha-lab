@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02 轨迹预测问题定义与数学形式化 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+  <style>
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #7c3aed;
+  --code-bg: #f1f5f9;
+  --code-border: #cbd5e1;
+  --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+body {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.title-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 28px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.title-bar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.title-bar .subtitle {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 6px;
+}
+.section {
+  border-left: 4px solid var(--blue);
+  background: linear-gradient(to right, #eff6ff, transparent);
+  padding: 12px 16px;
+  margin: 20px 0 12px;
+  border-radius: 0 6px 6px 0;
+}
+.section.green { border-left-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+.section.amber { border-left-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+.section.red { border-left-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+.section.purple { border-left-color: var(--purple); background: linear-gradient(to right, #ede9fe, transparent); }
+.section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--blue);
+}
+.card.green { border-left-color: var(--green); }
+.card.amber { border-left-color: var(--amber); }
+.card.red { border-left-color: var(--red); }
+.card.purple { border-left-color: var(--purple); }
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.callout {
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+.callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+.callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.callout.purple { background: #ede9fe; border: 1px solid #ddd6fe; color: #5b21b6; }
+.formula {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+  font-family: 'Times New Roman', serif;
+  font-size: 14px;
+  color: #1e40af;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-left: 3px solid var(--code-border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+pre code { background: none; padding: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+td { padding: 7px 10px; border: 1px solid var(--border); }
+tr:nth-child(even) td { background: var(--bg); }
+.flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+.flow-node.green { border-color: var(--green); color: var(--green); }
+.flow-node.amber { border-color: var(--amber); color: var(--amber); }
+.flow-node.purple { border-color: var(--purple); color: var(--purple); }
+.flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media(max-width:700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.nav-footer { text-align: center; color: var(--text-3); font-size: 11px; padding: 16px 0; }
+.nav-footer a { color: var(--blue); text-decoration: none; }
+.nav-footer a:hover { text-decoration: underline; }
+.aux { font-size: 12px; color: var(--text-2); }
+.kw { color: #7c3aed; font-weight: 600; }
+.fn { color: #1d4ed8; }
+.str { color: #166534; }
+.cmt { color: #94a3b8; font-style: italic; }
+.num { color: #b45309; }
+/* tech-* components for semantic layout */
+.tech-grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0; }
+.tech-data-block { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 12px; }
+.tech-data-block .block-title { font-weight: 600; color: var(--text); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.tech-badge { font-family: var(--mono); font-size: 10px; background: #f1f5f9; border: 1px solid var(--code-border); color: var(--text-2); padding: 1px 5px; border-radius: 4px; }
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="title-bar">
+  <h1>02 轨迹预测问题定义与数学形式化</h1>
+  <div class="subtitle">输入、输出、多模态性的数学描述</div>
+</div>
+
+<div class="callout blue">
+  <strong>⚙️ 基础 | 前置知识：</strong>自动驾驶算法全景图 · 概率论基础
+</div>
+
+<div class="section">
+  <h2>形式化问题定义</h2>
+</div>
+
+<h3>What — 轨迹预测是什么？</h3>
+
+<p><strong>轨迹预测（Trajectory Prediction）</strong> 的核心任务是：给定一个交通参与者的历史观测和场景上下文，预测其未来运动的概率分布。</p>
+
+<h3>数学形式化</h3>
+
+<div class="formula">$$p(\tau_f \mid \tau_o, \mathcal{M}, \mathcal{A})$$</div>
+
+<p>其中：</p>
+<ul>
+<li>$\tau_o = \{(x_t, y_t)\}_{t=-T_o}^{0}$：<strong>观测轨迹（Observed Trajectory）</strong>，过去 $T_o$ 个时间步的位置序列。通常 $T_o = 2\text{s}$（ETH/UCY 行人数据集）或 $T_o = 3\text{s}$（nuScenes/Waymo 车辆数据集），采样频率为 2Hz，即 4 或 6 个历史点</li>
+<li>$\tau_f = \{(x_t, y_t)\}_{t=1}^{T_f}$：<strong>未来轨迹（Future Trajectory）</strong>，未来 $T_f$ 个时间步的位置序列。通常 $T_f = 4.8\text{s}$（ETH/UCY）或 $T_f = 6\text{s}$（nuScenes/Waymo），即 12 个未来点</li>
+<li>$\mathcal{M}$：<strong>高精地图（HD Map）</strong> 信息，包括车道线、道路边界、交通信号灯、人行横道等结构化地图元素</li>
+<li>$\mathcal{A} = \{\tau_o^{(i)}\}_{i=1}^{N}$：<strong>周围智能体（Surrounding Agents）</strong> 的观测轨迹集合，$N$ 为场景中的智能体数量</li>
+</ul>
+
+<h3>输入输出的完整表示</h3>
+
+<div class="card">
+  <h3>轨迹预测的输入输出结构</h3>
+  <div class="tech-grid-auto">
+    <div class="tech-data-block">
+      <div class="block-title">历史轨迹 τ_o</div>
+      <p>每个时间步: (x, y, vx, vy, ax, ay, θ)</p>
+      <ul style="margin:6px 0 0 16px;font-size:11px;color:#64748b">
+        <li>(x, y): 世界坐标系下的位置</li>
+        <li>(vx, vy): 速度分量</li>
+        <li>(ax, ay): 加速度分量</li>
+        <li>θ: 航向角 (heading angle)</li>
+      </ul>
+      <div style="margin-top:8px"><span class="tech-badge">T_o × d_state</span> <span style="font-size:11px;color:#94a3b8">如 6 × 7 = 42 维</span></div>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">高精地图 M</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b">
+        <li>车道中心线 (lane centerlines): 折线序列</li>
+        <li>道路边界 (road boundaries): 多边形</li>
+        <li>人行横道 (crosswalks): 矩形区域</li>
+        <li>交通信号 (traffic lights): 状态+位置</li>
+        <li>停止线 (stop lines): 线段</li>
+      </ul>
+      <div style="margin-top:8px;font-size:10px;color:#94a3b8">表示: 向量化折线 / 栅格化 BEV / 车道图</div>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">周围智能体 A</div>
+      <p>每个智能体 i = 1, ..., N:</p>
+      <ul style="margin:6px 0 0 16px;font-size:11px;color:#64748b">
+        <li>历史轨迹 τ_o^(i): <span class="tech-badge">T_o × d_state</span></li>
+        <li>类别: 车辆 / 行人 / 骑行者</li>
+        <li>尺寸: (长, 宽, 高)</li>
+      </ul>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">多模态轨迹分布</div>
+      <p>K 条候选轨迹 + 对应概率:</p>
+      <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:#1e293b">{(τ_f^(k), π_k)}_{k=1}^{K}</div>
+      <p style="margin-top:4px;font-size:11px;color:#64748b">τ_f^(k) ∈ R^{T_f × 2}: 第 k 条轨迹<br>π_k ∈ [0,1]: 第 k 条轨迹概率, Σ π_k = 1</p>
+      <div style="margin-top:8px">
+        <span class="tech-badge">K=6 nuScenes</span>
+        <span class="tech-badge">K=20 ETH/UCY</span>
+        <span class="tech-badge">K=64 Waymo</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="section">
+  <h2>多模态性：为什么需要预测多种未来</h2>
+</div>
+
+<h3>What — 什么是多模态性？</h3>
+
+<p><strong>多模态性（Multi-modality）</strong> 是轨迹预测区别于大多数回归任务的根本特征。对于同一个历史观测，未来存在多种合理的可能性——而这些可能性之间是<strong>离散的、不连续的</strong>。</p>
+
+<h3>Why — 为什么要建模多模态？</h3>
+
+<p>考虑一个四叉路口的场景：</p>
+
+<div class="card">
+  <h3>四叉路口场景：三种合理未来</h3>
+  <div style="display:flex;gap:16px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:140px;text-align:center">
+      <div style="font-size:28px;margin-bottom:4px">↑</div>
+      <div style="font-size:12px;font-weight:600;color:#1e293b">直行</div>
+      <div style="font-size:11px;color:#3b82f6;margin-top:2px">概率 ~40%</div>
+      <div style="margin-top:8px;font-size:10px;color:#64748b">向北 50m</div>
+    </div>
+    <div style="flex:1;min-width:140px;text-align:center">
+      <div style="font-size:28px;margin-bottom:4px">↖</div>
+      <div style="font-size:12px;font-weight:600;color:#1e293b">左转</div>
+      <div style="font-size:11px;color:#22c55e;margin-top:2px">概率 ~25%</div>
+      <div style="margin-top:8px;font-size:10px;color:#64748b">向西 50m</div>
+    </div>
+    <div style="flex:1;min-width:140px;text-align:center">
+      <div style="font-size:28px;margin-bottom:4px">↗</div>
+      <div style="font-size:12px;font-weight:600;color:#1e293b">右转</div>
+      <div style="font-size:11px;color:#f59e0b;margin-top:2px">概率 ~20%</div>
+      <div style="margin-top:8px;font-size:10px;color:#64748b">向东 50m</div>
+    </div>
+    <div style="flex:1;min-width:140px;text-align:center">
+      <div style="font-size:28px;margin-bottom:4px">↓</div>
+      <div style="font-size:12px;font-weight:600;color:#1e293b">停车</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">概率 ~15%</div>
+      <div style="margin-top:8px;font-size:10px;color:#64748b">等待时机</div>
+    </div>
+  </div>
+  <div class="callout red" style="margin-top:12px">
+    <strong>模式平均化问题 (Mode Averaging)</strong><br>
+    A、B、C 之间没有"中间状态"。对 A 和 B 取平均 → 指向路口中间 → 完全不合理!
+  </div>
+</div>
+
+<p>这就是<strong>模式平均化问题（Mode Averaging Problem）</strong>——如果用一个确定性模型（单一回归）去预测，模型倾向于输出所有模式的加权平均，而这个平均轨迹在物理上往往是不可能的（比如穿过路口中间的建筑物）。</p>
+
+<h3>高速公路场景示例</h3>
+
+<div class="card">
+  <h3>高速公路场景：三种合理未来</h3>
+  <p style="font-size:12px;color:#64748b;margin-bottom:10px">场景: 高速公路上前方有慢车, 自车后方的车辆该怎么走?</p>
+  <div class="tech-canvas" style="margin: 16px 0;">
+    <div class="tech-channel">
+      <span class="tech-channel-label">车道 1 (快车道)</span>
+    </div>
+    <div class="tech-channel">
+      <div class="tech-node primary" style="left: 65%;">🚗 目标车辆</div>
+      <div class="tech-node secondary" style="left: 15%;">🚛 前方慢车</div>
+      <span class="tech-channel-label">车道 2 (行车道)</span>
+    </div>
+    <div class="tech-channel">
+      <span class="tech-channel-label">车道 3 (行车道)</span>
+    </div>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:10px">
+    <div class="tech-data-block">
+      <div class="block-title">未来 A <span class="tech-status" style="background:#d1fae5;color:#065f46">35%</span></div>
+      <p style="font-size:11px;color:#64748b;margin:0">变道到车道 1 超越慢车</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">未来 B <span class="tech-status mid" style="background:#fef3c7;color:#92400e">40%</span></div>
+      <p style="font-size:11px;color:#64748b;margin:0">保持车道跟车减速</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">未来 C <span class="tech-status low" style="background:#fee2e2;color:#991b1b">25%</span></div>
+      <p style="font-size:11px;color:#64748b;margin:0">变道到车道 3 绕行</p>
+    </div>
+  </div>
+  <div class="callout blue" style="margin-top:8px">
+    三种行为都合理，取决于: 驾驶员意图 · 周围动态 · 交通规则
+  </div>
+</div>
+
+<div class="section">
+  <h2>为什么回归方法失效：模式平均化问题</h2>
+</div>
+
+<h3>数学分析</h3>
+
+<p>假设真实的未来轨迹分布是一个双峰分布（两种等概率的未来）：</p>
+
+<div class="formula">$$p(\tau_f) = 0.5 \cdot \delta(\tau_f - \tau_A) + 0.5 \cdot \delta(\tau_f - \tau_B)$$</div>
+
+<p>其中 $\tau_A$ 是左转轨迹，$\tau_B$ 是右转轨迹。</p>
+
+<p>一个确定性回归模型通过最小化均方误差（MSE）训练：</p>
+
+<div class="formula">$$\hat{\tau} = \arg\min_\tau \mathbb{E}_{p(\tau_f)} [\|\tau - \tau_f\|^2]$$</div>
+
+<p>对 MSE 求导令其等于零：</p>
+
+<div class="formula">$$\hat{\tau} = \mathbb{E}_{p(\tau_f)}[\tau_f] = 0.5 \cdot \tau_A + 0.5 \cdot \tau_B$$</div>
+
+<p><strong>结果是 $\tau_A$ 和 $\tau_B$ 的算术平均</strong>——这条"平均轨迹"可能穿过建筑物、马路牙子或对向车道，在物理上完全不可行。</p>
+
+<div class="card">
+  <h3>模式平均化问题可视化</h3>
+  <div style="text-align:center;padding:10px 0">
+    <svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg" style="max-width:280px">
+      <text x="150" y="15" font-family="Noto Sans SC,sans-serif" font-size="11" fill="#64748b" text-anchor="middle">模式平均化示意</text>
+      <!-- Left mode -->
+      <line x1="30" y1="100" x2="150" y2="40" stroke="#3b82f6" stroke-width="2"/>
+      <text x="20" y="105" font-family="monospace" font-size="10" fill="#3b82f6">τ_A (左转)</text>
+      <!-- Right mode -->
+      <line x1="150" y1="40" x2="270" y2="100" stroke="#22c55e" stroke-width="2"/>
+      <text x="255" y="105" font-family="monospace" font-size="10" fill="#22c55e">τ_B (右转)</text>
+      <!-- Mode average (bad prediction) -->
+      <circle cx="150" cy="70" r="8" fill="#ef4444"/>
+      <text x="150" y="74" font-family="monospace" font-size="8" fill="white" text-anchor="middle">★</text>
+      <text x="150" y="90" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#ef4444" text-anchor="middle">回归预测</text>
+      <!-- Label -->
+      <text x="150" y="118" font-family="Noto Sans SC,sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">可能在马路中间!</text>
+    </svg>
+  </div>
+  <div class="callout red" style="margin-top:8px">
+    <strong>★ 是回归模型预测</strong>，不属于任何合理模式
+  </div>
+</div>
+
+<h3>各类方法如何处理多模态</h3>
+
+<table>
+  <tr><th>方法类型</th><th>多模态机制</th><th>模式数量</th><th>核心问题</th></tr>
+  <tr><td><strong>确定性回归</strong></td><td>无</td><td>1</td><td>模式平均化</td></tr>
+  <tr><td><strong>高斯混合（GMM）</strong></td><td>K 个高斯分量</td><td>K（固定）</td><td>模式数需预设，连续空间离散化</td></tr>
+  <tr><td><strong>CVAE</strong></td><td>潜变量采样 $z \sim q(z \mid \tau_f)$</td><td>与潜空间维度相关</td><td>后验坍缩（posterior collapse）</td></tr>
+  <tr><td><strong>锚点（Anchor）</strong></td><td>预定义 K 条参考轨迹</td><td>K（固定, 如 64）</td><td>锚点分布影响覆盖性</td></tr>
+  <tr><td><strong>GAN</strong></td><td>噪声向量采样 $z \sim \mathcal{N}(0,I)$</td><td>理论无限</td><td>模式坍缩（mode collapse）</td></tr>
+  <tr><td><strong>Diffusion</strong></td><td>去噪过程 $\tau_T \rightarrow \tau_0$</td><td>理论无限</td><td>推理速度慢</td></tr>
+  <tr><td><strong>Flow Matching</strong></td><td>ODE 流映射 $z \rightarrow \tau$</td><td>理论无限</td><td>较新，验证不够充分</td></tr>
+</table>
+
+<h3>CVAE 的后验坍缩问题</h3>
+
+<p><strong>条件变分自编码器（CVAE, Conditional Variational Autoencoder）</strong> 通过学习一个潜变量 $z$ 来建模多模态性：</p>
+
+<div class="formula">$$p(\tau_f \mid \tau_o) = \int p(\tau_f \mid z, \tau_o) p(z \mid \tau_o) dz$$</div>
+
+<p>训练时使用变分下界（ELBO）：</p>
+
+<div class="formula">$$\mathcal{L} = -\mathbb{E}_{q(z \mid \tau_f, \tau_o)}[\log p(\tau_f \mid z, \tau_o)] + \text{KL}[q(z \mid \tau_f, \tau_o) \| p(z \mid \tau_o)]$$</div>
+
+<p><strong>后验坍缩（Posterior Collapse）</strong> 是 CVAE 的常见失效模式：当解码器足够强大时，它可以忽略 $z$ 直接从 $\tau_o$ 预测 $\tau_f$，导致潜变量 $z$ 不携带任何信息，$q(z \mid \tau_f, \tau_o) \approx p(z \mid \tau_o)$，KL 散度趋近于零。结果是模型退化为确定性预测，失去多模态能力。</p>
+
+<h3>GAN 的模式坍缩问题</h3>
+
+<p><strong>生成对抗网络（GAN）</strong> 理论上可以建模任意分布，但训练不稳定性导致<strong>模式坍缩（Mode Collapse）</strong>——生成器只学会产生一两个模式的轨迹，忽略其他合理模式。</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>理想的多模态生成</h3>
+    <div style="margin-top:4px"><span class="tech-badge">★ 左转 30%</span></div>
+   ★ (直行, 40%)
+   ★ (右转, 30%)</pre>
+  </div>
+  <div class="card red">
+    <h3>GAN 模式坍缩后</h3>
+    <div style="margin-top:4px"><span class="tech-badge">★ 左转 90%</span></div>
+   · (直行, 忽略)
+   · (右转, 忽略)
+
+生成器只"记住"了一个容易骗过判别器的模式</pre>
+  </div>
+</div>
+
+<h3>Diffusion 的优势</h3>
+
+<p><strong>Diffusion 模型</strong>天然适合多模态轨迹预测：</p>
+
+<ol>
+<li><strong>无模式坍缩</strong>：训练目标是简单的 MSE 去噪损失 $\|\epsilon - \epsilon_\theta(\tau_t, t)\|^2$，不存在对抗训练的不稳定性</li>
+<li><strong>连续分布</strong>：不依赖预定义的离散锚点，从连续噪声空间采样</li>
+<li><strong>灵活采样</strong>：每次从不同随机噪声 $\tau_T \sim \mathcal{N}(0, I)$ 出发去噪，自然产生不同模式的轨迹</li>
+<li><strong>条件注入灵活</strong>：地图、历史、交互可以通过交叉注意力、拼接、Classifier Guidance 等多种方式注入</li>
+</ol>
+
+<div class="callout blue">
+  <strong>💡 详见</strong> Diffusion 系列的轨迹预测章节（ad-prediction-planning 系列的 06-prediction-transformer 章节）
+</div>
+
+<hr>
+
+<div class="section">
+  <h2>坐标系与表示</h2>
+</div>
+
+<h3>坐标系选择</h3>
+
+<table>
+  <tr><th>坐标系</th><th>定义</th><th>优点</th><th>缺点</th><th>代表方法</th></tr>
+  <tr><td><strong>全局坐标系</strong></td><td>固定的世界坐标</td><td>多智能体统一表示</td><td>不同位置的统计分布不同</td><td>LaneGCN</td></tr>
+  <tr><td><strong>自车坐标系</strong></td><td>以目标智能体为原点</td><td>平移/旋转不变</td><td>多智能体需分别转换</td><td>HiVT, MTR</td></tr>
+  <tr><td><strong>Frenet 坐标系</strong></td><td>沿车道的纵横坐标 (s, d)</td><td>车道对齐，简化问题</td><td>需要参考路径</td><td>MPC 类规划</td></tr>
+</table>
+
+<p>大多数现代方法采用<strong>自车坐标系（Agent-Centric Coordinates）</strong>——以目标智能体当前时刻的位置为原点，朝向为 y 轴正方向。这样做的好处是模型学到的模式具有平移旋转不变性：无论车辆在城市的哪个位置，"左转"的轨迹形状是类似的。</p>
+
+<h3>时间参数</h3>
+
+<table>
+  <tr><th>参数</th><th>ETH/UCY（行人）</th><th>nuScenes（车辆）</th><th>Waymo Open（车辆）</th><th>Argoverse 2（车辆）</th></tr>
+  <tr><td>采样频率</td><td>2.5 Hz</td><td>2 Hz</td><td>10 Hz</td><td>10 Hz</td></tr>
+  <tr><td>观测时长</td><td>3.2s (8 帧)</td><td>2s (4 帧)</td><td>1.1s (11 帧)</td><td>5s (50 帧)</td></tr>
+  <tr><td>预测时长</td><td>4.8s (12 帧)</td><td>6s (12 帧)</td><td>8s (80 帧)</td><td>6s (60 帧)</td></tr>
+  <tr><td>轨迹点数</td><td>12</td><td>12</td><td>80</td><td>60</td></tr>
+</table>
+
+<hr>
+
+<div class="section">
+  <h2>核心挑战</h2>
+</div>
+
+<h3>挑战一：多模态分布建模</h3>
+
+<p>如前所述，同一观测对应多种合理未来。核心难点在于：</p>
+
+<ol>
+<li><strong>模式数量未知</strong>：在一些场景中可能只有 1-2 种合理未来（直线道路），另一些场景可能有 5-6 种（复杂路口）。固定 K 值的方法难以兼顾</li>
+<li><strong>模式间概率分配</strong>：不仅要预测"有哪些可能"，还要准确估计每种可能的概率。概率校准（calibration）是一个独立的难题</li>
+<li><strong>模式内不确定性</strong>：即使确定了"左转"模式，左转的弧度、速度也有不确定性。需要同时建模模式间和模式内的不确定性</li>
+</ol>
+
+<h3>挑战二：社交交互（Social Interaction）</h3>
+
+<p>交通参与者的行为是<strong>互相耦合</strong>的——我的决策影响你的未来，你的决策也影响我的未来。</p>
+
+<div class="card red">
+  <h3>多智能体交互耦合（Joint Distribution）示例</h3>
+  <p class="aux">场景定义：无保护左转（Unprotected Left Turn）路口下的多车博弈。智能体 $A$ 与 $B$ 的动作轨迹具有强烈的动态因果依赖关系：</p>
+  
+  <div class="tech-canvas" style="width: 400px; height: 200px; display: flex; align-items: center; justify-content: center; margin: 16px 0;">
+    <svg class="tech-svg-layer">
+      <path class="tech-svg-line" d="M 70 180 Q 180 100, 180 20" stroke="#3b82f6" />
+      <path class="tech-svg-line" d="M 280 55 L 20 55" stroke="#f59e0b" />
+    </svg>
+
+    <div class="tech-node primary" style="left: 10px; bottom: 10px;">🚗 智能体 A (左转)</div>
+    <div class="tech-node accent" style="right: 10px; top: 40px;">🚘 智能体 B (对向直行)</div>
+    
+    <div class="tech-status low" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; padding: 6px 10px; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);">
+      ⚠️ 冲突博弈点 (Conflict Zone)
+    </div>
+  </div>
+
+  <div class="tech-grid-auto">
+    <div class="tech-data-block">
+      <div class="block-title">分支一：智能体 A 抢先</div>
+      <p class="aux">博弈结果：$B$ 识别到 $A$ 的左转意图，在冲突点前主动减速让行。<br><span class="tech-status high">状态：安全通过</span></p>
+    </div>
+    
+    <div class="tech-data-block">
+      <div class="block-title">分支二：智能体 B 抢先</div>
+      <p class="aux">博弈结果：$A$ 在路口中心制动静止，等待对向直行车 $B$ 快速通过后再右转。<br><span class="tech-status high">状态：安全通过</span></p>
+    </div>
+    
+    <div class="tech-data-block">
+      <div class="block-title" style="color: var(--tech-red);">分支三：博弈陷入死锁</div>
+      <p class="aux">博弈结果：两车缺乏强通信，同时抢行，在路口中心交叉点轨迹重叠。<br><span class="tech-status low">状态：极高碰撞风险！</span></p>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 12px;">
+    <div class="tech-math-badge">
+      $p(\tau_A, \tau_B) \neq p(\tau_A) \cdot p(\tau_B)$
+    </div>
+    <p class="aux" style="margin-top: 4px;">
+      <strong>联合预测（Joint）与边际预测（Marginal）的本质区别：</strong> 
+      相互交互的智能体行为**绝不是**独立的非耦合概率乘积。当且仅当模型采用联合分布概率模型时，才能准确预测出“要么 A 走 B 等，要么 B 走 A 等”的非凸双峰分布（Bimodal Distribution），从而有效避免在重叠概率最高点产生共同抢行导致的碰撞。
+    </p>
+  </div>
+</div>
+
+<p>独立预测每个智能体（边际预测）忽略了这种耦合性，可能产生物理上不可能的场景（如两车同时占据同一空间）。<strong>联合预测（Joint Prediction）</strong> 直接建模多智能体联合分布 $p(\tau_1, \tau_2, \ldots, \tau_N)$，但计算复杂度随智能体数量指数增长。</p>
+
+<h3>挑战三：地图约束</h3>
+
+<p>车辆不能飞越建筑物、穿过护栏或逆行。<strong>高精地图（HD Map）</strong> 提供了强约束信息，但如何将这种结构化约束有效注入神经网络是一个技术难点。</p>
+
+<p>地图编码的三种主流方式：</p>
+<ul>
+<li><strong>栅格化（Rasterization）</strong>：将地图渲染为 BEV 图像，用 CNN 编码</li>
+<li><strong>向量化（Vectorization）</strong>：将车道线表示为折线/多边形序列，用 PointNet/Transformer 编码</li>
+<li><strong>图结构（Graph）</strong>：将车道拓扑表示为图，用 GNN 编码</li>
+</ul>
+
+<div class="callout blue">
+  <strong>💡 详见</strong> 后续章节（ad-prediction-planning 系列的 05-prediction-gnn 和 06-prediction-transformer 章节）
+</div>
+
+<h3>挑战四：时序建模</h3>
+
+<p>轨迹本质是时间序列，具有强时序依赖性——当前速度和加速度约束了下一时刻的可达范围。如何有效建模长程时序依赖（如 8 秒的预测窗口内速度的变化趋势）是从 RNN 到 Transformer 演化的重要驱动力。</p>
+
+<h3>挑战五：不确定性量化</h3>
+
+<p>模型需要"知道自己不确定"。在高置信度场景（直线道路、无交互）中输出集中的分布，在低置信度场景（复杂路口、密集交互）中输出分散的分布。<strong>校准（Calibration）</strong>——模型输出的概率与实际发生频率一致——是一个往往被忽视但对下游规划至关重要的属性。</p>
+
+<hr>
+
+<div class="section">
+  <h2>小结</h2>
+</div>
+
+<table>
+  <tr><th>概念</th><th>要点</th></tr>
+  <tr><td>形式化定义</td><td>$p(\tau_f \mid \tau_o, \mathcal{M}, \mathcal{A})$：条件概率分布建模</td></tr>
+  <tr><td>多模态性</td><td>同一观测对应多种离散合理未来，取平均不合理</td></tr>
+  <tr><td>模式平均化</td><td>确定性回归的 MSE 目标导致输出所有模式的加权平均</td></tr>
+  <tr><td>各类方法对比</td><td>GMM/CVAE/锚点（有限模式）vs GAN/Diffusion/Flow（无限模式）</td></tr>
+  <tr><td>输入三要素</td><td>历史轨迹 + 高精地图 + 周围智能体</td></tr>
+  <tr><td>输出形式</td><td>K 条候选轨迹 + 概率权重</td></tr>
+  <tr><td>五大挑战</td><td>多模态建模、社交交互、地图约束、时序依赖、不确定性量化</td></tr>
+</table>
+
+<hr>
+<div class="nav-footer">
+  自动驾驶预测与规划 · 02 轨迹预测问题定义与数学形式化 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../01-overview/index.html">← 01 自动驾驶预测与规划算法全景</a> ·
+  <a href="../03-prediction-metrics/index.html">03 评估指标体系 →</a>
+</div>
+
+</div>
+</body>
+</html>

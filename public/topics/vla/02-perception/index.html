@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02 视觉感知：从 2D 检测到世界模型</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+  <div class="title-bar">
+    <h1>02 · 视觉感知：从 2D 检测到世界模型</h1>
+    <p>BEV 感知 · Occupancy Network · Transformer 检测 · 世界模型</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 1. 从 2D 到 3D：为什么需要 BEV -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>1. 为什么需要鸟瞰图（BEV）感知？</h2>
+    <p>2D 检测的局限性与 3D 场景理解的需求</p>
+  </div>
+
+  <div class="card">
+    <h3>1.1 What — 什么是 BEV 感知？</h3>
+    <p>BEV（Bird's-Eye View，鸟瞰图）感知是指将车身四周的多个摄像头图像，统一映射到一个以自车为中心的俯视图坐标系中，在该坐标系下进行目标检测、车道线分割和深度估计等感知任务。</p>
+    <p>在 BEV 坐标系下，道路元素（车辆、行人、车道线）都以透视投影后的真实尺度呈现：远处的车辆不会缩小，近处的车辆不会放大——这与图像平面中近大远小的透视投影形成鲜明对比。</p>
+  </div>
+
+  <div class="card">
+    <h3>1.2 Why — 2D 感知为何不够？</h3>
+    <p>传统辅助驾驶系统（如 LKA、AEB）大多基于前视摄像头 + 2D 检测框实现，功能有限。2D 检测存在三个根本性局限：</p>
+    <ul>
+      <li><strong>纵向深度缺失：</strong>单目 2D 检测无法恢复绝对尺度。给定一个像素高度 $h$ 的检测框，在没有先验的情况下无法判断它是一辆远处的卡车还是一辆近处的小车。</li>
+      <li><strong>多相机融合困难：</strong>当一辆车同时出现在两个摄像头中时，2D 系统需要额外的后处理模块（如交并比去重）来融合跨摄像头检测，无法端到端处理。</li>
+      <li><strong>无法建模空间关系：</strong>车道线、可行区域、道路边界等元素天然是空间元素，用 2D 图像表达需要大量人工设计规则，且泛化困难。</li>
+    </ul>
+    <div class="callout blue">
+      <strong>💡 核心洞察：</strong>自动驾驶的决策是在三维物理空间中进行的（变道、超车、绕行），感知系统必须输出三维表示才能与决策层无缝衔接。BEV 就是这个三维表示的二维投影版本——保留了空间完整性，同时简化了后续规划的计算。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>1.3 How — BEV 感知的技术路线</h3>
+    <p>BEV 感知的发展经历了三个阶段：</p>
+
+    <p><strong>阶段一：深度估计 + 透视变换（2016–2020）</strong></p>
+    <p>先通过单目深度估计网络（如 Monodepth）预测每个像素的深度值 $d$，再利用相机内参（焦距 $f$、主点 $c_u, c_v$）和外参（安装位置）将 2D 像素反投影到 3D 世界坐标：</p>
+    <div class="formula">$$x_{\text{world}} = \frac{(u - c_u) \cdot d}{f_x}, \quad y_{\text{world}} = \frac{(v - c_v) \cdot d}{f_y}, \quad z_{\text{world}} = d$$</div>
+    <p>这种方法依赖深度估计的精度，而单目深度估计的误差在高精度需求（<5% 相对误差）的自动驾驶场景下不可接受。</p>
+
+    <p><strong>阶段二：IPM 逆透视映射（传统方法）</strong></p>
+    <p>假设地面是平坦的（$y=0$），通过相机外参直接做逆透视变换（Inverse Perspective Mapping）：</p>
+    <div class="formula">$$X = \frac{h \cdot (u - c_u)}{f_y \cdot \sin\theta + (v - c_v) \cdot \cos\theta}, \quad Z = \frac{h \cdot f_y}{f_y \cdot \sin\theta + (v - c_v) \cdot \cos\theta}$$</div>
+    <p>其中 $h$ 是相机高度，$\theta$ 是俯仰角。IPM 只能在地面点生效，无法处理立面物体（如其他车辆、行人）。</p>
+
+    <p><strong>阶段三：Transformer-based BEV 融合（2021 至今）</strong></p>
+    <p>以 BEVFormer 为代表，通过可变形注意力（Deformable Attention）将多相机特征投影到统一的 BEV 网格，是当前主流技术路线（详见 2.3 节）。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 2. Transformer 检测 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>2. Transformer-based 3D 检测</h2>
+    <p>PETR / BEVFormer / DETR3D 的技术路线对比</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.1 DETR 与 3D 迁移</h3>
+    <p>DETR（DEtection TRansformer）是 2020 年提出的端到端目标检测方法，核心是用 Transformer Decoder 将 N 个固定查询向量（queries）直接回归到检测结果，省去了 NMS 后处理步骤。</p>
+    <p>对于 3D 感知，查询向量需要从鸟瞰图坐标系出发。DETR3D 将每帧图像的 3D 参考点投影到多相机视角，采样对应特征后送入 Decoder：</p>
+    <div class="formula">$$\mathbf{f}_{\text{ref}} = \sum_{c=1}^{N_{\text{cam}}} \text{Sample}(\mathbf{F}_c, \pi_c^{-1}(\mathbf{p}_{\text{3D}}))$$</div>
+    <p>其中 $\pi_c^{-1}$ 是第 $c$ 个相机的反投影函数，$\mathbf{p}_{\text{3D}}$ 是 BEV 空间中查询点的 3D 坐标。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.2 PETR：隐式位置编码方案</h3>
+    <p>PETR（Position Encoding Transformer for 3D Detection）提出了更优雅的方案：无需显式投影，直接在图像特征中注入 3D 位置信息。</p>
+    <p>PETR 使用相机外参构建 3D 位置嵌入（3D Position Embedding, 3D PE）：</p>
+    <div class="formula">$$PE_{\text{3D}}(x,y,z) = \text{MLP}(\text{concat}(PE_{2D}(x,y), PE_z(z)))$$</div>
+    <p>然后将 3D PE 加到多尺度图像特征 $\mathbf{F}_c^{\text{multi}}$ 上，送入标准 Transformer Encoder-Decoder 进行 3D 检测。这种方法避免了 DETR3D 的显式投影采样计算，推理速度更快。</p>
+
+    <div class="callout blue">
+      <strong>💡 PETR 的核心贡献：</strong>证明了 3D 感知不需要显式的前投影（Forward Projection）或反投影（Back Projection）操作，仅通过在特征空间中注入相机内外参信息，Transformer 就能自动学习多相机之间的空间对应关系。
+    </div>
+  </div>
+
+  <div class="card green">
+    <h3>2.3 BEVFormer：时空 BEV 融合</h3>
+    <p>BEVFormer（上海人工智能实验室，2022）是 BEV 感知的里程碑工作。它同时解决了两个问题：<strong>空间融合</strong>（多相机 → BEV）和<strong>时间融合</strong>（历史帧 → 当前帧）。</p>
+
+    <p><strong>空间融合：可变形注意力</strong></p>
+    <p>BEVFormer 不使用标准的全局注意力（$H \times W \times H \times W$ 复杂度），而是使用可变形注意力（Deformable Attention），将每个 BEV query 只关注其对应 3D 区域的图像特征：</p>
+    <div class="formula">$$\text{DeformAttn}(q, \mathbf{p}_q, \mathbf{F}) = \sum_{h=1}^{H} W_h \sum_{k=1}^{K} A_{hk} \cdot W' \cdot \mathbf{F}(\mathbf{p}_q + \Delta\mathbf{p}_{hk})$$</div>
+    <p>其中 $\Delta\mathbf{p}_{hk}$ 是通过一个小型 MLP 预测的 $K$ 个采样偏置，$A_{hk}$ 是注意力权重，$H$ 是注意力头数。</p>
+
+    <p><strong>时间融合：Temporal Self-Attention</strong></p>
+    <p>当前 BEV query 不仅关注当前帧图像，还通过一个时序缓存（BEV memory）关注历史帧的 BEV 特征：</p>
+    <div class="formula">$$\mathbf{Q}_{\text{temporal}} = \text{SA}(\mathbf{Q}_{\text{spatial}}, \text{BEV}_{\text{history}})$$</div>
+    <p>时间融合对于遮挡场景至关重要——当一辆车被前方大货车遮挡时，当前帧只能看到部分轮廓，但历史帧的完整轨迹信息可以"补全"当前感知。</p>
+
+    <div class="tech-canvas">
+      <div style="padding:12px 16px">
+        <div style="text-align:center;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">BEVFormer 时空融合架构</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- cameras -->
+          <div style="display:flex;justify-content:space-between;gap:4px">
+            <div class="tech-data-block" style="flex:1;text-align:center;padding:6px;font-size:10px;border:1px solid var(--border)">前视相机</div>
+            <div class="tech-data-block" style="flex:1;text-align:center;padding:6px;font-size:10px;border:1px solid var(--border)">左前相机</div>
+            <div class="tech-data-block" style="flex:1;text-align:center;padding:6px;font-size:10px;border:1px solid var(--border)">右前相机</div>
+            <div class="tech-data-block" style="flex:1;text-align:center;padding:6px;font-size:10px;border:1px solid var(--border)">左后相机</div>
+            <div class="tech-data-block" style="flex:1;text-align:center;padding:6px;font-size:10px;border:1px solid var(--border)">右后相机</div>
+          </div>
+          <div style="text-align:center;font-size:16px;color:var(--text-3)">↓ × 6个相机</div>
+          <div style="text-align:center;padding:7px 14px;background:#eff6ff;border:1px solid var(--blue);border-radius:4px;font-size:11px;font-weight:600;color:var(--blue)">
+            图像 Backbone（ResNet/ViT）→ 多尺度特征 $\mathbf{F}_1, \ldots, \mathbf{F}_6$
+          </div>
+          <div style="text-align:center;font-size:16px;color:var(--text-3)">↓ Spatial Cross Attention</div>
+          <div style="display:flex;gap:8px">
+            <div style="text-align:center;padding:7px 14px;background:#f0fdf4;border:1px solid var(--green);border-radius:4px;font-size:11px;font-weight:600;color:var(--green);flex:1">
+              BEV Query Grid<br><span style="font-size:10px;color:var(--text-3)">$(H_{\text{BEV}} \times W_{\text{BEV}})$</span>
+            </div>
+            <div style="text-align:center;font-size:16px;color:var(--text-3);align-self:center">+</div>
+            <div style="text-align:center;padding:7px 14px;background:#fef3c7;border:1px solid var(--amber);border-radius:4px;font-size:11px;font-weight:600;color:#b45309;flex:1">
+              时序 Memory<br><span style="font-size:10px;color:var(--text-3)">$t-1, t-2, \ldots$ 帧 BEV</span>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:16px;color:var(--text-3)">↓ Temporal Self Attention</div>
+          <div style="text-align:center;padding:7px 14px;background:#ede9fe;border:1px solid var(--purple);border-radius:4px;font-size:11px;font-weight:600;color:#5b21b6">
+            BEV Feature $\mathbf{F}_{\text{BEV}}^t$ — 统一时空表示
+          </div>
+          <div style="display:flex;justify-content:space-around;gap:6px">
+            <div style="text-align:center;padding:5px 8px;background:#f1f5f9;border:1px solid var(--code-border);border-radius:4px;font-size:10px;color:var(--text-2)">3D检测头</div>
+            <div style="text-align:center;padding:5px 8px;background:#f1f5f9;border:1px solid var(--code-border);border-radius:4px;font-size:10px;color:var(--text-2)">车道线头</div>
+            <div style="text-align:center;padding:5px 8px;background:#f1f5f9;border:1px solid var(--code-border);border-radius:4px;font-size:10px;color:var(--text-2)">地图头</div>
+            <div style="text-align:center;padding:5px 8px;background:#f1f5f9;border:1px solid var(--code-border);border-radius:4px;font-size:10px;color:var(--text-2)"> OCC 头</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. Occupancy Network -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section amber">
+    <h2>3. Occupancy Network：超越边界框的感知</h2>
+    <p>Tesla Occupancy Network / NeRF 融合 / 体素表征</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.1 Why — 边界框的固有缺陷</h3>
+    <p>传统的 3D 检测输出边界框（3D Bounding Box），但边界框存在三个无法克服的问题：</p>
+    <ul>
+      <li><strong>无法表达非常规物体：</strong>翻倒的卡车、异形障碍物（散落的水马、施工牌）无法用矩形框准确描述。</li>
+      <li><strong>遮挡区域不可知：</strong>边界框只标注可见部分，遮挡区域用虚框表示，实际不可行驶空间被低估。</li>
+      <li><strong>分类粒度有限：</strong>遇到训练集中未出现的物体类别时，检测器只能给出"未知"标签，无法判断是否需要绕行。</li>
+    </ul>
+    <p>Occupancy Network 将感知粒度从"物体"级别提升到"空间"级别，对每个体素（voxel）预测其被占据的概率。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.2 Tesla Occupancy Network 架构</h3>
+    <p>Tesla 在 2022 年 AI Day 公开的 Occupancy Network 直接处理多相机视频流，核心设计：</p>
+    <p><strong>输入：</strong>8 个相机的 1280×960@36Hz 视频流，经过 RegNet + BiFPN 特征提取后送入空间咀嚼模块（Spatial咀嚼 = Spatial咀嚼）。</p>
+    <p><strong>体素表征：</strong>自车周围 50m × 50m × 4m 的空间被划分为 0.4m 分辨率的体素网格，共约 $125 \times 125 \times 10 = 156,250$ 个体素。</p>
+    <p><strong>输出：</strong>每个体素的占据概率 $p_{\text{occ}} \in [0, 1]$，以及可选的语义标签（如车辆、行人、道路）。</p>
+    <div class="formula">$$\text{Occ}(x,y,z) = \sigma(\text{MLP}(\mathbf{F}_{\text{BEV}}(x,y) \oplus \mathbf{p}_{\text{3D}}(x,y,z)))$$</div>
+    <p>其中 $\sigma$ 是 Sigmoid，$\oplus$ 表示拼接，$\mathbf{p}_{\text{3D}}$ 是 3D 位置编码。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.3 Occupancy Flow：动静联合建模</h3>
+    <p>基础的 Occupancy 只建模静态占据，而现实世界存在大量运动物体（如行驶的车辆、走路的行人）。Occupancy Flow 在占据概率之上增加了一个速度向量预测：</p>
+    <div class="formula">$$\mathbf{v}_{\text{occ}}(x,y,z,t) = f_{\theta}(\mathbf{F}_{\text{BEV}}, t)$$</div>
+    <p>通过跟踪每个体素在时间序列中的位移，Occupancy Flow 可以预测未来 1–3 秒内的空间被占据情况变化，直接服务于动态规划。</p>
+
+    <div class="callout amber">
+      <strong>⚠ 注意：</strong>Occupancy Network 的计算量极大，实时推理需要在精度和延迟之间做权衡。Tesla 使用专用的 Transformer 硬件加速单元（FSD 芯片）来满足 10Hz 的体素更新频率。学术界的解决方案包括稀疏卷积、体素 dropout 等。
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. 世界模型 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section purple">
+    <h2>4. 世界模型：感知的终极目标</h2>
+    <p>NeRF · 世界模型 · 未来帧预测 · GAIA-1</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.1 What — 什么是世界模型？</h3>
+    <p>世界模型（World Model）是一个能够预测"如果执行动作 $\mathbf{a}$，世界状态 $\mathbf{s}$ 将如何变化"的神经网络。从数学上看，它建模了环境动态的联合分布：</p>
+    <div class="formula">$$p(\mathbf{s}_{t+1}, \mathbf{o}_{t+1} \mid \mathbf{s}_t, \mathbf{a}_t)$$</div>
+    <p>其中 $\mathbf{s}_t$ 是隐状态，$\mathbf{o}_t$ 是观测（图像/LiDAR），$\mathbf{a}_t$ 是动作输入。</p>
+    <p>在 VLA 框架下，世界模型有两个关键作用：</p>
+    <ul>
+      <li><strong>作为动作评估器：</strong>VLA 生成多个候选动作，通过世界模型预测结果，选择最安全的一个（类似 Model Predictive Control）。</li>
+      <li><strong>作为数据生成器：</strong>世界模型可以在想象中 rollout，生成大规模合成数据用于训练 VLA。</li>
+    </ul>
+  </div>
+
+  <div class="card purple">
+    <h3>4.2 NeRF 与 Street Gaussians</h3>
+    <p>NeRF（Neural Radiance Field）使用 MLP 隐式表达三维场景，给定相机射线方向 $\mathbf{d}$ 和三维位置 $\mathbf{x}$，输出颜色 $c$ 和密度 $\sigma$：</p>
+    <div class="formula">$$(c, \sigma) = \text{MLP}_\theta(\mathbf{x}, \mathbf{d})$$</div>
+    <p>通过体渲染（Volume Rendering）对整条射线积分，得到像素颜色：</p>
+    <div class="formula">$$\hat{C}(\mathbf{r}) = \sum_{i=1}^{N} T_i \cdot (1 - \exp(-\sigma_i \delta_i)) \cdot c_i, \quad T_i = \exp\left(-\sum_{j=1}^{i-1} \sigma_j \delta_j\right)$$</div>
+    <p>NeRF 适合静态场景重建，但无法处理动态物体和光照变化。Street Gaussians（3DGS 的驾驶场景扩展）用高斯溅射（Gaussian Splatting）替代 MLP，实现了实时渲染和动态场景支持。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.3 GAIA-1：Wayve 的世界模型</h3>
+    <p>GAIA-1（Wayve, 2023）是目前最完整的驾驶场景世界模型之一。它将视频生成、动作预测和场景理解统一在单一模型中。</p>
+    <p>GAIA-1 的核心是一个视频扩散模型，接受三种条件输入：</p>
+    <ul>
+      <li><strong>自车动作：</strong>方向盘转角 $\delta_{\text{steer}}$、油门开度 $\alpha_{\text{throttle}}$、刹车开度 $\alpha_{\text{brake}}$</li>
+      <li><strong>拓扑路径：</strong>地图级的可行驶路径序列</li>
+      <li><strong>视频提示：</strong>单帧或短视频片段作为内容初始化</li>
+    </ul>
+    <p>通过在超过 64 万小时的真实驾驶视频上训练，GAIA-1 可以生成物理合理、时间连贯的驾驶视频，其生成质量在 FID 指标上接近真实视频分布。</p>
+    <p>更重要的是，GAIA-1 的生成结果隐式编码了环境动态知识——它知道车辆在红灯时会停下，知道行人会在人行道上行走。这种知识可以被蒸馏到 VLA 的动作预测模块中。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.4 世界模型 vs 视觉感知的关系</h3>
+    <p>世界模型不是视觉感知的替代，而是感知能力的<strong>抽象与外推</strong>：</p>
+    <div class="flow">
+      <span class="flow-node">原始感知</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node green">BEV / Occupancy</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">结构化场景表征</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node purple">世界模型</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node" style="border-color:var(--red);color:var(--red)">动作预测</span>
+    </div>
+    <p>视觉感知回答"现在世界是什么样"，世界模型回答"如果我做 X，世界会变成什么样"。两者共同构成 VLA 的感知-预测链路。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 5. 感知模块的工程挑战 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section red">
+    <h2>5. 工程落地挑战</h2>
+    <p>相机噪声 · 恶劣天气 · 时间同步 · 计算资源</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.1 相机系统的工程挑战</h3>
+    <ul>
+      <li><strong>曝光控制：</strong>进出隧道时光强变化超过 20dB，需要多帧 HDR 融合或自动曝光算法补偿。</li>
+      <li><strong>时间同步：</strong>8 个相机需要在微秒级时间同步，否则运动物体的位置在不同相机中不一致。一般通过 PTP（Precision Time Protocol）或硬件触发信号实现。</li>
+      <li><strong>标定漂移：</strong>相机安装位置随车辆行驶振动、温度变化而微小偏移，需要在线标定（Online Calibration）模块持续修正外参。</li>
+      <li><strong>镜头畸变：</strong>广角镜头（120°+）的径向畸变需要在特征提取前校正。</li>
+    </ul>
+  </div>
+
+  <div class="card red">
+    <h3>5.2 恶劣天气下的感知退化</h3>
+    <p>感知系统在雨、雾、雪、强光照等恶劣条件下会出现显著性能退化：</p>
+    <table>
+      <tr><th>场景</th><th>主要退化形式</th><th>缓解方法</th></tr>
+      <tr><td>雨天</td><td>镜头水滴、地面反光、车道线模糊</td><td>镜头加热器、语义分割增强、夜间红外融合</td></tr>
+      <tr><td>浓雾</td><td>对比度下降、远处物体消失</td><td>去雾算法（暗通道先验、CNN）、深度估计补偿</td></tr>
+      <tr><td>强光照</td><td>镜头眩光（flare）、过曝</td><td>HDR 多帧融合、偏振镜</td></tr>
+      <tr><td>夜间</td><td>噪声放大、动态范围不足</td><td>低照度增强（ISP 算法）、LiDAR 融合</td></tr>
+    </table>
+  </div>
+
+  <div class="card red">
+    <h3>5.3 感知-规划接口设计</h3>
+    <p>感知模块的输出格式直接决定下游规划模块的设计。常见的接口类型：</p>
+    <div class="tech-grid-auto">
+      <div class="tech-data-block">
+        <div class="block-title"><span>Vector Set</span><span class="tech-badge">特斯拉</span></div>
+        <p style="font-size:11px;color:var(--text-2)">用向量集表示道路元素（车道线、路口边界），每个向量包含位置 $(x,y)$、方向、曲率。占用内存小，适合高速场景。</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title"><span>Occupancy Grid</span><span class="tech-badge">通用</span></div>
+        <p style="font-size:11px;color:var(--text-2)">二维/三维栅格图，每个格子标注占据概率。直观但分辨率受限（0.1–0.4m/格）。</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title"><span>语义地图</span><span class="tech-badge">华为/小鹏</span></div>
+        <p style="font-size:11px;color:var(--text-2)">HD Map 语义元素（车道拓扑、信号灯ID）的在线检测结果，支持路径规划。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 6. 小结 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>6. 本章小结</h2>
+    <p>第二章核心要点回顾</p>
+  </div>
+
+  <div class="card green">
+    <p>本章从<strong>为什么需要 BEV</strong>开始，梳理了从 2D 检测到 3D 感知的技术演进：</p>
+    <ul>
+      <li>单目深度估计存在精度瓶颈，IPM 只能处理地面点，Transformer-based BEV 融合是目前最优解。</li>
+      <li><strong>BEVFormer</strong> 通过可变形注意力和时序自注意力，同时解决了多相机空间融合和历史帧时间融合问题。</li>
+      <li><strong>PETR</strong> 证明隐式 3D 位置编码可以替代显式投影采样，简化计算图。</li>
+      <li><strong>Occupancy Network</strong> 超越了边界框的限制，以体素为单位建模任意形状的占据空间。</li>
+      <li><strong>世界模型</strong>（GAIA-1、NeRF/3DGS）将感知推向"预测"层面，为 VLA 的动作评估和合成数据生成提供了基础设施。</li>
+    </ul>
+    <p>下一章将聚焦 VLA 的另一个核心能力：<strong>第三章 · 语言与视觉的对齐</strong>，深入 CLIP、SigLIP 的对比学习原理，以及 LLaVA-style VLM 的指令跟随架构。</p>
+  </div>
+
+</div><!-- .container -->
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · 02 视觉感知：从 2D 检测到世界模型 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../01-vla-foundation/index.html">← 01 VLA 基础</a> ·
+  <a href="../03-language-grounding/index.html">下一篇：03 语言与视觉的对齐 →</a>
+</div>
+
+</body>
+</html>

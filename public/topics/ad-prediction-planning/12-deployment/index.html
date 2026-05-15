@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12 评估与落地：学术 Benchmark 与工业实践 — 自动驾驶预测与规划</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left:'$$', right:'$$', display: true},
+        {left:'$', right:'$', display: false}
+      ],
+      throwOnError: false, trust: true, strict: false
+    });
+  }, 100);
+});
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+.title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+.title-bar h1{font-size:20px;font-weight:700}
+.title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+.section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+.section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+.section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+.section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+.section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+.section h2{font-size:15px;font-weight:700}
+.section p{color:var(--text-2);font-size:12px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+.card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+.card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+.callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+
+table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+td{padding:7px 10px;border:1px solid var(--border)}
+tr:nth-child(even) td{background:#f8fafc}
+pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre code{background:none;padding:0}
+.kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+.formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+.flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+.flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin-bottom:4px}
+p{margin-bottom:8px}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+h1{font-size:18px;font-weight:700;margin-bottom:8px}
+h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+.ascii-diagram{background:#1e293b;color:#e2e8f0;font-family:var(--mono);font-size:10.5px;line-height:1.4;padding:14px 16px;border-radius:8px;overflow-x:auto;white-space:pre;margin:12px 0}
+.ascii-diagram .layer{color:#93c5fd}
+.ascii-diagram .arrow{color:#f59e0b}
+.ascii-diagram .label{color:#86efac}
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>12 评估与落地：学术 Benchmark 与工业实践</h1>
+    <p>nuScenes / Waymo / nuPlan 与端到端部署的核心挑战</p>
+    <p style="margin-top:8px;font-size:11px;color:var(--text-3)">章节 12 / 共 12 章 · 最后一章</p>
+  </div>
+
+  <!-- 引言 -->
+  <div class="section purple">
+    <h2>本章导读</h2>
+    <p>学术研究和工业部署不是对立的，而是技术生命周期的不同阶段。学术界负责探索上限（"什么方法效果最好"），工业界负责工程落地（"怎么在约束下做到最好"）。本章深入对比两种评估范式的核心差异，从开环指标的固有陷阱出发，到 nuPlan 闭环评估框架详解，再到学术 vs 工业的全维度碰撞，最终给出模型压缩与车载部署的实战指南。</p>
+  </div>
+
+  <!-- 1 开环指标的陷阱 -->
+  <div class="section">
+    <h2>1 开环指标的陷阱：minADE 优秀为何仍不安全？</h2>
+    <p>最小平均位移误差（minADE）是轨迹预测领域最常用的离线评估指标。然而，一个看似优秀的 minADE = 1.5m 在闭环部署中可能导致高达 10% 的碰撞率。这一现象的根本原因在于开环评估与闭环执行之间存在不可忽视的分布偏移。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>1.1 级联误差传播模型</h3>
+    <p>单步预测误差在时间维度上的累积可以建模为：</p>
+    <div class="formula">$$E_T = \sum_{t=1}^{T} \epsilon_t + \sum_{t=2}^{T} \delta_t(\epsilon_{1:t-1})$$</div>
+    <p>其中 $\delta_t(\epsilon_{1:t-1})$ 表示由历史误差引发的交互反馈误差——即自车因偏离了真值轨迹，导致周围车辆做出了与原始数据中不同的响应，从而进一步放大预测误差。</p>
+    <div class="callout red">
+      <strong>核心洞察</strong>
+      开环评估始终沿真值轨迹回放，模型不需要处理自身预测误差累积后的状态。一旦部署到闭环环境，模型将在自身输出的分布上运行，而这一分布在训练中从未被覆盖。
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>1.2 minADE 与碰撞率的定量关系</h3>
+    <p>基于大规模实验数据，minADE 与闭环碰撞率呈超线性关系：</p>
+    <div class="formula">$$\text{CollisionRate} \approx \alpha \cdot (\text{minADE})^\beta, \quad \beta \approx 2.3$$</div>
+    <p>这意味着 minADE 每增加 0.5m，碰撞率可能翻倍甚至更高。</p>
+    <table>
+      <tr><th>minADE (m)</th><th>闭环碰撞率 (%)</th><th>闭环 off-road 率 (%)</th><th>说明</th></tr>
+      <tr><td>0.5</td><td>0.8</td><td>0.3</td><td>接近人类水平</td></tr>
+      <tr><td>1.0</td><td>3.2</td><td>1.5</td><td>学术 SOTA 水平</td></tr>
+      <tr><td><strong>1.5</strong></td><td><strong>~10.0</strong></td><td><strong>4.7</strong></td><td>看似合格，实则危险</td></tr>
+      <tr><td>2.0</td><td>18.5</td><td>9.2</td><td>不可部署</td></tr>
+      <tr><td>3.0</td><td>35.0+</td><td>20.0+</td><td>严重失败</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>1.3 开环指标失效的三大根因</h3>
+    <div class="grid-3">
+      <div class="card" style="border-left-color:var(--red)">
+        <h3 style="color:var(--red)">分布偏移</h3>
+        <p style="font-size:12px">开环回放中模型在自身输出分布上从未被评估。训练分布与部署分布的系统性差异导致模型行为不可预测。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--amber)">
+        <h3 style="color:var(--amber)">交互缺失</h3>
+        <p style="font-size:12px">开环回放中所有交通参与者的轨迹固定，不会对自车决策做出响应。真实世界中自车行为影响他车决策，形成博弈循环。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--blue)">
+        <h3 style="color:var(--blue)">长尾遗漏</h3>
+        <p style="font-size:12px">minADE 对所有场景取平均值，稀有危险场景被大量简单场景"稀释"，掩盖了真正危险的尾部分布。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 nuPlan 闭环评估详解 -->
+  <div class="section green">
+    <h2>2 nuPlan 闭环评估详解</h2>
+    <p>nuPlan 是由 Motional 发布的首个大规模自动驾驶规划基准，其核心创新在于提供了完整的闭环仿真评估框架。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.1 nuPlan 评估流程</h3>
+    <p>闭环评估的核心流程如下：</p>
+    <ol style="font-size:12px">
+      <li><strong>场景初始化：</strong>从数据库加载初始场景状态，包括地图、自车位姿、所有交通参与者的状态。</li>
+      <li><strong>规划器调用：</strong>将当前观测输入被测规划器，获得未来轨迹输出（10Hz 频率输出 8 秒规划轨迹）。</li>
+      <li><strong>轨迹跟踪：</strong>低层控制器（LQR 或 PID）跟踪规划轨迹的前几步，更新自车的物理状态。</li>
+      <li><strong>环境演进：</strong>非反应式模式下他车按日志回放；反应式模式下他车基于 IDM 模型对自车行为做出动态响应。</li>
+      <li><strong>指标采集：</strong>每个仿真步采集安全、舒适性、进度等多维指标。</li>
+    </ol>
+  </div>
+
+  <div class="card green">
+    <h3>2.2 nuPlan 核心指标体系</h3>
+    <p>nuPlan 评估指标按层级组织，任何 L1 安全指标为 0 时综合分直接置零（hard constraint）：</p>
+    <div class="formula">$$S = w_{\text{safety}} \cdot S_{\text{safe}} + w_{\text{comfort}} \cdot S_{\text{conf}} + w_{\text{progress}} \cdot S_{\text{prog}} + w_{\text{traffic}} \cdot S_{\text{rule}}$$</div>
+    <table>
+      <tr><th>层级</th><th>维度</th><th>权重</th><th>典型指标</th></tr>
+      <tr><td>L1</td><td>安全性 (Safety)</td><td>0.40</td><td>无碰撞、TTC > 阈值、无闯红灯、无逆行</td></tr>
+      <tr><td>L1</td><td>舒适性 (Comfort)</td><td>0.25</td><td>纵向加速度 ∈ [-4, 3] m/s²、横向加速度 &lt; 3 m/s²</td></tr>
+      <tr><td>L1</td><td>进度 (Progress)</td><td>0.20</td><td>路线完成度、速度效率、无超时</td></tr>
+      <tr><td>L1</td><td>合规性 (Traffic Rules)</td><td>0.15</td><td>车道保持、速度限制、让行规则</td></tr>
+    </table>
+  </div>
+
+  <div class="card green">
+    <h3>2.3 关键实现细节</h3>
+    <ul style="font-size:12px">
+      <li><strong>碰撞判定：</strong>采用有向包围盒（OBB）做重叠检测，并区分责任归属（at-fault vs. not-at-fault）。若自车在碰撞前 2 秒内存在不合理操作（急加速、急变道），则判定为自车责任碰撞。</li>
+      <li><strong>驶出道路判定：</strong>自车的任意角点超出可行驶区域多边形即判定为 off-road 事件。</li>
+      <li><strong>进度基线：</strong>以专家驾驶员（即日志中真实驾驶员）的路线完成度和速度为参考基线，计算规划器效率分。</li>
+    </ul>
+    <div class="callout blue">
+      <strong>数据规模</strong>
+      nuPlan 提供 1500+ 小时驾驶数据、75+ 场景类型、4 城市覆盖，是目前最全面的闭环规划基准之一。
+    </div>
+  </div>
+
+  <!-- 3 学术基准 vs 工业指标体系 -->
+  <div class="section">
+    <h2>3 学术基准 vs 工业指标体系</h2>
+    <p>学术界和工业界对自动驾驶预测/规划的评价标准存在系统性差异。一篇顶会论文的核心诉求是"在公开基准上刷新 SOTA"，而一个量产系统的核心诉求是"在真实道路上安全运行 10 万公里不出事"。</p>
+  </div>
+
+  <div class="card">
+    <h3>3.1 学术核心指标 vs 工业核心指标</h3>
+    <div class="grid-2">
+      <div class="card" style="border-left-color:var(--blue)">
+        <h3 style="color:var(--blue)">学术界</h3>
+        <table style="font-size:11px">
+          <tr><th>指标</th><th>定义</th><th>局限性</th></tr>
+          <tr><td>minADE_K</td><td>$\min_k \frac{1}{T} \sum_t \|\hat{p}_t^{(k)} - p_t\|_2$</td><td>K 越大指标越好，"碰运气"</td></tr>
+          <tr><td>minFDE_K</td><td>$\min_k \|\hat{p}_T^{(k)} - p_T\|_2$</td><td>只看终点，忽略中间过程</td></tr>
+          <tr><td>MR_K</td><td>所有候选终点均超出阈值的比例</td><td>阈值选择主观（2m? 4m?）</td></tr>
+          <tr><td>NLL</td><td>$-\log p(y \mid x)$</td><td>只适用于显式概率模型</td></tr>
+        </table>
+      </div>
+      <div class="card" style="border-left-color:var(--green)">
+        <h3 style="color:var(--green)">工业界</h3>
+        <table style="font-size:11px">
+          <tr><th>指标</th><th>典型要求</th></tr>
+          <tr><td>碰撞率</td><td>&lt; 0.1 次/百万公里</td></tr>
+          <tr><td>接管率</td><td>&lt; 0.5 次/千公里</td></tr>
+          <tr><td>端到端延迟</td><td>&lt; 100ms（10Hz）</td></tr>
+          <tr><td>推理延迟</td><td>&lt; 30ms（预测模块）</td></tr>
+          <tr><td>功耗</td><td>&lt; 30W（嵌入式）</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>3.2 速度指标的鸿沟</h3>
+    <p>学术方法通常只优化精度轴，而工业界需要在精度-延迟的帕累托前沿上选择：</p>
+    <div class="formula">$$\text{Pareto Optimal} = \arg\min_\theta \big[\text{minADE}(\theta),   \text{Latency}(\theta)\big]$$</div>
+    <p>端到端延迟预算通常为 100-200ms（对应 5-10Hz 更新频率），留给预测模块的时间窗口仅约 20-25ms。</p>
+    <table>
+      <tr><th>芯片</th><th>FP16 算力</th><th>内存</th><th>功耗</th><th>代表厂商</th></tr>
+      <tr><td>NVIDIA A100</td><td>312 TFLOPS</td><td>80 GB</td><td>300W</td><td>学术研究</td></tr>
+      <tr><td>NVIDIA Orin</td><td>67 TFLOPS</td><td>32 GB</td><td>60W</td><td>小鹏、蔚来</td></tr>
+      <tr><td>TDA4VM</td><td>8 TOPS INT8</td><td>4 GB</td><td>5W</td><td>入门级 ADAS</td></tr>
+      <tr><td>地平线 J5</td><td>128 TOPS INT8</td><td>16 GB</td><td>30W</td><td>理想、比亚迪</td></tr>
+    </table>
+    <div class="callout amber">
+      <strong>关键洞察</strong>
+      从 A100 到 Orin，FP16 算力下降约 5 倍；到 TDA4VM，INT8 算力下降约 40 倍。学术论文中报告的延迟需要乘以相应倍数才是实际部署延迟。学术模型 500ms 的推理时间，在 Orin 上可能需要数秒。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>3.3 安全指标的优先级差异</h3>
+    <p>学术界倾向于将安全视为 "one of many metrics"，与位移误差并列报告。工业界则采用安全一票否决制：</p>
+    <div class="formula">$$\text{Score}_{\text{industry}} = \begin{cases} f(\text{comfort}, \text{progress}, \text{efficiency}) & \text{if } \text{safety\_pass} = \text{True} \\ 0 & \text{if } \text{safety\_pass} = \text{False} \end{cases}$$</div>
+    <p>任何安全指标未通过时，综合分直接归零。这一硬约束在产品开发阶段必须始终满足。</p>
+  </div>
+
+  <!-- 4 五大失败模式 -->
+  <div class="section red">
+    <h2>4 五大失败模式图解</h2>
+    <p>从开环到闭环，从仿真到实车，模型在部署过程中可能遭遇多种系统性失败。理解这些失败模式的根因，是构建安全可靠系统的前提。</p>
+  </div>
+
+  <div class="card red">
+    <h3>4.1 轨迹碰撞：社交交互缺失</h3>
+    <p><strong>What：</strong>模型独立预测每个智能体的轨迹，未建模智能体间的交互约束，导致预测轨迹在时空上发生重叠。</p>
+    <p><strong>Why：</strong>独立预测假设 $P(\tau_A, \tau_B) = P(\tau_A) \cdot P(\tau_B)$ 在交叉路口等场景下完全不成立，导致多智能体轨迹在交汇点重叠。</p>
+    <p><strong>How：</strong>采用联合预测架构，建模条件概率 $P(\tau_A, \tau_B) = P(\tau_A \mid \tau_B) \cdot P(\tau_B)$。Scene Transformer、M2I 等方法在解码阶段显式建模智能体间的条件依赖关系。</p>
+    <div class="formula">$$\text{独立预测（错误）}: P(\tau_A, \tau_B) = P(\tau_A) \cdot P(\tau_B)$$</div>
+    <div class="formula">$$\text{联合预测（正确）}: P(\tau_A, \tau_B) = P(\tau_A \mid \tau_B) \cdot P(\tau_B)$$</div>
+    <div class="callout red">
+      <strong>后果</strong>
+      在无信号交叉路口，独立预测导致车辆 A 和车辆 B 的轨迹在交叉点重叠，直接引发碰撞。
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>4.2 车道偏离：地图约束不足</h3>
+    <p><strong>What：</strong>模型输出的轨迹未充分利用高精地图的车道几何信息，导致预测或规划轨迹偏出车道边界。</p>
+    <p><strong>Why：</strong>回归损失（L2 loss）不感知车道拓扑，地图编码不充分导致弯道曲率信息丢失，笛卡尔空间直线回归无法保证沿车道中心线的几何一致性。</p>
+    <p><strong>How：</strong>引入车道损失约束，强制轨迹到车道边界的距离满足可行驶边界条件：</p>
+    <div class="formula">$$L_{\text{lane}} = \max(d - w,   0)^2$$</div>
+    <p>其中 $d$ 为轨迹到车道边界的距离，$w$ 为允许的最大偏移阈值。同时采用 Frenet 坐标系进行轨迹解耦，将轨迹分解为沿车道中心线的纵向分量和垂直于中心线的横向分量。</p>
+  </div>
+
+  <div class="card blue">
+    <h3>4.3 急刹车：预测置信度不准确</h3>
+    <p><strong>What：</strong>预测模块对低概率预测赋予了过高的置信度，导致规划器做出不必要的紧急制动，严重影响乘客舒适性。</p>
+    <p><strong>Why：</strong>预测概率与实际发生率严重偏离（overconfident），导致虚假切入警报，引发急刹车（a = -5.2 m/s²），同时增加追尾风险。</p>
+    <p><strong>How：</strong>通过校准技术使预测置信度与实际准确率一致。Expected Calibration Error (ECE) 的计算公式为：</p>
+    <div class="formula">$$\text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \left| \text{acc}(b) - \text{conf}(b) \right|$$</div>
+    <p>其中 $B$ 为置信度区间数量，$n_b$ 为落入第 $b$ 个区间的样本数，$\text{acc}(b)$ 和 $\text{conf}(b)$ 分别为该区间的实际准确率和平均置信度。</p>
+    <div class="callout blue">
+      <strong>解决方案</strong>
+      温度缩放（Temperature Scaling）、保序回归（Isotonic Regression）、贝叶斯校准（Bayesian Calibration）均可有效降低 ECE，提升预测置信度的可靠性。
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h3>4.4 模态遗漏：多模态性不足</h3>
+    <p><strong>What：</strong>模型只输出单一或少量轨迹模态，未能覆盖关键的行为意图分支。当真实行为落入被遗漏的模态时，预测完全失败。</p>
+    <p><strong>Why：</strong>多模态输出坍缩为重复模式（mode collapse），模型对相似轨迹给出不同概率但实质相同，导致关键意图（如左转）被遗漏。</p>
+    <p><strong>How：</strong>通过行列式点过程（DPP）核函数量化模态多样性：</p>
+    <div class="formula">$$\mathcal{L}_{\text{diversity}} = -\log \det(\mathbf{L}), \quad L_{ij} = \phi(\tau_i)^T \phi(\tau_j) \cdot q_i q_j$$</div>
+    <p>其中 $\phi(\tau_i)$ 为轨迹特征，$q_i$ 为对应的质量（概率）项。DPP 采样可确保候选轨迹既有多样性又有高质量。</p>
+    <div class="callout purple">
+      <strong>训练策略</strong>
+      WTA（Winner-Take-All）训练策略、锚点多样性损失（Anchor Diversity Loss）均可有效防止模态坍缩，提升意图覆盖率。
+    </div>
+  </div>
+
+  <div class="card" style="border-left-color:var(--green)">
+    <h3>4.5 分布外崩溃：OOD 泛化失败</h3>
+    <p><strong>What：</strong>模型在训练分布之外的场景上完全丧失预测能力，输出退化为无意义的轨迹（原地不动、直线冲出、抖动等）。</p>
+    <p><strong>Why：</strong>训练数据无法覆盖所有真实场景（如施工区域、异形交叉口、交警手势），模型在 OOD 场景下输出分布严重偏离训练分布。</p>
+    <p><strong>How：</strong>通过 OOD 检测触发安全回退：</p>
+    <div class="formula">$$D_M = \sqrt{(x-\mu)^T \Sigma^{-1} (x-\mu)}$$</div>
+    <p>当马氏距离 $D_M$ 超过阈值时，触发 OOD 警告，切换至规则兜底策略（rule-based fallback）。同时通过对抗训练合成 OOD 场景，增强模型鲁棒性。</p>
+    <div class="callout green">
+      <strong>防御策略</strong>
+      数据增强（合成 OOD 场景）+ 安全回退（规则兜底）+ 持续学习（在线适应）+ 集成方法（多模型投票）构成完整的 OOD 防御体系。
+    </div>
+  </div>
+
+  <!-- 5 学术 vs 工业界深度对比 -->
+  <div class="section purple">
+    <h2>5 学术 vs 工业界：方法选型与数据策略</h2>
+    <p>理解两种视角的系统性差异，才能在阅读论文时保持批判性思维，在工程实践中做出合理的技术选型。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>5.1 方法选型权衡矩阵</h3>
+    <p>从学术和工业两个视角对比主流方法（1-5 分，5 = 最佳）：</p>
+    <table>
+      <tr><th>方法</th><th>学术精度</th><th>工业延迟</th><th>工业安全</th><th>工业可解释</th></tr>
+      <tr><td>GNN 系列 (VectorNet, LaneGCN)</td><td>3</td><td>4</td><td>4</td><td>4</td></tr>
+      <tr><td>Transformer (MTR, QCNet)</td><td>5</td><td>3</td><td>4</td><td>3</td></tr>
+      <tr><td>Diffusion (MID, CTG)</td><td>5</td><td>1</td><td>3</td><td>1</td></tr>
+      <tr><td>VLA 大模型 (DriveVLM)</td><td>4</td><td>1</td><td>2</td><td>2</td></tr>
+      <tr><td>规则/搜索 (Lattice, A*)</td><td>1</td><td>5</td><td>5</td><td>5</td></tr>
+      <tr><td>混合方案 (学习+规则)</td><td>3</td><td>4</td><td>5</td><td>4</td></tr>
+    </table>
+    <div class="callout purple">
+      <strong>为什么工业界偏好"老方法"</strong>
+      老方法经过多年打磨，bug 少、边界情况处理完善；行为可预测，出了碰撞事故需要精确定位（功能安全法规要求）；简单方法更容易交接和长期维护。
+    </div>
+  </div>
+
+  <div class="card green">
+    <h3>5.2 数据飞轮 vs 固定数据集</h3>
+    <p>学术界受限于固定数据集，而领先公司通过车队建立了数据飞轮：</p>
+    <div class="flow">
+      <div class="flow-node green">车队行驶</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">数据采集 + 触发器</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">自动标注</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">模型训练</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">OTA 更新</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">车队行驶</div>
+    </div>
+    <p>关键飞轮机制：<strong>影子模式（Shadow Mode）</strong>——自动驾驶模型在后台运行（不控制车辆），当模型输出与人类驾驶行为不一致时触发数据上传。Tesla 公开数据显示，其自动标注覆盖率约 98%，人工标注仅用于约 2% 的困难样本。</p>
+    <div class="formula">$$\text{Auto Label Quality} = f(\text{离线多帧融合},   \text{高精地图对齐},   \text{人工抽检})$$</div>
+  </div>
+
+  <!-- 6 模型压缩与部署 -->
+  <div class="section green">
+    <h2>6 模型压缩与边缘部署实战</h2>
+    <p>将学术模型部署到车载芯片，需要一系列模型压缩技术。以下是典型的全栈压缩流水线效果：</p>
+  </div>
+
+  <div class="card green">
+    <h3>6.1 压缩技术栈</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px"><strong>量化（Quantization）</strong></p>
+        <p style="font-size:12px">FP32 → FP16 → INT8 → INT4。量化将浮点权重映射到低精度整数：</p>
+        <div class="formula" style="font-size:12px">$$q = \text{clip}\Big( \text{round}\big(\frac{x}{s}\big) + z,   q_{\min},   q_{\max} \Big)$$</div>
+        <p style="font-size:12px">其中 $s$ 是缩放因子，$z$ 是零点。训练后量化（PTQ）成本低但精度损失较大；量化感知训练（QAT）需要完整重新训练但精度损失较小。</p>
+      </div>
+      <div>
+        <p style="font-size:12px"><strong>知识蒸馏（Knowledge Distillation）</strong></p>
+        <p style="font-size:12px">大模型（Teacher） → 小模型（Student），蒸馏损失函数：</p>
+        <div class="formula" style="font-size:12px">$$\mathcal{L}_{\text{distill}} = \alpha \cdot \mathcal{L}_{\text{task}} + \beta \cdot \text{MSE}(f_S, \phi(f_T)) + \gamma \cdot D_{\text{KL}}(p_T \| p_S)$$</div>
+        <p style="font-size:12px">Student 模型体积通常为 Teacher 的 1/3-1/5，延迟可从 35ms 降至 12ms（Orin）。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>6.2 TensorRT 部署流水线</h3>
+    <p style="font-size:12px">从学术代码到车载部署的典型流程：</p>
+    <pre><code>Step 1: ONNX 导出
+  torch.onnx.export(model, dummy_input, "model.onnx",
+                    opset_version=17, dynamic_axes={...})
+
+Step 2: TensorRT 优化
+  trtexec --onnx=model.onnx --saveEngine=model.trt \
+          --fp16 --workspace=4096 \
+          --minShapes=input:1x... --optShapes=input:4x... --maxShapes=input:8x...
+
+Step 3: 性能验证
+  精度验证: 对比 PyTorch 与 TRT 输出，确保 L2 差异 < 1e-3
+  延迟验证: 在目标芯片上 Benchmark，确认满足预算
+  稳定性: 长时间运行，检查内存泄漏和延迟抖动</code></pre>
+    <div class="callout amber">
+      <strong>典型问题</strong>
+      不支持的算子（如某些 einsum 变体）、动态 shape（需指定 min/opt/max profile）、自定义后处理（NMS、轨迹解码等需手写 TRT 插件）。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>6.3 压缩效果总结</h3>
+    <p>以典型 Transformer 预测模型为例，各技术的叠加效果：</p>
+    <table>
+      <tr><th>压缩阶段</th><th>模型大小</th><th>延迟（Orin）</th><th>minADE 变化</th></tr>
+      <tr><td>原始 FP32</td><td>180 MB</td><td>95 ms</td><td>基线</td></tr>
+      <tr><td>FP16 量化</td><td>90 MB</td><td>48 ms</td><td>+0.02m</td></tr>
+      <tr><td>INT8 PTQ</td><td>45 MB</td><td>28 ms</td><td>+0.08m</td></tr>
+      <tr><td>+ 结构化剪枝 (50%)</td><td>23 MB</td><td>16 ms</td><td>+0.15m</td></tr>
+      <tr><td>+ TensorRT 图优化</td><td>23 MB</td><td>12 ms</td><td>+0.15m</td></tr>
+      <tr><td>+ 知识蒸馏微调</td><td>23 MB</td><td>12 ms</td><td>+0.05m</td></tr>
+    </table>
+    <div class="callout blue">
+      <strong>关键结论</strong>
+      通过全栈压缩优化，可以将延迟从 95ms 降到 12ms（约 8 倍加速），精度损失控制在 0.05m 以内。知识蒸馏可以"回收"剪枝和量化造成的精度损失。
+    </div>
+  </div>
+
+  <!-- 7 商业模型与法规 -->
+  <div class="section amber">
+    <h2>7 商业模型对方法选型的影响</h2>
+    <p>方法选型不仅是技术问题，也是商业决策。不同方法的总拥有成本（TCO）差异显著。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>7.1 成本结构分解</h3>
+    <table>
+      <tr><th>成本维度</th><th>说明</th></tr>
+      <tr><td>硬件成本 (BOM)</td><td>芯片 + 传感器 + 散热 + PCB。算力需求越大，芯片成本越高（Orin 约 $500，TDA4 约 $100）。</td></tr>
+      <tr><td>研发成本 (R&D)</td><td>算法开发 + 工程适配 + 测试验证。新方法需要 6-12 月，成熟方法仅需 1-3 月。</td></tr>
+      <tr><td>运维成本 (Ops)</td><td>OTA 更新 + 数据回传 + 云端训练。数据驱动方法持续投入，规则方法低运维但迭代速度慢。</td></tr>
+      <tr><td>合规成本 (Compliance)</td><td>功能安全认证 + 监管审批 + 保险。黑盒模型认证难度高，可解释方法相对容易。</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>7.2 不同商业模式的技術偏好</h3>
+    <table>
+      <tr><th>商业模式</th><th>代表公司</th><th>技术偏好</th><th>原因</th></tr>
+      <tr><td>Robotaxi</td><td>Waymo, Cruise, 百度 Apollo</td><td>重感知 + 重模型</td><td>无成本敏感，安全第一</td></tr>
+      <tr><td>乘用车 L2+</td><td>Tesla, 小鹏, 华为</td><td>数据驱动 + 端到端</td><td>海量车队数据，OTA 迭代</td></tr>
+      <tr><td>乘用车 L2</td><td>传统 OEM</td><td>规则 + 轻量模型</td><td>成本敏感，TDA4 芯片</td></tr>
+      <tr><td>卡车物流</td><td>TuSimple, 图森</td><td>感知强化 + 保守规划</td><td>高速场景相对简单</td></tr>
+      <tr><td>低速园区</td><td>Neolix, 白犀牛</td><td>轻量方案</td><td>场景固定，成本极敏感</td></tr>
+    </table>
+  </div>
+
+  <div class="card red">
+    <h3>7.3 功能安全法规对方法的约束</h3>
+    <p>ISO 26262（功能安全）和 ISO 21448 SOTIF（预期功能安全）对自动驾驶预测/规划方法有硬性要求：</p>
+    <ul style="font-size:12px">
+      <li><strong>ASIL-D（最高等级）</strong>要求失效概率 &lt; 10⁻⁸/小时，需要"确定性"的安全论证。</li>
+      <li>纯端到端黑盒模型难以满足功能安全要求，需要独立的安全监控层。</li>
+      <li>SOTIF 要求识别和消除"已知不安全场景"，估计"未知不安全场景"的残余风险。</li>
+    </ul>
+    <div class="callout red">
+      <strong>实际影响</strong>
+      无论核心算法多先进，量产系统都需要：独立安全监控层（检测算法输出是否违反安全约束）+ 降级策略（算法失效时的安全兜底行为）+ 完整的测试验证矩阵（仿真 + 封闭场地 + 公开道路，百万公里级别测试里程）。
+    </div>
+  </div>
+
+  <!-- 8 大模型时代的新变量 -->
+  <div class="section purple">
+    <h2>8 大模型时代的新变量</h2>
+    <p>随着 VLA（Vision-Language-Action）等大模型进入自动驾驶领域，学术界和工业界的分歧进一步加大。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>8.1 大模型的学术 vs 工业视角对比</h3>
+    <div class="grid-2">
+      <div class="card" style="border-left-color:var(--blue)">
+        <h3 style="color:var(--blue)">学术界观点</h3>
+        <p style="font-size:12px">"大模型具备强大的零样本泛化能力和场景理解能力"</p>
+        <p style="font-size:12px">"VLA 可以用自然语言解释其决策，提升可解释性"</p>
+        <p style="font-size:12px">"规模律（Scaling Law）表明更大的模型 = 更好的性能"</p>
+      </div>
+      <div class="card" style="border-left-color:var(--red)">
+        <h3 style="color:var(--red)">工业界观点</h3>
+        <p style="font-size:12px">"一个 7B 参数的 VLA 在 Orin 上推理要 2 秒，怎么部署?"</p>
+        <p style="font-size:12px">"大模型的幻觉（Hallucination）在驾驶中可能致命"</p>
+        <p style="font-size:12px">"推理成本太高，功能安全认证怎么做?"</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card green">
+    <h3>8.2 折中方案正在探索</h3>
+    <ul style="font-size:12px">
+      <li><strong>云端大模型 + 车端小模型：</strong>大模型做离线场景分析和数据挖掘，车端部署小模型进行实时推理。</li>
+      <li><strong>蒸馏到端侧：</strong>将大模型知识蒸馏到可部署的小模型，在延迟约束内保留大部分性能。</li>
+      <li><strong>分层架构：</strong>大模型做低频决策（如路线级规划），小模型做高频控制（如运动规划），各司其职。</li>
+    </ul>
+    <div class="formula">$$\text{学术探索} \xrightarrow{\text{压缩/优化}} \text{工程适配} \xrightarrow{\text{验证/合规}} \text{量产部署} \xrightarrow{\text{数据回流}} \text{持续改进}$$</div>
+  </div>
+
+  <!-- 总结 -->
+  <div class="section green">
+    <h2>总结：学术界 vs 工业界全维度对比</h2>
+  </div>
+
+  <div class="card green">
+    <table>
+      <tr><th>维度</th><th>学术界</th><th>工业界</th></tr>
+      <tr><td>核心目标</td><td>刷新 SOTA，发表论文</td><td>安全量产，持续迭代</td></tr>
+      <tr><td>评价指标</td><td>minADE, FDE, MR, FID, NLL</td><td>碰撞率, 接管率, 延迟, 功耗</td></tr>
+      <tr><td>方法偏好</td><td>新颖、复杂、SOTA</td><td>成熟、可控、可解释</td></tr>
+      <tr><td>数据策略</td><td>固定公开数据集</td><td>数据飞轮，自动标注</td></tr>
+      <tr><td>硬件假设</td><td>A100/H100（无约束）</td><td>Orin/TDA4（严格约束）</td></tr>
+      <tr><td>延迟要求</td><td>不关注</td><td>&lt; 30ms（预测模块）</td></tr>
+      <tr><td>可解释性</td><td>可选（可视化即可）</td><td>必须（功能安全要求）</td></tr>
+      <tr><td>验证方式</td><td>离线 benchmark</td><td>仿真 + 封闭场地 + 路测</td></tr>
+      <tr><td>迭代周期</td><td>3-6 个月（论文周期）</td><td>持续（OTA 推送）</td></tr>
+      <tr><td>安全保证</td><td>不要求</td><td>ASIL-D / SOTIF 强制要求</td></tr>
+      <tr><td>模型规模</td><td>越大越好</td><td>在延迟预算内越准越好</td></tr>
+    </table>
+  </div>
+
+  <div class="card" style="border-left-color:var(--purple)">
+    <h3>核心结论</h3>
+    <p>学术研究和工业部署不是对立的，而是技术生命周期的不同阶段。学术界负责探索上限（"什么方法效果最好"），工业界负责工程落地（"怎么在约束下做到最好"）。理解两个视角的差异，才能在阅读论文时保持批判性思维，在工程实践中做出合理的技术选型。</p>
+    <div class="callout purple">
+      <strong>技术演进路径</strong>
+      学术探索（提出新方法）→ 工程适配（压缩/优化/部署）→ 验证合规（仿真+封闭场地+路测）→ 量产部署（安全运行）→ 数据回流（持续改进）。每一个阶段都有其独特的挑战和评价标准，缺一不可。
+    </div>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 第 12 章 ·
+    <a href="../index.html">← 总目录</a> ·
+    <a href="../11-vla/index.html">← 11 VLA 与世界模型</a> ·
+    最后一章
+  </div>
+</div>
+</body>
+</html>

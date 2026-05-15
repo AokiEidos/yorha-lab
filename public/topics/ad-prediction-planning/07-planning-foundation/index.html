@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 规划方法演进：从搜索到优化 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+<style>
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>07 规划方法演进：从搜索到优化</h1>
+    <p>A* / RRT → Lattice / MPC — 技术脉络</p>
+  </div>
+
+  <!-- 时间线 -->
+  <div class="section purple">
+    <h2>运动规划方法演化时间线</h2>
+    <p>2000s 搜索式 → 2010s 优化式 → 2015-2020 学习式 → 2022+ 扩散式</p>
+  </div>
+  <div class="card purple" style="text-align:center">
+    <svg viewBox="0 0 900 130" xmlns="http://www.w3.org/2000/svg">
+      <!-- 时间轴 -->
+      <line x1="50" y1="65" x2="850" y2="65" stroke="#e2e8f0" stroke-width="2"/>
+      <!-- 箭头 -->
+      <polygon points="850,60 860,65 850,70" fill="#e2e8f0"/>
+      <!-- 节点 -->
+      <circle cx="100" cy="65" r="18" fill="#3b82f6" opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="300" cy="65" r="18" fill="#22c55e" opacity="0.15" stroke="#22c55e" stroke-width="2"/>
+      <circle cx="500" cy="65" r="18" fill="#f59e0b" opacity="0.15" stroke="#f59e0b" stroke-width="2"/>
+      <circle cx="720" cy="65" r="18" fill="#7c3aed" opacity="0.15" stroke="#7c3aed" stroke-width="2"/>
+      <!-- 标签 -->
+      <text x="100" y="100" text-anchor="middle" font-size="11" fill="#3b82f6" font-weight="600">2000s</text>
+      <text x="300" y="100" text-anchor="middle" font-size="11" fill="#22c55e" font-weight="600">2010s</text>
+      <text x="500" y="100" text-anchor="middle" font-size="11" fill="#f59e0b" font-weight="600">2015-2020</text>
+      <text x="720" y="100" text-anchor="middle" font-size="11" fill="#7c3aed" font-weight="600">2022+</text>
+      <!-- 方法名 -->
+      <text x="100" y="40" text-anchor="middle" font-size="10" fill="#1e293b" font-weight="700">A*, RRT</text>
+      <text x="100" y="52" text-anchor="middle" font-size="9" fill="#64748b">Dijkstra</text>
+      <text x="300" y="40" text-anchor="middle" font-size="10" fill="#1e293b" font-weight="700">MPC, Lattice</text>
+      <text x="300" y="52" text-anchor="middle" font-size="9" fill="#64748b">Planner</text>
+      <text x="500" y="40" text-anchor="middle" font-size="10" fill="#1e293b" font-weight="700">RL, IL</text>
+      <text x="500" y="52" text-anchor="middle" font-size="9" fill="#64748b">ChauffeurNet</text>
+      <text x="720" y="40" text-anchor="middle" font-size="10" fill="#1e293b" font-weight="700">Diffusion Planner</text>
+      <text x="720" y="52" text-anchor="middle" font-size="9" fill="#64748b">CTG++, ...</text>
+      <!-- 范式标签 -->
+      <rect x="45" y="14" width="60" height="16" rx="8" fill="#3b82f6" opacity="0.1" stroke="#3b82f6" stroke-width="1"/>
+      <text x="75" y="25" text-anchor="middle" font-size="9" fill="#3b82f6" font-weight="600">搜索式</text>
+      <rect x="245" y="14" width="60" height="16" rx="8" fill="#22c55e" opacity="0.1" stroke="#22c55e" stroke-width="1"/>
+      <text x="275" y="25" text-anchor="middle" font-size="9" fill="#22c55e" font-weight="600">优化式</text>
+      <rect x="445" y="14" width="60" height="16" rx="8" fill="#f59e0b" opacity="0.1" stroke="#f59e0b" stroke-width="1"/>
+      <text x="475" y="25" text-anchor="middle" font-size="9" fill="#b45309" font-weight="600">学习式</text>
+      <rect x="665" y="14" width="60" height="16" rx="8" fill="#7c3aed" opacity="0.1" stroke="#7c3aed" stroke-width="1"/>
+      <text x="695" y="25" text-anchor="middle" font-size="9" fill="#5b21b6" font-weight="600">扩散式</text>
+    </svg>
+  </div>
+
+  <!-- ============================================================
+       第2节：搜索式规划
+       ============================================================ -->
+  <div class="section">
+    <h2>2. 搜索式规划（Search-based Planning）</h2>
+    <p>难度：基础 | 前置知识：图论基础、树结构</p>
+  </div>
+
+  <h2>2.1 A* 算法 — What</h2>
+  <p>A* 是最经典的启发式搜索算法（Heuristic Search），由 Hart, Nilsson & Raphael 于 1968 年提出。
+  它的核心思想是在离散化的状态空间（State Space）中，通过启发式引导寻找从起点到终点的最优路径。
+  A* 将"已知的实际代价"和"估计的剩余代价"相加，优先探索最有希望到达目标的节点。</p>
+
+  <h3>核心公式</h3>
+  <div class="formula">$$f(n) = g(n) + h(n)$$</div>
+  <p>其中：</p>
+  <ul>
+    <li>$g(n)$：从起点到节点 $n$ 的实际代价（Actual Cost）</li>
+    <li>$h(n)$：从节点 $n$ 到终点的启发式估计代价（Heuristic），需满足 <strong>可接纳性</strong>（never overestimates）</li>
+    <li>$f(n)$：经过节点 $n$ 的总估计代价，A* 以最小化 $f(n)$ 为搜索准则</li>
+  </ul>
+
+  <div class="callout blue">
+    <strong>可容性启发式（Admissible Heuristic）</strong>
+    启发式函数 $h(n)$ 必须满足：对所有节点 $n$，$h(n) \leq h^*(n)$（真实最小代价）。这一条件保证 A* 的最优性。
+    常用实例：欧氏距离 $h(n) = \|x_n - x_{goal}\|_2$（适用于网格无偏移动）。
+  </div>
+
+  <h3>算法流程</h3>
+  <div class="card">
+    <pre><code><span class="cmt"># A* 搜索算法伪代码</span>
+<span class="kw">function</span> <span class="fn">AStar</span>(start, goal, h):
+    open_list <span class="op">=</span> PriorityQueue<span class="op">()</span>   <span class="cmt"># 按 f(n) 排序</span>
+    closed_set <span class="op">=</span> Set<span class="op">()</span>
+    g_score[start] <span class="op">=</span> <span class="num">0</span>
+    f_score[start] <span class="op">=</span> h(start)
+
+    <span class="kw">while not</span> open_list.is_empty<span class="op">()</span>:
+        n <span class="op">=</span> open_list.pop_lowest<span class="op">()</span>       <span class="cmt"># 取 f(n) 最小的节点</span>
+
+        <span class="kw">if</span> n <span class="op">==</span> goal:                       <span class="cmt"># 终点检测</span>
+            <span class="kw">return</span> reconstruct_path<span class="op">(</span>n<span class="op">)</span>
+
+        closed_set.add<span class="op">(</span>n<span class="op">)</span>
+
+        <span class="kw">for each</span> neighbor <span class="kw">in</span> get_neighbors<span class="op">(</span>n<span class="op">)</span>:
+            <span class="kw">if</span> neighbor <span class="kw">in</span> closed_set:
+                <span class="kw">continue</span>
+
+            tentative_g <span class="op">=</span> g_score[n] <span class="op">+</span> cost<span class="op">(</span>n, neighbor<span class="op">)</span>
+
+            <span class="kw">if</span> tentative_g <span class="op">&lt;</span> g_score.get<span class="op">(</span>neighbor, inf<span class="op">)</span>:
+                g_score[neighbor] <span class="op">=</span> tentative_g
+                f_score[neighbor] <span class="op">=</span> tentative_g <span class="op">+</span> h<span class="op">(</span>neighbor<span class="op">)</span>
+                open_list.push<span class="op">(</span>neighbor, f_score[neighbor]<span class="op">)</span>
+
+    <span class="kw">return</span> FAILURE</code></pre>
+  </div>
+
+  <h3>A* 在自动驾驶中的适用场景</h3>
+  <table>
+    <tr><th>场景</th><th>适用性</th><th>说明</th></tr>
+    <tr><td>全局路线规划</td><td>★★★★★</td><td>在道路拓扑图上搜索最优路线，实时性可接受</td></tr>
+    <tr><td>停车场泊车</td><td>★★★★☆</td><td>低速、静态环境，状态空间可控</td></tr>
+    <tr><td>城区局部规划</td><td>★★☆☆☆</td><td>状态空间爆炸，实时性不足</td></tr>
+    <tr><td>高速换道</td><td>★☆☆☆☆</td><td>连续动态环境，离散化损失大</td></tr>
+  </table>
+
+  <h3>A* 的根本局限 — Why</h3>
+  <div class="callout red">
+    <strong>维度灾难（Curse of Dimensionality）</strong>
+    自动驾驶状态空间至少包含 $(x, y, \theta, v, \kappa)$ 五维，若网格分辨率为 $N$，则搜索空间为 $O(N^5)$。
+    以 $N=10$ 为例，$10^5 = 100{,}000$ 个节点尚可处理；但将分辨率提高至 $N=20$ 时，$20^5 = 3{,}200{,}000$ — 计算量爆炸。
+  </div>
+  <div class="card">
+    <h3>三大核心缺陷</h3>
+    <ol>
+      <li><strong>维度灾难</strong>：高维状态空间离散化后节点数指数级增长，无法在线求解</li>
+      <li><strong>轨迹不平滑</strong>：网格离散化导致路径呈锯齿状，后续需额外平滑处理</li>
+      <li><strong>动态障碍物处理困难</strong>：需在时空（Spatio-Temporal）维度扩展搜索树，计算量激增</li>
+    </ol>
+  </div>
+
+  <hr style="border-top: 1px dashed var(--border); margin: 24px 0">
+
+  <h2>2.2 RRT（Rapidly-exploring Random Tree）— What</h2>
+  <p>RRT 由 LaValle 于 1998 年提出，是一种基于随机采样的规划方法，特别适合高维状态空间和复杂约束环境。
+  不同于 A* 的精确图搜索，RRT 通过随机采样逐步构建一棵覆盖状态空间的树结构，
+  以概率完备性（Probabilistic Completeness）换取计算效率——即使无法穷举所有状态，也能以高概率找到可行解。</p>
+
+  <h3>RRT 的概率完备性 — Why</h3>
+  <div class="callout blue">
+    <strong>概率完备性（Probabilistic Completeness）</strong>
+    当采样数量趋近无穷时，RRT 找到可行解的概率趋近于 1，前提是存在可行解且采样足够密集。
+    这意味着 RRT 不能保证在有限步内找到解，但也不需要像 A* 那样穷举整个格空间。
+  </div>
+  <p>与 A* 的确定性搜索相比，RRT 的随机性带来了独特的优缺点：</p>
+  <div class="grid-2">
+    <div class="card green">
+      <h3>✓ 优势</h3>
+      <ul>
+        <li>高维空间效率高：无需完整格空间离散化</li>
+        <li>动力学约束友好：通过 steer 函数直接约束</li>
+        <li>复杂约束适应：障碍物几何约束易嵌入碰撞检测</li>
+        <li>无需启发式：不需要可接纳性启发式设计</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3>✗ 劣势</h3>
+      <ul>
+        <li>可复现性差：同场景两次规划结果不同</li>
+        <li>路径质量波动：无法保证路径最优性</li>
+        <li>时间维度处理困难：难以自然建模动态障碍物</li>
+        <li>收敛不稳定：搜索时间随场景复杂度非线性增长</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>RRT 伪代码 — How</h3>
+  <div class="card">
+    <pre><code><span class="kw">function</span> <span class="fn">RRT</span>(start, goal, obstacles, max_iterations<span class="op">=</span><span class="num">10000</span>):
+    tree.init<span class="op">(</span>start<span class="op">)</span>
+
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span><span class="op">(</span>max_iterations<span class="op">)</span>:
+        x_rand <span class="op">=</span> <span class="fn">random_sample</span><span class="op">(</span>state_space<span class="op">)</span>       <span class="cmt"># 随机采样</span>
+        x_near <span class="op">=</span> <span class="fn">nearest_neighbor</span><span class="op">(</span>tree, x_rand<span class="op">)</span>   <span class="cmt"># 找树中最近节点</span>
+        x_new  <span class="op">=</span> <span class="fn">steer</span><span class="op">(</span>x_near, x_rand, step_size<span class="op">)</span> <span class="cmt"># 沿方向扩展一步</span>
+
+        <span class="kw">if</span> <span class="fn">collision_free</span><span class="op">(</span>x_near, x_new, obstacles<span class="op">)</span>:
+            tree.add_edge<span class="op">(</span>x_near, x_new<span class="op">)</span>
+
+            <span class="kw">if</span> <span class="fn">distance</span><span class="op">(</span>x_new, goal<span class="op">)</span> <span class="op">&lt;</span> threshold:
+                <span class="kw">return</span> <span class="fn">extract_path</span><span class="op">(</span>tree, start, x_new<span class="op">)</span>
+
+    <span class="kw">return</span> FAILURE</code></pre>
+  </div>
+
+  <h3>RRT 变体对比</h3>
+  <table>
+    <tr><th>变体</th><th>核心改进</th><th>复杂度 / 效果</th><th>适用场景</th></tr>
+    <tr><td>RRT</td><td>基础随机树</td><td>$O(n)$ 扩展</td><td>简单障碍物环境</td></tr>
+    <tr><td>RRT*</td><td>渐近最优（Asymptotically Optimal），增加重连（Rewiring）步骤</td><td>$O(n \log n)$，收敛至最优解</td><td>需要高质量解</td></tr>
+    <tr><td>RRT-Connect</td><td>双树同时从起点和目标生长，加速连接</td><td>收敛速度提升 2-5 倍</td><td>简单起点-目标连接</td></tr>
+    <tr><td>Informed RRT*</td><td>找到初始解后，利用椭球采样聚焦搜索区域</td><td>次优解后显著加速</td><td>有时间限制的规划</td></tr>
+    <tr><td>Kinodynamic RRT</td><td>在 steer 函数中加入动力学约束（考虑非完整约束）</td><td>适合车辆运动模型</td><td>自动驾驶运动约束</td></tr>
+  </table>
+
+  <h3>RRT 在自动驾驶中的定位 — Why</h3>
+  <p>RRT 擅长在复杂几何约束中快速找到可行解，因此常用于：</p>
+  <ul>
+    <li><strong>自主泊车</strong>（Valet Parking）：狭窄空间的导航</li>
+    <li><strong>越野环境</strong>（Off-road）：非结构化地形的避障路径</li>
+    <li><strong>Warm Start</strong>：为后续优化方法提供初始解</li>
+  </ul>
+  <div class="callout amber">
+    <strong>工程实践注意</strong>：RRT 的随机性导致同一场景两次规划结果不同，这在量产系统中是不可接受的。
+    因此 RRT 通常不直接用于最终规划，而是作为初始可行解的生成器，配合优化方法使用。
+  </div>
+
+  <!-- ============================================================
+       第3节：优化式规划
+       ============================================================ -->
+  <div class="section green">
+    <h2>3. 优化式规划（Optimization-based Planning）</h2>
+    <p>难度：进阶 | 前置知识：最优控制、凸优化基础</p>
+  </div>
+
+  <h2>3.1 MPC（Model Predictive Control）— What</h2>
+  <p>MPC 的核心思想是在每个时间步，基于当前状态和车辆模型，在有限预测时域（Prediction Horizon）内求解一个优化问题，
+  仅执行第一步控制量，然后在下一个时间步重新求解——即<strong>滚动优化（Receding Horizon）</strong>。
+  这一机制赋予了 MPC 天然的闭环反馈能力，能够有效应对模型误差和外部扰动。</p>
+
+  <h3>MPC 数学建模 — How</h3>
+  <p>在 Frenet 坐标系下，MPC 的标准形式为：</p>
+  <div class="formula">$$\min_{u_0, u_1, \ldots, u_{N-1}} \sum_{k=0}^{N-1} \bigl[ \| x_k - x_k^{ref} \|_Q^2 + \| u_k \|_R^2 \bigr] + \| x_N - x_N^{ref} \|_P^2$$</div>
+  <div class="formula">$$\text{s.t.} \quad x_{k+1} = f(x_k, u_k) \quad \text{(车辆动力学)} \qquad x_k \in \mathcal{X}_{free} \quad \text{(无碰撞约束)} \qquad u_k \in \mathcal{U} \quad \text{(控制量约束)}$$</div>
+  <p>其中：</p>
+  <ul>
+    <li>$x_k = [p_x, p_y, \theta, v, \delta]^T$：状态向量（位置、航向角、速度、前轮转角）</li>
+    <li>$u_k = [a, \dot{\delta}]^T$：控制输入（纵向加速度、转向角速率）</li>
+    <li>$Q, R, P$：权重矩阵，分别控制状态跟踪、能量消耗和终端状态代价</li>
+    <li>$N$：预测步数（通常 10-50 步，对应 1-5 秒的预测时域）</li>
+    <li>$\|v\|_Q^2 = v^T Q v$：二次型代价</li>
+  </ul>
+
+  <h3>MPC 滚动优化过程</h3>
+  <div class="card">
+    <pre><code>时刻 t:
+  当前状态 x_t
+  |
+  v
+  [优化求解: t, t+1, t+2, ... t+N]  ← 仅执行 u_t*
+   ^执行             ^预测但不执行
+
+时刻 t+1:
+  新状态 x_{t+1} (含扰动)
+  |
+  v
+  [优化求解: t+1, t+2, t+3, ... t+1+N]  ← 仅执行 u_{t+1}*
+   ^执行              ^预测但不执行
+
+  ... 滚动前进 ...
+  关键: 每步都用最新状态重新规划 → 天然的闭环反馈</code></pre>
+  </div>
+
+  <h3>MPC 在高速公路的优势 — Why</h3>
+  <div class="callout green">
+    <strong>高速公路场景与 MPC 的天然契合</strong>
+    高速公路的结构化特性使得 MPC 的核心假设成立：参考路径明确、行为可预测、约束可近似为凸集。
+    在 Frenet 坐标系下，避障约束可以用相对简单的多项式或凸多边形近似，使求解效率大幅提升。
+  </div>
+  <ul>
+    <li><strong>结构化道路</strong>：车道线提供明确的参考路径 $x^{ref}$</li>
+    <li><strong>纵向为主</strong>：主要决策是加减速与车道保持，横向变化小</li>
+    <li><strong>行为可预测</strong>：周围车辆大多沿车道匀速行驶，线性预测可行</li>
+    <li><strong>凸优化近似</strong>：在 Frenet Frame 下，约束可近似为凸集，牛顿法高效求解</li>
+  </ul>
+
+  <h3>MPC 在复杂城区路口的困境 — Why</h3>
+  <div class="callout red">
+    <strong>城区 MPC 的五大核心挑战</strong>
+    城区十字路口同时存在对向左转车、行人过街、非机动车、右转冲突和红绿灯切换——
+    这些因素的组合使 MPC 面临非凸约束、组合爆炸、离散决策、长时域依赖和意图推理五大困境。
+  </div>
+  <table>
+    <tr><th>问题</th><th>原因</th><th>后果</th></tr>
+    <tr><td><strong>非凸约束</strong></td><td>避障约束天然非凸，多个障碍物使问题更难</td><td>求解器陷入局部最优或无法收敛</td></tr>
+    <tr><td><strong>组合爆炸</strong></td><td>多智能体交互产生指数级行为组合</td><td>无法穷举所有可能的交互模式</td></tr>
+    <tr><td><strong>离散决策</strong></td><td>让行/抢行、换道/不换道是 0-1 决策</td><td>连续优化无法自然处理离散变量</td></tr>
+    <tr><td><strong>长时域依赖</strong></td><td>路口通行需 5-10s 规划，远超典型预测时域</td><td>短视域导致"犹豫不决"或过于激进</td></tr>
+    <tr><td><strong>意图推理</strong></td><td>需理解他车意图才能做出合理决策</td><td>MPC 假设确定性预测，忽略多模态性</td></tr>
+  </table>
+
+  <hr style="border-top: 1px dashed var(--border); margin: 24px 0">
+
+  <h2>3.2 Lattice Planner（格子规划器）— What</h2>
+  <p>Lattice Planner 由 CMU 在 DARPA Urban Challenge 中推广，是另一种广泛使用的优化式方法。
+  它预先生成一组满足车辆动力学的候选轨迹（Lattice），然后通过代价函数评估选优。
+  这里的 "Lattice"（格子）指的是在 Frenet 坐标系下，纵向进度 $s$ 和横向偏移 $l$ 构成的二维参数空间。</p>
+
+  <h3>工作原理 — How</h3>
+  <p>每条候选轨迹是连接起点状态和终点状态的<strong>五次多项式</strong>（Quintic Polynomial）。</p>
+  <div class="card">
+    <h3>五次多项式轨迹</h3>
+    <p>起点状态 $(s_0, l_0, \dot{s}_0, \dot{l}_0, \ddot{s}_0, \ddot{l}_0)$ 和终点状态
+    $(s_f, l_f, \dot{s}_f, \dot{l}_f, \ddot{s}_f, \ddot{l}_f)$ 唯一确定一条五次多项式：
+    $$l(s) = a_0 + a_1 s + a_2 s^2 + a_3 s^3 + a_4 s^4 + a_5 s^5$$
+    端点条件（6个约束）恰好唯一确定6个系数。</p>
+  </div>
+  <p>终点状态按采样网格展开，覆盖多种纵向位移和横向偏移的组合：</p>
+  <div class="formula">$$\begin{aligned}
+  \text{终点采样集合} = &\{ s_f \in [s_{min}, s_{max}], \; \dot{s}_f \in [\dot{s}_{min}, \dot{s}_{max}] \} \times \\
+  &\{ l_f \in [l_{left}, l_{right}], \; \dot{l}_f \in [\dot{l}_{min}, \dot{l}_{max}] \}
+  \end{aligned}$$</div>
+
+  <h3>轨迹评估代价函数</h3>
+  <div class="formula">$$J = w_1 \cdot J_{smooth} + w_2 \cdot J_{collision} + w_3 \cdot J_{lane} + w_4 \cdot J_{speed} + w_5 \cdot J_{comfort}$$</div>
+  <table>
+    <tr><th>代价项</th><th>含义</th><th>典型计算方式</th></tr>
+    <tr><td>$J_{smooth}$</td><td>轨迹平滑性</td><td>$\int (\kappa^2 + \ddot{\kappa}^2) ds$（曲率及加加速度）</td></tr>
+    <tr><td>$J_{collision}$</td><td>碰撞风险</td><td>与障碍物的最小距离的负指数函数</td></tr>
+    <tr><td>$J_{lane}$</td><td>车道偏离</td><td>横向偏移 $|l|$ 或车道中心线偏差</td></tr>
+    <tr><td>$J_{speed}$</td><td>速度偏差</td><td>与目标速度的偏差 $\lVert \dot{s} - \dot{s}_{ref} \rVert^2$</td></tr>
+    <tr><td>$J_{comfort}$</td><td>舒适性</td><td>加加速度（Jerk）的积分</td></tr>
+  </table>
+
+  <h3>Lattice Planner 的优缺点 — Why</h3>
+  <div class="grid-2">
+    <div class="card green">
+      <h3>✓ 优点</h3>
+      <ul>
+        <li>候选轨迹天然满足动力学约束（预计算保证）</li>
+        <li>评估过程可并行化，实时性好</li>
+        <li>工程实现成熟，Apollo、Autoware 等开源框架广泛采用</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3>✗ 缺点</h3>
+      <ul>
+        <li>候选集是离散的，<strong>最优解可能不在候选集中</strong></li>
+        <li>采样密度与计算量成正比，精细化代价高</li>
+        <li>代价函数权重 $w_i$ 需要大量调参，场景迁移性差</li>
+        <li>本质是"先采样再评估"，<strong>无法主动探索未知区域</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>对比总结：A* / RRT vs MPC / Lattice</h3>
+  <table>
+    <tr><th>维度</th><th>A* / RRT（搜索式）</th><th>MPC / Lattice（优化式）</th></tr>
+    <tr><td>状态空间</td><td>离散网格</td><td>连续空间</td></tr>
+    <tr><td>动力学约束</td><td>间接（需扩展维度）</td><td>直接嵌入优化</td></tr>
+    <tr><td>轨迹平滑性</td><td>差（需后处理）</td><td>好（代价函数显式约束）</td></tr>
+    <tr><td>最优性</td><td>A* 有保证 / RRT 渐近</td><td>局部最优（凸近似下全局）</td></tr>
+    <tr><td>实时性</td><td>中等 10-100ms</td><td>好 5-50ms（工程优化后）</td></tr>
+    <tr><td>动态障碍物</td><td>时空扩展代价高</td><td>预测+约束联合建模</td></tr>
+  </table>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 07 规划方法演进：从搜索到优化 ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../06-prediction-transformer/index.html">← 06 Transformer 与扩散模型预测</a>
+    · <a href="../08-model-based-planning/index.html">下一篇：08 Model-Based 规划：MPC、EM Planner →</a>
+  </div>
+</div>
+</body>
+</html>

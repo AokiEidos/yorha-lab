@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 条件生成与文生图/视频 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>09 条件生成与文生图/视频</h1>
+    <p>条件生成与文生图/视频</p>
+  </div>
+
+  <div class="section">
+    <h2>什么是条件生成 / What is Conditional Generation</h2>
+    <p>无条件扩散只能生成"随机结果"——条件注入让模型知道该生成什么</p>
+  </div>
+  <div class="card">
+    <h3>条件 vs 无条件扩散</h3>
+    <p style="font-size:12px;color:var(--text-2)">无条件扩散：$p_\theta(x_{t-1} \mid x_t)$ — 每次从纯噪声生成随机图像</p>
+    <p style="font-size:12px;color:var(--text-2)">条件扩散：$p_\theta(x_{t-1} \mid x_t, c)$ — 给定条件 $c$，生成符合该条件的结果</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">❌ 无条件限制</p>
+        <p style="font-size:12px;color:var(--text-2)">无法指定类别、文本、布局或任何控制信号</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">✅ 条件自由</p>
+        <p style="font-size:12px;color:var(--text-2)">文本、深度图、边界、姿态、噪声图都可以作为条件</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">条件 $c$ 可以来自任意模态：文本（CLIP）、深度（MiDaS）、分割（SegAny）、姿态（OpenPose）等。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>条件的本质是信息注入</strong><br>
+      在每个 reverse step 中，模型同时接收 $(x_t, t, c)$ 而非仅 $(x_t, t)$。这让模型在去噪的每一步都能参考条件信息，最终生成与条件语义一致的结果。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>条件注入的挑战</h3>
+    <p style="font-size:12px;color:var(--text-2)">将条件信息有效注入扩散模型面临三个核心挑战：</p>
+    <div class="grid-3">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">① 模态异构</p>
+        <p style="font-size:12px;color:var(--text-2)">文本（离散的 token）、深度（连续的 spatial map）、分割（离散的 mask）——每种需要不同的编码方式</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">② 尺度对齐</p>
+        <p style="font-size:12px;color:var(--text-2)">条件特征的分辨率和通道数需要与 UNet 的中间特征对齐，否则无法融合</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">③ 强度控制</p>
+        <p style="font-size:12px;color:var(--text-2)">条件的影响程度（guidance scale）需要可调，过强会失去多样性，过弱则条件不明显</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">后续章节将介绍 Cross-Attention、Classifier Guidance、CFG 等具体解决方案。</p>
+    <div class="callout amber" style="font-size:12px">
+      <strong>条件设计的经验法则</strong><br>
+      强条件（如边缘图、深度图）通常使用 concat 方式注入；语义条件（如文本）使用 Cross-Attention；需要精确控制时使用 CFG 放大条件信号。不同任务的最优策略可能不同，建议通过实验确定。
+    </div>
+  </div>
+  <div class="section">
+    <h2>CLIP Text/Image Encoder / 多模态编码器</h2>
+    <p>CLIP 是文生图模型的条件基础，通过对比学习联合训练文本和图像，实现跨模态理解</p>
+  </div>
+  <div class="card">
+    <h3>CLIP 架构对比</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:100px">组件</th><th>架构</th><th>输出维度</th><th>作用</th></tr>
+      <tr><td><strong>Text Encoder</strong></td><td>Transformer (12层, 768-d)</td><td>77×768</td><td>将文本提示编码为条件向量</td></tr>
+      <tr><td><strong>Image Encoder</strong></td><td>ViT-L/14 (24层, 1024-d)</td><td>257×768</td><td>将图像编码为视觉特征</td></tr>
+      <tr><td><strong>Projection</strong></td><td>线性层</td><td>两向量 → 同一空间</td><td>对齐文本和图像 embedding</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">CLIP 训练时：随机采样 (image, text) 对，用对比损失最大化匹配对相似度、最小化不匹配对相似度。这让 CLIP 学会了跨模态的语义对齐。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>Text Encoder 的 token 长度</strong><br>
+      CLIP Text Encoder 输出 77 个 token（77×768），其中 0 是 BOS，77 是 EOS，中间 75 个是实际文本 token。长文本会被截断，短文本用 PAD token 填充。这个固定长度让 cross-attention 的 $K, V$ 长度固定为 77。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>Cross-Attention QKV 公式详解 / Cross-Attention in Detail</h2>
+    <p>UNet 的 Cross-Attention 层将文本条件注入生成过程，QKV 计算是核心</p>
+  </div>
+  <div class="card green">
+    <h3>QKV 公式推导</h3>
+    <p style="font-size:12px;color:var(--text-2)">假设 UNet 中间层特征为 $f \in \mathbb{R}^{B \times N \times D}$（$B$=batch, $N$=spatial tokens, $D$=channel），文本 embedding 为 $c \in \mathbb{R}^{B \times L \times D}$（$L$=77 text tokens）：</p>
+    <div class="formula">$$Q = W_Q \cdot f \in \mathbb{R}^{B \times N \times D}, \quad K = W_K \cdot c \in \mathbb{R}^{B \times L \times D}, \quad V = W_V \cdot c \in \mathbb{R}^{B \times L \times D}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Attention 输出：</p>
+    <div class="formula">$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{D}}\right) V \in \mathbb{R}^{B \times N \times D}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">计算复杂度：$O(B \cdot N \cdot L \cdot D)$，其中 $N=H\cdot W/C$（latent space 下采样后）。对于 $N=1024, L=77, D=768$，每层 Cross-Attention 计算量约为 $B \cdot 1024 \cdot 77 \cdot 768 \approx 60M$ 乘法-加法运算。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>Multi-head Cross-Attention</strong><br>
+      实际实现中，Cross-Attention 通常拆分为多个 head（如 8 head），每个 head 处理 $D/8$ 维度，最后拼接。这降低了单次 attention 的计算复杂度，并让模型能够关注不同类型的条件信息。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>Temporal Attention / 时序注意力</h2>
+    <p>视频扩散中的时序建模需要额外的 Temporal Attention 层，复杂度为 $O(T \cdot H^2 W^2)$</p>
+  </div>
+  <div class="card amber">
+    <h3>Temporal Attention 公式</h3>
+    <p style="font-size:12px;color:var(--text-2)">对于视频序列 $x^{(1)}, x^{(2)}, ..., x^{(T)}$，Temporal Attention 在帧维度进行：</p>
+    <div class="formula">$$\text{TemporalAttn}(x)_i = \sum_{j=1}^{T} \frac{e^{Q_i \cdot K_j}}{\sum_{k=1}^{T} e^{Q_i \cdot K_k}} V_j$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $T$ 是视频帧数，$Q, K, V$ 来自同一帧的不同位置。相比空间 Self-Attention（$O(H^2W^2)$），Temporal Attention 额外乘以 $T$，总复杂度变为 $O(T \cdot H^2 W^2)$。</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>Attention 类型</th><th>复杂度</th><th>典型场景</th></tr>
+      <tr><td>空间 Self-Attention</td><td>$O(H^2 W^2)$</td><td>图像生成（SD, DiT）</td></tr>
+      <tr><td>Temporal Attention</td><td>$O(T \cdot H^2 W^2)$</td><td>视频生成（W.A.L.T, SVD）</td></tr>
+      <tr><td>时空联合 Attention</td><td>$O(T^2 \cdot H^2 W^2)$</td><td>高精度视频（Open-Sora）</td></tr>
+    </table>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>SVD 的 Temporal Attention 设计</strong><br>
+      Stable Video Diffusion (SVD) 采用 3D Attention U-Net：在 spatial attention 后接 temporal attention 沿着帧维度。这比时空联合 attention 便宜，比纯 spatial attention 能更好建模时序一致性。
+    </div>
+  </div>
+  <div class="section">
+    <h2>Prompt Engineering 与 Negative Prompt / 提示工程</h2>
+    <p>文本提示的质量直接决定生成结果的优劣——Prompt Engineering 是扩散模型使用的关键技能</p>
+  </div>
+  <div class="card">
+    <h3>Prompt Engineering 技巧</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">✅ 有效技巧</p>
+        <p style="font-size:12px;color:var(--text-2)">• 详细的物体描述（颜色、材质、光照）<br>• 艺术风格指定（"photorealistic", "oil painting"）<br>• 构图描述（"centered", "background blur"）<br>• 质量标签（"8K", "highly detailed"）</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">❌ 避免做法</p>
+        <p style="font-size:12px;color:var(--text-2)">• 过长文本（超过 77 tokens 会被截断）<br>• 否定式描述（"not blurry"效果差）<br>• 模糊概念（"some car"不如"red sedan"）</p>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Negative Prompt 原理</h3>
+    <p style="font-size:12px;color:var(--text-2)">Negative Prompt 是 CFG 的扩展：将无条件预测替换为 negative prompt 的条件预测：</p>
+    <div class="formula">$$\tilde{\epsilon} = (1+w) \epsilon(x_t, t, c) - w \cdot \epsilon(x_t, t, c_{\text{neg}})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这让模型在生成时主动"避开"negative prompt 描述的内容。例如：negative prompt="blurry, low quality"可以让生成结果更清晰。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>Negative Prompt 的实际效果</strong><br>
+      在 SD 中使用 Negative Prompt"blurry, watermark, cropped, worst quality"，可以将 FID 从 8.2 降到 5.6（在 CFG w=7.5 时）。这是因为 negative prompt 隐式地教会模型避免特定 artifact。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>自动驾驶多视角生成 / AD Multi-View Generation</h2>
+    <p>自动驾驶需要生成360度视野，surround view 生成和多视角条件注入是关键</p>
+  </div>
+  <div class="card purple">
+    <h3>Surround View 生成策略</h3>
+    <p style="font-size:12px;color:var(--text-2)">BEVFormer 等工作将多视角相机图像转换为统一的 BEV 特征。扩散模型可以基于 BEV 特征生成 surround view 图像：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>方法</th><th>条件类型</th><th>视角数量</th><th>代表工作</th></tr>
+      <tr><td>BEV → Multi-view</td><td>BEV feature map</td><td>6 路</td><td>BEVGen</td></tr>
+      <tr><td>HD Map → Camera</td><td>Vector map</td><td>任意</td><td>UniSim</td></tr>
+      <tr><td>Intent → Surround</td><td>自车意图向量</td><td>6 路</td><td>DriveDreamer</td></tr>
+    </table>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>BEVFormer 思路</strong><br>
+      BEVFormer 通过 temporal attention 融合历史 BEV 特征，通过 cross-attention 将多视角相机特征投射到 BEV 空间。扩散模型可以利用这个统一的 BEV 特征作为条件，生成任意视角的相机图像。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 09 条件生成与文生图/视频 · <a href="../index.html">← 总目录</a> · <a href="../08-scheduler/index.html">← 08 噪声调度器与训练-采样解耦</a>  · <a href="../10-sdxl/index.html">下一篇：10 SDXL与高速生图（LCM/DiT） →</a>
+  </div>
+</div>
+</body>
+</html>

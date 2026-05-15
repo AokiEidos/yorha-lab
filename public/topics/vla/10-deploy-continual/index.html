@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 10 · 实际部署与持续学习：sim2real、online adaptation</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+<!-- ── Title ── -->
+<div class="title-bar">
+  <h1>Chapter 10 · 实际部署与持续学习：sim2real、online adaptation</h1>
+  <p>从仿真到现实：domain randomization、world models 与终身学习</p>
+</div>
+
+<!-- ── 导言 ── -->
+<div class="section">
+  <h2>1 · sim2real 迁移：跨越「Reality Gap」</h2>
+  <p>在仿真器中训练机器人策略，再部署到真实机器人上，这是机器人学习领域的基本范式。然而，由于<strong>物理建模误差</strong>（摩擦、接触刚度、传感器噪声）、<strong>视觉域偏移</strong>（纹理、光照、背景）以及<strong>控制延迟与精度差异</strong>，仿真-现实之间的 gap 往往是策略失效的主要原因。</p>
+  <p>sim2real（Simulation-to-Reality）技术旨在最小化这一 gap。核心方法分为三类：<strong>Domain Randomization（域随机化）</strong>、<strong>Domain Adaptation（域自适应）</strong>与<strong>World Model-based 对齐</strong>。</p>
+</div>
+
+<h3>1.1 Domain Randomization（域随机化）</h3>
+<p>Domain Randomization（DR）最早由 Tobin 等人于 2017 年提出，其核心思想是：在仿真器中训练时，主动随机化视觉与物理参数，使模型在大量变体上暴露，从而学会发现对真实环境不变的特征。</p>
+<p>典型的随机化维度包括：</p>
+<div class="grid-3">
+  <div class="card">
+    <h3>视觉随机化</h3>
+    <ul>
+      <li>背景纹理与颜色</li>
+      <li>光照强度与方向</li>
+      <li>相机噪声与畸变</li>
+      <li>物体纹理与形状</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>物理随机化</h3>
+    <ul>
+      <li>摩擦系数 ±30%</li>
+      <li>关节阻尼 ±20%</li>
+      <li>质量分布 ±15%</li>
+      <li>控制延迟 5-20ms</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>任务随机化</h3>
+    <ul>
+      <li>目标位置变化</li>
+      <li>障碍物数量与形状</li>
+      <li>干扰物体出现</li>
+    </ul>
+  </div>
+</div>
+
+<h3>1.2 GRAD：梯度驱动的域随机化</h3>
+<p><strong>GRAD</strong>（Gradient-Based Domain Randomization）是 Berkeley AutoLab 提出的自适应随机化方法。其核心思想是：训练一个<strong>域判别器</strong>来区分仿真数据与真实数据，用对抗loss引导策略在真实分布上表现更好。</p>
+
+<div class="card green">
+  <h3>GRAD 对抗域对齐</h3>
+  <p>GRAD 同时训练三个网络：策略 $\pi_\theta$、视觉编码器 $E_\phi$ 与域判别器 $D_\psi$：</p>
+  <div class="formula">
+$$\mathcal{L}_{GRAD} = \mathbb{E}_{s^{sim} \sim \mathcal{D}_{sim}}[\log D_\psi(E_\phi(s^{sim}))] + \mathbb{E}_{s^{real} \sim \mathcal{D}_{real}}[\log(1 - D_\psi(E_\phi(s^{real})))]$$
+  </div>
+  <p>策略 $\pi_\theta$ 被训练为最大化域判别器的混淆度（即使 $E_\phi(s)$ 看起来「真实」），从而学习到域不变特征。这个框架与 GAN 的训练动态相似，但目标是域不变策略而非生成逼真图像。</p>
+</div>
+
+<h3>1.3 基于 World Model 的 sim2real</h3>
+<p>World Model（世界模型）方法直接学习一个真实环境的压缩模型，用于在线规划与自适应。典型框架是 <strong>Dreamer</strong> 系列：在潜在空间（latent space）中学习世界模型，然后使用纯模型预测控制（MPC）进行规划。</p>
+
+<div class="flow">
+  <div class="flow-node">真实交互数据</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node green">World Model (RSSM)</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node amber">Imagined Rollout</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node">策略梯度更新</div>
+</div>
+
+<p>DreamerV3 在视觉操控任务上实现了无需任何真实数据即可泛化的效果。其核心是 <strong>RSSM（Recurrent State Space Model）</strong>，将确定性隐状态 $h_t$ 与随机隐状态 $z_t$ 分解：</p>
+
+<div class="formula">
+$$p_\theta(s_{t+1} | s_t, a_t) = \text{MLP}(h_t, z_t, a_t), \quad h_{t+1} = \text{RNN}(h_t, z_t, a_t)$$
+</div>
+
+<p>这种设计使模型既能记忆长期依赖（通过 $h_t$），又能捕获短期随机性（通过 $z_t$），在仿真到真实迁移中表现出强鲁棒性。</p>
+
+<h3>1.4 传感器仿真与资产制作</h3>
+<p>高保真传感器仿真是缩小 sim2real gap 的另一个关键维度。Isaac Sim（NVIDIA）提供了基于路径追踪的 RGB-D、LiDAR 与 IMU 仿真，可以生成照片级真实感的合成数据。</p>
+<p>合成数据生成的典型 Pipeline：</p>
+<div class="flow">
+  <div class="flow-node">3D 资产扫描（Photogrammetry）</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node amber">材质标注（PBR Material）</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node green">Isaac Sim 渲染</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node">域随机化叠加</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node amber">百万级合成数据</div>
+</div>
+
+<!-- ── 2. 轻量化部署 ── -->
+<div class="section amber">
+  <h2>2 · 轻量化部署：Pruning、Quantization、Distillation</h2>
+  <p>VLA 模型往往参数量巨大（7B+），难以在边缘设备（机器人端）实时运行。轻量化技术的目标是在保持精度的前提下，将模型体积压缩至可以在 <strong>NVIDIA Jetson Orin / Intel NPU</strong> 上实时推理的程度。</p>
+</div>
+
+<h3>2.1 剪枝（Pruning）</h3>
+<p>结构化剪枝（Structured Pruning）移除整个神经元/注意力头/通道，而非个别权重，是硬件友好（符合矩阵计算并行性）的剪枝方式。</p>
+<div class="formula">
+$$\text{FLOPs}_{pruned} = \text{FLOPs}_{orig} \times (1 - \text{prune\_ratio})^2 \quad \text{（attention 头剪枝）}$$
+</div>
+<p>对于 VLA 模型的 attention 层，常用 <strong>Magnitude Pruning</strong>（按权重幅值排序剪除）或 <strong>Gradient-based Importance</strong>（用 Fisher Information 估计权重重要性）。实验表明，50% 的注意力头剪枝对操控任务影响小于 3%。</p>
+
+<h3>2.2 量化（Quantization）</h3>
+<p>量化将 FP32 权重压缩至 INT8 / INT4：</p>
+<div class="grid-2">
+  <div class="card">
+    <h3>PTQ（Post-Training Quantization）</h3>
+    <p>训练后校准，不需重训练。</p>
+    <ul>
+      <li>INT8：精度损失 ~1-2%</li>
+      <li>INT4：精度损失 ~5-10%</li>
+    </ul>
+    <p>工具：TensorRT、ONNX Runtime、llama.cpp</p>
+  </div>
+  <div class="card">
+    <h3>QAT（Quantization-Aware Training）</h3>
+    <p>模拟量化噪声梯度更新，精度更高。</p>
+    <ul>
+      <li>需要原始训练数据</li>
+      <li>LLM 已广泛采用</li>
+    </ul>
+    <p>代表：QLoRA、GPTQ</p>
+  </div>
+</div>
+
+<h3>2.3 知识蒸馏（Distillation）</h3>
+<p>知识蒸馏用大模型（Teacher）指导小模型（Student）学习。对于 VLA，典型配置是：</p>
+<div class="formula">
+$$\mathcal{L}_{KD} = \alpha \cdot \text{CE}(a_{student}, a_{teacher}) + (1-\alpha) \cdot \text{KL}(\pi_{student} || \pi_{teacher})$$
+</div>
+<p>其中 $\pi$ 是动作分布，$\alpha$ 平衡标签与分布匹配。实验表明，使用动作序列的 KL 散度（而非单步标签）作为蒸馏损失，可以更好地保留时序一致性。</p>
+
+<h3>2.4 延迟预算与实时性约束</h3>
+<div class="tech-data-block">
+  <div class="block-title">
+    <span>机器人实时控制延迟预算</span>
+    <span class="tech-badge">实时性</span>
+  </div>
+  <table>
+    <tr><th>任务级别</th><th>控制频率</th><th>单帧延迟上限</th><th>架构选择</th></tr>
+    <tr><td>关节位置控制</td><td>1 kHz</td><td>&lt;1ms</td><td>FPGA / MCU</td></tr>
+    <tr><td>策略控制（Pick）</td><td>20-100Hz</td><td>50ms</td><td>NPU/TensorRT</td></tr>
+    <tr><td>视觉感知</td><td>5-30Hz</td><td>100-200ms</td><td>GPU (CUDA)</td></tr>
+    <tr><td>语言指令解析</td><td>0.1-1Hz</td><td>500ms</td><td>LLM (ONNX)</td></tr>
+  </table>
+</div>
+
+<!-- ── 3. 持续学习 ── -->
+<div class="section green">
+  <h2>3 · 持续学习与在线适应</h2>
+  <p>机器人在开放世界中会遇到层出不穷的新任务、新物体与新场景。持续学习（Continual Learning）的目标是使机器人能够：<strong>学习新技能的同时保留已有技能</strong>，避免「灾难性遗忘（Catastrophic Forgetting）」。</p>
+</div>
+
+<h3>3.1 灾难性遗忘机制</h3>
+<p>当神经网络在新任务上训练时，权重会偏向新任务的最优方向，导致对旧任务的性能急剧下降。这是由于深度网络的高度过参数化特性——旧任务的解题知识被编码在已被覆盖的权重中。</p>
+
+<div class="formula">
+$$\theta^* = \arg\min_\theta \mathcal{L}_{new}(\theta) \quad \text{但} \quad \mathcal{L}_{old}(\theta^*) \gg \mathcal{L}_{old}(\theta_{old}^*)$$
+</div>
+
+<p>这一现象在多任务机器人学习中尤为突出：一个在仓库分拣中表现良好的模型，若直接学习厨房任务，往往会遗忘分拣能力。</p>
+
+<h3>3.2 正则化方法：EWC、SI、LwF</h3>
+<p><strong>EWC（Elastic Weight Consolidation）</strong> 通过估计每个参数对旧任务的重要程度（Fisher Information），在损失函数中加入正则项：</p>
+
+<div class="formula">
+$$\mathcal{L}_{EWC} = \mathcal{L}_{new}(\theta) + \frac{\lambda}{2} \sum_i F_i (\theta_i - \theta_{i,old}^*)^2$$
+</div>
+
+<p>其中 $F_i$ 是 Fisher Information，$\lambda$ 控制遗忘-学习权衡。SI（Synaptic Intelligence）与 EWC 类似，但使用不同的重要性度量。</p>
+
+<p><strong>LwF（Learning without Forgetting）</strong> 则通过知识蒸馏保留旧任务的输出分布：</p>
+<div class="formula">
+$$\mathcal{L}_{LwF} = \mathcal{L}_{new}(\theta) + \beta \cdot \text{KL}(\pi_\theta^{old} || \pi_\theta^{new})$$
+</div>
+
+<h3>3.3 在线强化学习（Online RL）</h3>
+<p>相比离线预训练+微调范式，在线强化学习使机器人能够持续从真实交互中优化策略。<strong>TD3 + BC</strong>（Soft Actor-Critic 的简化版本）与 <strong>Online GPLC</strong>（Guaranteed Penalized Learning）是机器人在线学习的两种主流框架。</p>
+<p>在线 RL 的核心挑战是<strong>样本效率</strong>：真实机器人的交互数据获取成本极高。解决思路包括：</p>
+<div class="grid-2">
+  <div class="card green">
+    <h3>基于模型的 RL（MBRL）</h3>
+    <p>学习世界模型，在模型中大规模收集经验。</p>
+    <p>代表：DreamerV3、MuZero</p>
+  </div>
+  <div class="card green">
+    <h3>辅助任务（Auxiliary Tasks）</h3>
+    <p>增加表征学习目标，提高样本利用率。</p>
+    <p>代表：SAC-X、HER</p>
+  </div>
+</div>
+
+<h3>3.4 元学习（Meta-Learning）</h3>
+<p><strong>Meta-Learning</strong>（学习如何学习）使机器人能够从多个任务中提取快速适应能力。MAML（Model-Agnostic Meta-Learning）是元学习的经典框架：</p>
+
+<div class="formula">
+$$\theta^* = \arg\max_\theta \sum_{\mathcal{T}_i} \log p_\theta(\mathcal{T}_i | \theta + \alpha \nabla_\theta \mathcal{L}_{\mathcal{T}_i})$$
+</div>
+
+<p>其中 $\mathcal{T}_i$ 是来自任务分布的采样任务，$\alpha$ 是内层更新步长。对于机器人操控，MAML 可以让模型在少量新任务演示（5-10 episodes）后快速适应新的物体与场景。</p>
+
+<!-- ── 4. 量产案例 ── -->
+<div class="section red">
+  <h2>4 · 案例：FSD 端到端模型的量产部署挑战</h2>
+  <p>特斯拉 FSD（Full Self-Driving）是目前规模最大的 VLA 部署案例之一。与机器人操控类似，端到端驾驶模型从摄像头图像直接输出控制指令（转向、加速、刹车），中间没有人工设计的感知/规划模块。</p>
+</div>
+
+<h3>4.1 数据引擎（Data Engine）</h3>
+<p>特斯拉的数据引擎是其量产成功的核心基础设施：</p>
+<div class="flow">
+  <div class="flow-node">影子模式收集</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node amber">自动标注（Auto-labeling）</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node green">筛选高价值样本</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node amber">模型训练</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-node">OTA 部署</div>
+</div>
+<p>影子模式（Shadow Mode）指模型在实际驾驶中运行但不发出控制指令，系统记录模型预测与驾驶员实际行为的差异。这些差异经过筛选后成为训练数据中的<strong>corner case</strong>。</p>
+
+<h3>4.2 量产挑战：Corner Case 与 Fallback</h3>
+<div class="grid-2">
+  <div class="card red">
+    <h3>Corner Case 分布</h3>
+    <p>端到端模型的失效往往是长尾的、不可预测的。与规则系统不同，深度模型的边界情况难以穷举列举。</p>
+    <p>解决方案：<strong>分层Fallback</strong>——当模型不确定性超过阈值时，切换至基于规则的备用系统。</p>
+  </div>
+  <div class="card red">
+    <h3>感知分布偏移</h3>
+    <p>摄像头在雨雪、反光、隧道出口等极端光照下性能退化，导致输入分布偏离训练数据。</p>
+    <p>解决方案：<strong>传感器冗余</strong>（ cameras + radar + lidar） + <strong>不确定性估计</strong>。</p>
+  </div>
+</div>
+
+<h3>4.3 车队学习（Fleet Learning）</h3>
+<p>特斯拉通过车队学习实现持续迭代：全球超过 100 万辆搭载 FSD 硬件的车辆持续收集数据，经过筛选后用于模型更新。这种<strong>数据飞轮</strong>是端到端自动驾驶的核心护城河。</p>
+
+<div class="tech-data-block">
+  <div class="block-title">
+    <span>FSD 量产数据规模</span>
+    <span class="tech-badge">Tesla</span>
+  </div>
+  <table>
+    <tr><td><strong>训练数据量</strong></td><td>1000万+ clips（截至2024）</td></tr>
+    <tr><td><strong>每日新增</strong></td><td>数百万 frames</td></tr>
+    <tr><td><strong>Corner Case 挖掘</strong></td><td>ML-based 自动筛选</td></tr>
+    <tr><td><strong>模型更新频率</strong></td><td>每2-4周一次 OTA</td></tr>
+    <tr><td><strong>在线评估</strong></td><td>影子模式 + 触发器</td></tr>
+  </table>
+</div>
+
+<!-- ── 导航 ── -->
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · Chapter 10 · 实际部署与持续学习：sim2real、online adaptation ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../09-robot-manipulation/index.html">← 第九章：机器人操控</a> ·
+  <a href="../11-frontier-models/index.html">第十一章：前沿模型 →</a>
+</div>
+
+</div>
+</body>
+</html>

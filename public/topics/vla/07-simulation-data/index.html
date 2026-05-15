@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 07 · 仿真与数据引擎：MuJoCo、Isaac、生成式数据</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+<!-- ── Title ── -->
+<div class="title-bar">
+  <h1>Chapter 07 · 仿真与数据引擎：MuJoCo、Isaac、生成式数据</h1>
+  <p>VLA 技术文档系列 · Vision-Language-Action Model Series</p>
+</div>
+
+<!-- ── 1. 章节导览 ── -->
+<div class="section">
+  <h2>1 · 仿真的必要性：从真实世界到虚拟训练场</h2>
+  <p>真实机器人数据采集面临三个根本限制：成本（机器人操作员工资、设备损耗）、安全（高风险动作的试错代价）、规模（并发收集数十万条 trajectory 的难度）。仿真平台通过精确的物理建模和可编程的场景生成，为 VLA 系统提供了安全、低成本、无限规模的训练环境。</p>
+</div>
+
+<div class="callout blue">
+<strong>仿真的本质权衡：</strong>没有免费午餐定理告诉我们，仿真逼真度与仿真速度之间存在根本矛盾。实时仿真必须简化物理模型，而高保真物理模拟（如 density 流体、多体接触）通常无法达到实时的 1000Hz 控制频率。
+</div>
+
+<!-- ── 2. MuJoCo ── -->
+<div class="section green">
+  <h2>2 · MuJoCo：最流行的机器人仿真环境</h2>
+  <p>MuJoCo（Multi-Joint dynamics with Contact）是 DeepMind 开源的通用物理仿真引擎，专为机器人控制和强化学习设计。它基于连续接触力优化模型，在保持高计算效率的同时实现了精确的接触力学建模。</p>
+</div>
+
+<h3>2.1 物理建模基础</h3>
+<p>MuJoCo 使用基于优化的接触力学，其核心是非光滑接触力模型。每个接触由法向力（防止穿透）和切向摩擦力（防止滑动）组成：</p>
+
+<div class="formula">
+$$f_n = k_\text{norm} \cdot \delta + d_\text{norm} \cdot \dot{\delta}$$
+$$|f_t| \leq \mu \cdot f_n$$
+</div>
+
+<p>其中 $\delta$ 是穿透深度，$k_\text{norm}$ 和 $d_\text{norm}$ 是接触刚度和阻尼系数，$\mu$ 是摩擦系数。MuJoCo 的 contact solver 使用互补条件（complementarity condition）来建模接触的「发生/不发生」二元状态，避免了在低穿透深度时力的不连续性问题。</p>
+
+<h3>2.2 MJCF 模型格式</h3>
+<p>MuJoCo 的场景通过 MJCF（MuJoCo XML Format）描述，包含以下核心元素：</p>
+
+<div class="tech-data-block">
+  <div class="block-title">MJCF 核心元素</div>
+  <div><span class="tech-badge">worldbody</span> 静态世界（地面、墙壁、固定障碍物）</div>
+  <div><span class="tech-badge">body</span> 刚体节点（link，包含惯性参数、几何形状、摩擦属性）</div>
+  <div><span class="tech-badge">joint</span> 关节定义（free, ball, hinge, slide 类型）</div>
+  <div><span class="tech-badge">actuator</span> 执行器定义（施加关节力矩或位置控制）</div>
+  <div><span class="tech-badge">contact</span> 接触对定义（哪些 body 之间可能产生接触）</div>
+</div>
+
+<div class="card green">
+  <h3>示例：UR5 机械臂建模</h3>
+<pre><code>&lt;mujoco&gt;
+  &lt;worldbody&gt;
+    &lt;body name="base" pos="0 0 0"&gt;
+      &lt;joint type="free"/&gt;
+      &lt;geom type="box" size="0.1 0.1 0.05"/&gt;
+      &lt;!-- 6-DOF joint tree for UR5 --&gt;
+    &lt;/body&gt;
+  &lt;/worldbody&gt;
+  &lt;actuator&gt;
+    &lt;motor joint="shoulder_pan" ctrllimited="true" .../&gt;
+    &lt;motor joint="shoulder_lift" ctrllimited="true" .../&gt;
+    &lt;!-- 6 joints --&gt;
+  &lt;/actuator&gt;
+&lt;/mujoco&gt;</code></pre>
+</div>
+
+<h3>2.3 MuJoCo 的优势与局限</h3>
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">优势</div>
+    <ul>
+      <li>接触力学精确且稳定（互补接触模型）</li>
+      <li>C++ 实现，Python bindings 高效（~1ms/step）</li>
+      <li>XML 格式人类可读，场景构建简单</li>
+      <li>广泛用于 RL 基线（DDPG, SAC, PPO 都以 MuJoCo 为标准环境）</li>
+      <li>开源且持续维护</li>
+    </ul>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">局限</div>
+    <ul>
+      <li>无内置渲染器（需搭配 dm_control 或 MujocoViewer）</li>
+      <li>软体建模能力有限（无本构模型）</li>
+      <li>并行仿真需要多实例（无内置集群管理）</li>
+      <li>传感器建模简化（无真实相机模型）</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ── 3. Isaac Lab ── -->
+<div class="section amber">
+  <h2>3 · Isaac Lab：GPU 加速的机器人仿真平台</h2>
+  <p>NVIDIA Isaac Lab 是基于 Isaac Sim 的 GPU 加速机器人仿真平台，利用 NVIDIA GPU 的并行计算能力实现大规模场景的实时仿真。与 MuJoCo 的单线程物理引擎不同，Isaac Lab 将物理计算并行化到 GPU 上，实现了数数量级的仿真吞吐量提升。</p>
+</div>
+
+<h3>3.1 GPU 物理流水线</h3>
+<p>Isaac Lab 的核心创新是将接触力求解、刚体动力学、约束求解全部迁移到 GPU：</p>
+
+<div class="tech-canvas">
+  <svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    <rect width="600" height="180" fill="#f8fafc"/>
+
+    <!-- GPU boxes -->
+    <rect x="20" y="20" width="130" height="35" rx="6" fill="#3b82f6" opacity="0.9"/>
+    <text x="85" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">PhysX Engine</text>
+    <text x="85" y="58" text-anchor="middle" fill="white" font-size="9">GPU Contact Solver</text>
+
+    <rect x="170" y="20" width="130" height="35" rx="6" fill="#7c3aed" opacity="0.9"/>
+    <text x="235" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Rigid Body Dyn.</text>
+    <text x="235" y="58" text-anchor="middle" fill="white" font-size="9">Parallel Batch Physics</text>
+
+    <rect x="320" y="20" width="130" height="35" rx="6" fill="#22c55e" opacity="0.9"/>
+    <text x="385" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">SDF Collision</text>
+    <text x="385" y="58" text-anchor="middle" fill="white" font-size="9">GPU Marching Cubes</text>
+
+    <rect x="470" y="20" width="110" height="35" rx="6" fill="#f59e0b" opacity="0.9"/>
+    <text x="525" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Sensor Render</text>
+    <text x="525" y="58" text-anchor="middle" fill="white" font-size="9">Raycast / Depth</text>
+
+    <!-- Middle: environment pool -->
+    <rect x="100" y="80" width="400" height="40" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="300" y="100" text-anchor="middle" fill="#1e293b" font-size="12" font-weight="bold">Environment Pool (GPU Workers)</text>
+    <text x="300" y="115" text-anchor="middle" fill="#64748b" font-size="10">1000x Parallel Robots in Single GPU</text>
+
+    <!-- Bottom: RL loop -->
+    <rect x="150" y="135" width="100" height="30" rx="6" fill="#ef4444" opacity="0.8"/>
+    <text x="200" y="153" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Policy</text>
+
+    <rect x="280" y="135" width="100" height="30" rx="6" fill="#f59e0b" opacity="0.8"/>
+    <text x="330" y="153" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Rollout</text>
+
+    <rect x="400" y="135" width="100" height="30" rx="6" fill="#22c55e" opacity="0.8"/>
+    <text x="450" y="153" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Training</text>
+
+    <!-- Arrows from env pool to RL -->
+    <line x1="300" y1="120" x2="250" y2="135" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="300" y1="120" x2="350" y2="135" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="450" y1="135" x2="450" y2="165" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="480" y1="165" x2="200" y2="165" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="200" y1="165" x2="200" y2="135" stroke="#94a3b8" stroke-width="1.5"/>
+
+    <text x="300" y="178" text-anchor="middle" fill="#64748b" font-size="9">GPU Tensorized RL Loop — 10K+ Steps/sec</text>
+  </svg>
+  <div style="font-size:11px;color:#64748b;text-align:center;padding:4px 0">图 3-1：Isaac Lab GPU 并行仿真架构。多个机器人在 GPU 上并行仿真，共享物理引擎内核，Rollout 数据直接写入 GPU Tensor 供训练使用。</div>
+</div>
+
+<h3>3.2 IsaacGym 与 IsaacLab 的区别</h3>
+<p>IsaacGym 是早期产品，仅支持 GPU 物理仿真但无配套 RL 训练框架。IsaacLab 在 IsaacGym 的物理并行能力基础上，增加了与主流 RL 算法（PPO、SAC、IsaacLAL）的集成，以及 ROS 2 和 ORi 的接口支持。</p>
+
+<div class="card">
+  <h3>性能对比</h3>
+  <table>
+    <thead><tr><th>平台</th><th>单 GPU 并行环境数</th><th>典型 Steps/sec</th><th>适用场景</th></tr></thead>
+    <tbody>
+      <tr><td>MuJoCo（CPU 单实例）</td><td>1</td><td>~5K</td><td>算法研究、小规模实验</td></tr>
+      <tr><td>MuJoCo +多实例并行</td><td>16-32</td><td>~50K</td><td>中等规模训练</td></tr>
+      <tr><td>Isaac Gym</td><td>1024</td><td>~400K</td><td>大规模强化学习</td></tr>
+      <tr><td>Isaac Lab</td><td>4096+</td><td>~1M+</td><td>工业级大规模训练</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 4. Genesis ── -->
+<div class="section purple">
+  <h2>4 · Genesis：可微分的生成式仿真引擎</h2>
+  <p>Genesis（CMU 2024）是最新一代的通用机器人仿真平台，区别于传统物理引擎的关键创新是：完全可微分化，并且集成了生成式渲染能力。它同时支持物理仿真和基于扩散模型的视觉渲染，所有计算图可联合优化。</p>
+</div>
+
+<h3>4.1 可微分物理的优势</h3>
+<p>传统仿真器仅输出状态序列，不可微因此无法做梯度反向传播。可微分仿真器（如 Genesis、NDP）保留计算图，使得策略梯度可以直接从仿真损失回传：</p>
+
+<div class="formula">
+$$\nabla_\theta L_\text{sim} = \frac{\partial L}{\partial s_T} \cdot \frac{\partial s_T}{\partial s_{T-1}} \cdot \ldots \cdot \frac{\partial s_1}{\partial \theta}$$
+</div>
+
+<p>这使得在仿真内部就可以做 gradient-based policy optimization，而不必依赖零阶（gradient-free）方法。</p>
+
+<h3>4.2 生成式渲染与神经仿真</h3>
+<p>Genesis 的另一个创新是集成了基于扩散模型的场景渲染。真实相机的图像生成远比基于物理光线的渲染更快速（差一个数量级），且可以生成任意视角：</p>
+
+<div class="formula">
+$$\hat{I}_t = \text{DiffusionRenderer}(s_t, \theta_\text{render})$$
+</div>
+
+<p>这种设计允许在仿真中直接生成照片级真实感的训练数据，用于训练基于真实图像输入的 VLA 系统，大幅降低 sim2real 视觉差异。</p>
+
+<div class="callout purple">
+<strong>Genesis 的核心挑战：</strong>生成式渲染引入了额外的模型误差——渲染图像与真实图像之间的分布偏移会影响感知网络的训练。需要仔细的视觉域随机化（Visual Domain Randomization）来确保生成数据对真实图像的泛化性。
+</div>
+
+<!-- ── 5. 数据生成 ── -->
+<div class="section">
+  <h2>5 · 生成式数据管线：从场景到轨迹的自动化</h2>
+  <p>大规模机器人数据（如 RT-1、RT-2 所使用的 130K 数据集）无法通过人工采集来扩展。生成式数据管线通过程序化场景生成和自动化轨迹采集，实现了机器人数据的工业化生产。</p>
+</div>
+
+<h3>5.1 程序化场景生成</h3>
+<p>场景生成器（如 Habitat-Sim、THOR-OV）通过随机组合以下元素来生成多样化场景：</p>
+
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">物体资产</div>
+    <ul>
+      <li>形状类别（容器、工具、障碍物）</li>
+      <li>尺度分布（真实物体扫描）</li>
+      <li>材质属性（摩擦、反射率）</li>
+      <li>纹理来源（ProcGEN、3D Warehouse）</li>
+    </ul>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">空间布局</div>
+    <ul>
+      <li>物体位置随机化（均匀/高斯采样）</li>
+      <li>场景复杂度控制（物体数量 N）</li>
+      <li>语义约束（桌面上的物品、架子上的物体）</li>
+    </ul>
+  </div>
+</div>
+
+<h3>5.2 自动化轨迹采集</h3>
+<p>场景生成后，需要在每个场景中采集有效的 robot trajectories。方法包括：</p>
+
+<ul>
+  <li><strong>运动规划器采集：</strong>使用 RRT*, CHOMP, MPNet 等运动规划器自动生成无碰撞轨迹</li>
+  <li><strong>启发式策略采集：</strong>rule-based 策略（如 pick-place 模板）快速生成 demo 数据</li>
+  <li><strong>人类远程操作：</strong>使用 VR 控制器或 3D 鼠标远程操作采集高质量 demo（成本高、速度慢）</li>
+</ul>
+
+<div class="card amber">
+  <h3>数据质量 vs 数据量</h3>
+  <p>研究表明，在机器人操作任务中，数据质量（任务多样性、动作平滑性）比单纯的数量更重要。BC-Zero（DeepMind 2024）证明，通过自动数据增强（从少量高质量 demo 合成大量变体）可以达到与大规模采集数据相近的性能。</p>
+</div>
+
+<h3>5.3 World Model 生成数据</h3>
+<p>World Model（如 GAIA-1、DriveDreamer）不仅仿真物理，还学习预测未来的感官观测。给定当前状态 $s_t$ 和动作 $a_t$，World Model 输出未来观测 $\hat{o}_{t+1}$，这意味着可以用训练好的 world model 来「想象」全新的 trajectories：</p>
+
+<div class="formula">
+$$\tau_\text{synthetic} = \{s_0, a_0, \hat{s}_1, a_1, \hat{s}_2, \ldots\} \sim p_\text{world model}$$
+</div>
+
+<p>这种方式可以生成物理上不可能在真实世界中采集的轨迹（如极端碰撞场景、罕见天气条件），对于训练安全关键的 VLA 系统有特殊价值。</p>
+
+<!-- ── 6. 数据引擎实践 ── -->
+<div class="section green">
+  <h2>6 · 数据引擎实践：构建机器人数据管线</h2>
+</div>
+
+<h3>6.1 Steam：数据引擎架构</h3>
+<p>Steam（Google Robotics）是构建机器人数据引擎的参考架构：</p>
+
+<div class="flow">
+  <div class="flow-node">任务描述<br><small>Language/Video</small></div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node green">场景生成器<br><small>程序化/MCL</small></div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node amber">轨迹采集器<br><small>RRT/Policy</small></div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node purple">数据过滤<br><small>成功率/Gripper</small></div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node">训练数据集</div>
+</div>
+
+<h3>6.2 数据质量指标</h3>
+<table>
+  <thead><tr><th>指标</th><th>定义</th><th>目标范围</th></tr></thead>
+  <tbody>
+    <tr><td>任务成功率</td><td>轨迹是否成功完成任务</td><td>&gt; 80%</td></tr>
+    <tr><td>动作平滑度</td><td>$\frac{1}{T-1}\sum \|a_t - a_{t+1}\|$</td><td>&lt; 0.05 rad/step</td></tr>
+    <tr><td>接触稳定性</td><td>抓取/放置时的末端速度</td><td>&lt; 0.02 m/s</td></tr>
+    <tr><td>场景多样性</td><td>物体组合、空间布局的熵</td><td>高（需量化）</td></tr>
+  </tbody>
+</table>
+
+<div class="callout blue">
+<strong>数据引擎的核心瓶颈：</strong>不是存储，而是「有效数据」的生成速度。即使有 1M 条轨迹，如果其中 90% 是失败案例或无意义探索，对训练帮助也很有限。数据引擎需要在规模和有效性之间找到平衡点。
+</div>
+
+<!-- ── 7. 本章小结 ── -->
+<div class="section">
+  <h2>7 · 本章小结</h2>
+  <p>仿真平台是 VLA 系统训练不可或缺的基础设施。MuJoCo 以其精确的接触力学和开源易用性成为强化学习研究的标准环境；Isaac Lab 通过 GPU 并行化实现了工业级仿真吞吐量；Genesis 则将可微分物理和生成式渲染结合，为端到端可优化仿真奠定了基础。</p>
+  <p>生成式数据管线通过程序化场景生成和自动轨迹采集，解决了真实机器人数据稀缺的问题。World Model 的发展进一步使得「想象的」trajectories 成为可能。下一章我们将讨论 VLA 系统在部署中的安全性问题——包括对抗鲁棒性、不确定性量化和降级策略。</p>
+</div>
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · Chapter 07 · 仿真与数据引擎 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../06-imitation-reinforcement/index.html">← 第六章：模仿与强化学习</a> ·
+  <a href="../08-safety-uncertainty/index.html">第八章：安全与不确定性 →</a>
+</div>
+
+</div>
+</body>
+</html>

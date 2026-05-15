@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 高级策略优化 / Advanced Policy Optimization — 强化学习</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load',function(){setTimeout(function(){renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,trust:true,strict:false});},100);});
+  </script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>06 高级策略优化 / Advanced Policy Optimization</h1>
+    <p>TRPO 自然梯度、PPO Clip vs Penalty、ACKTR — 从理论到工业实践的完整进阶路径</p>
+  </div>
+
+  <!-- 稳定性问题 -->
+  <div class="section">
+    <h2>策略更新的稳定性问题 / Policy Update Stability</h2>
+    <p>策略梯度的高方差使得一次不合理的更新可以摧毁整个策略——需要约束更新幅度</p>
+  </div>
+
+  <div class="card">
+    <h3>Trust Region 的概念 / Trust Region Concept</h3>
+    <p style="font-size:12px;color:var(--text-2)">想象你在爬山，梯度告诉你往某个方向走，但你不知道走多远是安全的——走太远可能跌落悬崖。Trust region 的思想是：在每一步，找到一个"在这个方向上走多远都不会太糟"的限制范围，然后在这个范围内做最大改善。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">KL 散度作为距离度量</p>
+        <p style="font-size:12px;color:var(--text-2)">新旧策略之间的 KL 散度 $D_{\text{KL}}(\pi_{\text{old}} \| \pi_{\text{new}})$ 量化了策略更新的幅度。KL 受限于 $\delta$ 时，可以保证策略不会退化。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">为什么是 KL 而非欧氏距离？</p>
+        <p style="font-size:12px;color:var(--text-2)">KL 散度天然地量化两个概率分布之间的差异，符合策略是概率分布的本质。而且 KL 散度在策略空间中是局部黎曼度量——恰好等于自然梯度中的 Fisher 信息矩阵。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber" style="margin-top:4px">
+    <strong>策略更新失败的典型案例</strong>
+    在连续控制任务中，一次过大的参数更新可能导致策略输出极端动作（电机全速运转），这个极端动作产生的数据被存入 replay buffer，然后下次采样到这些极端数据，梯度进一步推动策略往极端方向走……灾难性的正反馈循环。
+  </div>
+
+  <!-- TRPO -->
+  <div class="section green" style="margin-top:16px">
+    <h2>TRPO / 信赖域策略优化 (Schulman et al., 2015)</h2>
+    <p>用 KL 约束和自然梯度，将每次策略更新限制在"安全区域"内</p>
+  </div>
+
+  <div class="card green">
+    <h3>TRPO 约束优化问题 / Constrained Optimization Formulation</h3>
+    <p style="font-size:12px;color:var(--text-2)">TRPO 将策略更新建模为有约束的优化问题：</p>
+    <div class="formula">$$\max_\theta \quad \mathbb{E}_t\Bigl[ \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)} \cdot \hat{A}_t \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">约束：</p>
+    <div class="formula">$$\mathbb{E}_t\Bigl[ D_{\text{KL}}\bigl(\pi_{\theta_{\text{old}}}(\cdot\mid s_t) \mid \pi_\theta(\cdot\mid s_t)\bigr) \Bigr] \leq \delta$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">第一行是surrogate advantage（替代目标函数，可以高效估计），第二行是KL约束，保证每一步更新都不会"太远"。</p>
+  </div>
+
+  <div class="card">
+    <h3>自然梯度 / Natural Gradient — 黎曼度量下的最速方向</h3>
+    <p style="font-size:12px;color:var(--text-2)">标准梯度 $\nabla_\theta J$ 是欧氏空间中的最速上升方向。但在概率分布空间（黎曼流形）中，方向由 Fisher 信息矩阵 $F$ 度量：</p>
+    <div class="formula">$$\tilde{\nabla}_\theta J = F^{-1}(\theta) \cdot \nabla_\theta J$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">自然梯度保证了：在参数空间的高曲率方向（对应策略变化敏感的方向）上步长自动减小；在低曲率方向上步长可以更大。更重要的是，当约束是 KL 散度时，自然梯度恰好满足 KL 约束（Amari, 1998）。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Fisher 信息矩阵 $F$</p>
+        <p style="font-size:12px;color:var(--text-2)">$F = \mathbb{E}_{\pi_\theta}\left[ \nabla \log \pi_\theta(a|s) \cdot \nabla \log \pi_\theta(a|s)^{\top} \right]$。是 log 策略梯度的协方差矩阵。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">共轭梯度法求解</p>
+        <p style="font-size:12px;color:var(--text-2)">直接求 $F^{-1}$ 是 $O(n^3)$（$n$ 是参数数）。用共轭梯度法（CG）解 $F \cdot \Delta\theta = \nabla J$ 可以 $O(nk)$ 完成（$k$ 是 CG 迭代次数），无需显式计算 $F^{-1}$。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:4px">
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>优点</h3>
+      <ul style="font-size:12px">
+        <li>单调改善保证（每次更新策略不会变差）</li>
+        <li>对学习率不敏感（约束决定步长）</li>
+        <li>适合连续控制任务（MuJoCo 上效果很好）</li>
+        <li>理论基础扎实（自然梯度 + KL 约束）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>缺点</h3>
+      <ul style="font-size:12px">
+        <li>计算量大（需要 CG 求解约束方向）</li>
+        <li>二阶方法，实现复杂（需要计算/存储 $F$ 或与 $F$ 交互）</li>
+        <li>与 policy gradient 不同的 loss landscape，难以结合其他方法</li>
+        <li>难以与确定性策略（deterministic policy）结合</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PPO -->
+  <div class="section" style="margin-top:16px">
+    <h2>PPO / 近端策略优化 (Schulman et al., 2017) — 工业界主流</h2>
+    <p>用一阶优化 + clip 机制近似 TRPO 的信赖域约束，实现简单且效果好</p>
+  </div>
+
+  <div class="card">
+    <h3>裁剪损失函数 / Clipped Surrogate Objective</h3>
+    <p style="font-size:12px;color:var(--text-2)">PPO 的核心思想：用 clip 操作替代 KL 约束，实现"在信任域内更新"而不需要显式约束。</p>
+    <div class="formula">$$L^{\text{CLIP}}(\theta) = \mathbb{E}_t \Bigl[ \min\bigl( r_t(\theta) \cdot \hat{A}_t,\;\; \mathrm{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \cdot \hat{A}_t \bigr) \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)}$ 是重要性采样比（probability ratio）。</p>
+  </div>
+
+  <div class="card">
+    <h3>裁剪机制详解 / How Clipping Works</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">$\hat{A}_t > 0$（好动作）</p>
+        <p style="font-size:12px;color:var(--text-2)">如果 $r_t > 1+\epsilon$，clip 限制 $r_t = 1+\epsilon$，即不让概率比增加超过 $(1+\epsilon)$ 倍。这意味着：如果动作已经比旧策略好很多，PPO 不再鼓励进一步增加它的概率——防止过度优化。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">$\hat{A}_t < 0$（坏动作）</p>
+        <p style="font-size:12px;color:var(--text-2)">如果 $r_t < 1-\epsilon$，clip 限制 $r_t = 1-\epsilon$，即不让概率比减少超过 $(1-\epsilon)$ 倍。如果动作已经很差（比旧策略差很多），PPO 不再继续减少它的概率——防止过度惩罚。</p>
+      </div>
+    </div>
+    <div class="callout blue" style="font-size:12px;margin-top:10px">
+      <strong>为什么 clip 实现了信赖域？</strong>
+      当 $r_t$ 越界（超出 $[1-\epsilon, 1+\epsilon]$），surrogate objective 被 clip，不再让梯度推动 $r_t$ 进一步远离 1。这等同于在 $r_t = 1 \pm \epsilon$ 处施加了"墙"——策略更新不会越过这个墙。从效果上看，clip 替代了 TRPO 的 KL 约束，但用一阶优化实现（不需要 CG 或 Fisher 矩阵）。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>PPO 完整伪代码 / Full PPO Algorithm</h3>
+    <pre><code><span class="cmt"># PPO-Clip 算法（使用 GAE）</span>
+<span class="kw">Initialize</span>: θ (随机), θ_old ← θ
+<span class="kw">for</span> iteration = 1, 2, ... <span class="kw">do</span>
+
+  D ← []                          <span class="cmt"># 收集数据</span>
+  <span class="kw">for</span> actor = 1, N <span class="kw">do</span>             <span class="cmt"># N 个 actor 并行收集</span>
+    τ ← collect_trajectory(π_{θ_old})
+    compute advantages GAE(λ)       <span class="cmt"># 每条轨迹计算优势估计</span>
+    D.append(τ, advantages)
+  <span class="kw">end</span>
+
+  <span class="cmt"># PPO epoch（多次利用同一批数据）</span>
+  <span class="kw">for</span> epoch = 1, K <span class="kw">do</span>           <span class="cmt"># K 个 epoch，通常 3-10</span>
+    <span class="kw">for</span> each minibatch in D <span class="kw">do</span>  <span class="cmt"># mini-batch SGD</span>
+      r ← π_θ(a|s) / π_{θ_old}(a|s)  <span class="cmt"># 概率比</span>
+      A_hat ← advantage              <span class="cmt"># GAE 优势</span>
+
+      <span class="cmt"># Clipped surrogate loss</span>
+      L_clamp ← clamp(r, 1-ε, 1+ε) · A_hat
+      L_unclamp ← r · A_hat
+      L ← min(L_clamp, L_unclamp)     <span class="cmt"># 取较小值</span>
+
+      <span class="cmt"># 加上熵奖励（鼓励探索）</span>
+      L_total ← L + β · H(π_θ(·|s))
+
+      θ ← θ − η · ∇_θ L_total        <span class="cmt"># 梯度上升</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  θ_old ← θ                        <span class="cmt"># 更新旧策略</span>
+<span class="kw">end</span></code></pre>
+  </div>
+
+  <div class="grid-2" style="margin-top:4px">
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>PPO 为什么成功 / Why PPO Works</h3>
+      <ul style="font-size:12px">
+        <li><strong>单调改善</strong>：在 KL 约束弱的情况下，PPO 可以证明单调改善</li>
+        <li><strong>计算效率</strong>：一阶方法，不需要 CG 或二阶信息</li>
+        <li><strong>超参数鲁棒</strong>：$\epsilon$（通常 0.2）对不同任务敏感性低</li>
+        <li><strong>数据复用</strong>：同一批数据可以被 K 个 epoch 使用（reuses），提升数据效率</li>
+        <li><strong>实现简单</strong>：只需修改 loss 函数，不改变架构</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>PPO 超参数调优指南 / Hyperparameter Guide</h3>
+      <table style="font-size:11.5px">
+        <tr><th>超参数</th><th>典型值</th><th>说明</th></tr>
+        <tr><td>clip ratio $\epsilon$</td><td>0.2</td><td>通常 [0.1, 0.3]，连续控制偏大</td></tr>
+        <tr><td>GAE $\lambda$</td><td>0.95-0.99</td><td>偏大偏 bias，更稳定</td></tr>
+        <tr><td>discount $\gamma$</td><td>0.99</td><td>长期信用分配</td></tr>
+        <tr><td>epoch 数 $K$</td><td>3-10</td><td>大batch可以用更多epoch</td></tr>
+        <tr><td>batch size</td><td>2048-4096</td><td>与 epoch 配合调整</td></tr>
+        <tr><td>学习率</td><td>3e-4</td><td>固定或 cosine annealing</td></tr>
+        <tr><td>熵奖励 $\beta$</td><td>0.01</td><td>连续控制需要，防止策略坍缩</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- PPO-Penalty -->
+  <div class="section amber" style="margin-top:16px">
+    <h2>PPO-Penalty / 自适应 KL 惩罚 (Schulman et al., 2017)</h2>
+    <p>PPO 的另一个分支——用自适应 KL 惩罚替代 clip，作为 TRPO 的简化版替代</p>
+  </div>
+
+  <div class="card amber">
+    <h3>PPO-Penalty 损失函数 / PPO-Penalty Objective</h3>
+    <p style="font-size:12px;color:var(--text-2)">PPO-Penalty 将 KL 散度作为惩罚项加入损失函数，并动态调整惩罚系数 $\beta$：</p>
+    <div class="formula">$$L^{\text{PPO-Penalty}}(\theta) = \mathbb{E}_t\Bigl[ \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)} \cdot \hat{A}_t \Bigr] - \beta_t \cdot \mathbb{E}_t\Bigl[ D_{\text{KL}}\bigl(\pi_{\theta_{\text{old}}} \mid \pi_\theta\bigr) \Bigr]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">自适应调整：每次迭代计算实际 KL 散度 $d = \mathbb{E}[D_{\text{KL}}]$，如果 $d > d_{\text{target}}$（太高），减小 $\beta$（让更新更激进）；如果 $d < d_{\text{target}}$（太低），增大 $\beta$（让更新更保守）。这种自适应让 KL 散度围绕目标值振荡。</p>
+    <div class="flow" style="margin-top:8px">
+      <div class="flow-node">KL > target?</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node amber">增大 β<br><small>收紧更新幅度</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">KL < target?</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node amber">减小 β<br><small>放松更新幅度</small></div>
+    </div>
+  </div>
+
+  <!-- 对比 -->
+  <div class="section green" style="margin-top:16px">
+    <h2>PPO-Clip vs PPO-Penalty vs TRPO / Algorithm Comparison</h2>
+  </div>
+
+  <div class="card green">
+    <h3>三种方法的横向对比</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:100px">方法</th><th>约束形式</th><th>优化方式</th><th>计算复杂度</th><th>工业使用</th></tr>
+      <tr><td>TRPO</td><td>硬 KL 约束（不等式）</td><td>二阶（CG + 线搜索）</td><td>高（需要 FIM）</td><td>学术研究</td></tr>
+      <tr><td>PPO-Penalty</td><td>软 KL 惩罚（乘子法）</td><td>一阶 + 自适应 β</td><td>中</td><td>较少使用</td></tr>
+      <tr><td><strong>PPO-Clip</strong></td><td>Clip 近似约束</td><td>一阶 + min 操作</td><td>低（最简单）</td><td><strong>工业标准</strong></td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">实践中发现 PPO-Clip 效果和 PPO-Penalty 相当甚至更好，而且实现更简单。因此 OpenAI、DeepMind、京东等公司在生产中都使用 PPO-Clip。</p>
+  </div>
+
+  <!-- ACKTR -->
+  <div class="section" style="margin-top:16px">
+    <h2>ACKTR / 自然梯度版 Actor-Critic (Wu et al., 2017)</h2>
+    <p>用 Kronecker-Factorized Trust Region 实现高效自然梯度，同时更新 actor 和 critic</p>
+  </div>
+
+  <div class="card">
+    <h3>K-FAC / Kronecker-Factored Approximation</h3>
+    <p style="font-size:12px;color:var(--text-2)">ACKTR 的核心是用 K-FAC 近似 Fisher 矩阵和自然梯度。K-FAC 将 $F$ 分解为小块 Kronecker 积：</p>
+    <div class="formula">$$F \approx \sum_{i} A_i \otimes B_i$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $A_i, B_i$ 是小块矩阵（对应网络的不同层）。这种分解让 $F \cdot v$ 计算从 $O(n^2)$ 降到 $O(n)$，使得自然梯度可以在大规模网络上高效计算。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>ACKTR 的优势</strong>
+      ACKTR 每步同时更新 actor 和 critic（用自然梯度），而 PPO-Clip 用标准梯度分别更新。ACKTR 在Mujoco 任务上比 A2C 快 2-3 倍，样本效率更高。
+    </div>
+  </div>
+
+  <!-- 工业案例 -->
+  <div class="section red" style="margin-top:16px">
+    <h2>工业应用案例 / Industrial Applications</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>OpenAI Five (Dota2, 2019)</h3>
+      <p style="font-size:12px;color:var(--text-2)">OpenAI Five 使用 PPO 训练，256 GPU 并行收集数据，80000 CPU cores。策略网络是深度 LSTM，每 48 小时训练相当于 180 年的人类游戏经验。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">关键技术：<strong>Team Control</strong>（将 5 个智能体的策略共享，但有自己的观察和动作）；<strong>Opponent Modeling</strong>（通过 Self-Play 生成对手）。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>Ray/RLlib 的 PPO 实现</h3>
+      <p style="font-size:12px;color:var(--text-2)">Ray（Berkeley 的分布式计算框架）通过 RLlib 库提供高度优化的 PPO 实现。RLlib 支持多 GPU 同步 SGD（用 PyTorch 或 TensorFlow），自动处理环境并行化。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">关键优化：<strong>通讯压缩</strong>（actor 和 learner 之间的梯度通讯压缩减少带宽）；<strong>异步采样</strong>（actor 独立收集数据，不需要等待同步）。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>京东物流机器人 / Meituan Dispatch</h3>
+      <p style="font-size:12px;color:var(--text-2)">中国的物流公司使用 PPO 优化仓库内机器人的调度和路径规划。连续动作空间（速度、方向）和大量机器人（100+）让 PPO 成为合适的选择。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>AlphaStar (StarCraft II, 2019)</h3>
+      <p style="font-size:12px;color:var(--text-2)">DeepMind 的 AlphaStar 使用 PPO 训练，但结合了 League Training（多策略池）——不是单一策略优化，而是在多智能体竞争环境中训练。PPO 在每个联盟成员的更新中使用，有效解决了多智能体环境中的 non-stationarity 问题。</p>
+    </div>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 06 高级策略优化 · <a href="../index.html">← 总目录</a> · <a href="../05-policy-gradient/index.html">← 05 策略梯度</a> · <a href="../07-off-policy/index.html">下一篇：07 Off-Policy 连续控制 →</a>
+  </div>
+</div>
+</body>
+</html>

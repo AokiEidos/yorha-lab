@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>强化学习技术文档 / Reinforcement Learning Documentation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text-2: #64748b; --text-3: #94a3b8;
+    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --code-bg: #f1f5f9; --code-border: #cbd5e1;
+    --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.7; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  /* Title bar */
+  .title-bar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 28px; text-align: center; margin-bottom: 20px; }
+  .title-bar h1 { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .title-bar p { color: var(--text-2); font-size: 12px; margin-top: 6px; }
+  /* Tab bar */
+  .tab-bar { display: flex; gap: 0; background: var(--card); border: 1px solid var(--border); border-radius: 8px 8px 0 0; overflow: hidden; }
+  .tab-item { padding: 10px 18px; font-size: 12px; font-weight: 500; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .tab-item:hover { color: var(--blue); }
+  .tab-item.active { color: var(--blue); border-bottom-color: var(--blue); background: #f0f7ff; }
+  /* Section */
+  .section { border-left: 4px solid var(--blue); background: linear-gradient(to right, #eff6ff, transparent); padding: 12px 16px; margin: 20px 0 12px; border-radius: 0 6px 6px 0; }
+  .section.green { border-left-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+  .section.amber { border-left-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+  .section.red { border-left-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+  .section h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .section p { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 3px solid var(--blue); }
+  .card.green { border-left-color: var(--green); }
+  .card.amber { border-left-color: var(--amber); }
+  .card.red { border-left-color: var(--red); }
+  .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  /* Callout */
+  .callout { border-radius: 6px; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
+  .callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .callout strong { display: block; margin-bottom: 2px; }
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+  td { padding: 7px 10px; border: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #f8fafc; }
+  /* Code */
+  pre { background: var(--code-bg); border: 1px solid var(--code-border); border-left: 3px solid var(--code-border); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; margin: 10px 0; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  .kw { color: #7c3aed; font-weight: 600; } /* keyword */
+  .fn { color: #1d4ed8; } /* function */
+  .str { color: #166534; } /* string */
+  .cmt { color: #94a3b8; font-style: italic; } /* comment */
+  .num { color: #b45309; } /* number */
+  /* Tag */
+  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 600; margin-right: 4px; }
+  .tag.blue { background: #dbeafe; color: #1e40af; }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.amber { background: #fef3c7; color: #92400e; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.purple { background: #ede9fe; color: #5b21b6; }
+  /* Formula */
+  .formula { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; text-align: center; font-family: 'Times New Roman', serif; font-size: 14px; color: #1e40af; margin: 12px 0; overflow-x: auto; }
+  .formula sub, .formula sup { font-size: 0.8em; }
+  /* Flowchart */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+  .flow-node.green { border-color: var(--green); color: var(--green); }
+  .flow-node.amber { border-color: var(--amber); color: #b45309; }
+  .flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+  /* Timeline */
+  .timeline { position: relative; padding-left: 20px; border-left: 2px solid var(--border); margin: 12px 0; }
+  .timeline-item { margin-bottom: 16px; position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -25px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); }
+  .timeline-item.amber::before { background: var(--amber); }
+  .timeline-item.green::before { background: var(--green); }
+  .timeline-year { font-size: 11px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .timeline-item.green .timeline-year { color: var(--green); }
+  .timeline-item.amber .timeline-year { color: var(--amber); }
+  /* List */
+  ul, ol { padding-left: 20px; margin: 6px 0; }
+  li { margin-bottom: 4px; }
+  p { margin-bottom: 8px; }
+  /* HR */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  /* Link */
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 15px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+  h3 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+  .index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .index-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; border-left: 3px solid var(--blue); transition: transform 0.15s; }
+  .index-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .index-item.green { border-left-color: var(--green); }
+  .index-item.amber { border-left-color: var(--amber); }
+  .index-item.red { border-left-color: var(--red); }
+  .index-item.purple { border-left-color: #7c3aed; }
+  .index-item h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .index-item p { color: var(--text-2); font-size: 11.5px; margin-bottom: 8px; }
+  .index-item .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+  <!-- KaTeX for math rendering -->
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>强化学习技术文档 / Reinforcement Learning Documentation</h1>
+    <p>覆盖强化学习从经典到前沿的完整技术迭代脉络 · 2024–2026</p>
+  </div>
+
+  <!-- 目录导航 -->
+  <div class="section">
+    <h2>文档索引 / Document Index</h2>
+    <p>共 12 个章节，从 MDP 基础到 RLHF 前沿，循序渐进。每个章节均可独立查阅。</p>
+  </div>
+
+  <div class="index-grid">
+    <a href="01-overview/index.html" class="index-item">
+      <h3>01 综述与历史脉络 / Overview & History</h3>
+      <p>强化学习核心概念、问题框架、历史时间线、各分支关系图谱</p>
+      <div class="tags">
+        <span class="tag blue">入门</span>
+        <span class="tag purple">历史</span>
+      </div>
+    </a>
+    <a href="02-mdp-foundation/index.html" class="index-item green">
+      <h3>02 MDP 基础与动态规划 / MDP Foundation</h3>
+      <p>马尔可夫决策过程定义、Bellman 方程、价值迭代、策略迭代</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+        <span class="tag blue">经典</span>
+      </div>
+    </a>
+    <a href="03-value-function/index.html" class="index-item green">
+      <h3>03 价值函数近似 / Value Function Approximation</h3>
+      <p>蒙特卡洛方法、TD 学习、资格迹、函数近似、Deep VS</p>
+      <div class="tags">
+        <span class="tag green">理论基础</span>
+      </div>
+    </a>
+    <a href="04-dqn-family/index.html" class="index-item amber">
+      <h3>04 DQN 家族 / DQN Family</h3>
+      <p>DQN → DDQN → PER → Dueling DQN → Distributional RL → Rainbow</p>
+      <div class="tags">
+        <span class="tag amber">value-based</span>
+        <span class="tag blue">深度强化学习</span>
+      </div>
+    </a>
+    <a href="05-policy-gradient/index.html" class="index-item amber">
+      <h3>05 策略梯度方法 / Policy Gradient</h3>
+      <p>REINFORCE、Actor-Critic、A2C、方差缩减、GAE、ACKTR</p>
+      <div class="tags">
+        <span class="tag amber">policy-based</span>
+      </div>
+    </a>
+    <a href="06-advanced-policy/index.html" class="index-item red">
+      <h3>06 高级策略优化 / Advanced Policy Optimization</h3>
+      <p>TRPO、PPO（clip/SGD）、PPO-Penalty、ACKTR、GAE 调参实战</p>
+      <div class="tags">
+        <span class="tag red">SOTA</span>
+        <span class="tag amber">策略优化</span>
+      </div>
+    </a>
+    <a href="07-off-policy/index.html" class="index-item amber">
+      <h3>07 Off-Policy 连续控制 / Off-Policy Control</h3>
+      <p>DDPG、TD3、SAC、Soft Actor-Critic，最大熵框架与温度参数</p>
+      <div class="tags">
+        <span class="tag amber">连续控制</span>
+      </div>
+    </a>
+    <a href="08-model-based/index.html" class="index-item purple">
+      <h3>08 基于模型的方法 / Model-Based RL</h3>
+      <p>World Models、Dreamer、Sim2Real、MBPO、Model Ensemble、SSL</p>
+      <div class="tags">
+        <span class="tag purple">模型驱动</span>
+      </div>
+    </a>
+    <a href="09-multi-agent/index.html" class="index-item">
+      <h3>09 多智能体强化学习 / Multi-Agent RL</h3>
+      <p>Nash 均衡、CTDE 框架、MADDPG、QMIX、MAPPO、MARL 挑战</p>
+      <div class="tags">
+        <span class="tag green">多智能体</span>
+      </div>
+    </a>
+    <a href="10-offline-rl/index.html" class="index-item red">
+      <h3>10 离线强化学习 / Offline RL</h3>
+      <p>分布偏移、BC/CQL/IQL/TD3+BC、水平相似性、模型选择</p>
+      <div class="tags">
+        <span class="tag red">离线</span>
+        <span class="tag blue">工业</span>
+      </div>
+    </a>
+    <a href="11-rlhf/index.html" class="index-item red">
+      <h3>11 人类反馈强化学习 / RLHF & Alignment</h3>
+      <p>Reward Model、SFT、PPO+DPO、PPO+GRPO、DPO/SDP/RRHF 对比</p>
+      <div class="tags">
+        <span class="tag red">RLHF</span>
+        <span class="tag blue">大模型对齐</span>
+      </div>
+    </a>
+    <a href="12-frontier/index.html" class="index-item">
+      <h3>12 当前前沿与开放问题 / Frontier & Open Problems</h3>
+      <p>Scaling Laws、Foundation RL Models、LLM+RL、稀疏奖励、因果RL</p>
+      <div class="tags">
+        <span class="tag blue">前沿</span>
+        <span class="tag purple">开放问题</span>
+      </div>
+    </a>
+  </div>
+
+  <hr>
+
+  <!-- 核心概念速览 -->
+  <div class="section green" style="margin-top:24px">
+    <h2>RL 核心概念速查 / Core Concept Map</h2>
+    <p>强化学习的三大范式与代表算法对照</p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card green">
+      <h3>Value-Based /  基于价值</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">学习最优价值函数，隐式推导策略</p>
+      <ul style="font-size:12px">
+        <li>Q-Learning / DQN</li>
+        <li>Double DQN、PER、Replay Buffer</li>
+        <li>Dueling DQN、Distributional RL</li>
+        <li>Rainbow (all combined)</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3>Policy-Based / 基于策略</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">直接参数化策略，用梯度上升优化</p>
+      <ul style="font-size:12px">
+        <li>REINFORCE（Monte Carlo PG）</li>
+        <li>Actor-Critic（TD PG）</li>
+        <li>A2C / A3C（同步/异步）</li>
+        <li>ACKTR（Kronecker 近似）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>Model-Based / 基于模型</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:8px">学习环境转移模型，规划行为</p>
+      <ul style="font-size:12px">
+        <li>Dyna、World Models</li>
+        <li>Dreamer (RSSM)</li>
+        <li>MuZero、AlphaZero</li>
+        <li>MBPO、Sim2Real</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="border-left-color:var(--blue)">
+    <h3>强化学习问题标准框架 / Standard RL Framework</h3>
+    <div class="flow" style="margin-top:10px">
+      <div class="flow-node">Agent<br><small>智能体</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Action $a_t$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Environment<br><small>环境</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">State $s_{t+1}$<br>+ Reward $r_t$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Agent<br>(update)</div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">
+      目标：找到最大化累积折扣奖励 $G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+k}$ 的策略 $\pi(a|s)$
+    </p>
+  </div>
+
+  <hr>
+
+  <!-- 学习路径建议 -->
+  <div class="callout blue" style="margin-top:20px">
+    <strong>📚 学习路径建议</strong>
+    如果你是强化学习初学者，建议按以下顺序阅读：
+    <ol style="margin-top:6px">
+      <li><strong>01 综述</strong> — 建立全局图景和历史脉络</li>
+      <li><strong>02 MDP 基础</strong> — 掌握 Bellman 方程，这是所有 RL 算法的基础</li>
+      <li><strong>03 价值函数</strong> — 理解 TD、MC、函数近似核心概念</li>
+      <li><strong>04 DQN 家族</strong> — 第一个深度 RL 里程碑，了解经验回放和目标网络</li>
+      <li><strong>05–06 策略梯度 + PPO</strong> — 工业界最广泛使用的算法族</li>
+      <li><strong>10–11 离线 RL + RLHF</strong> — 当前工业应用（LLM 对齐、机器人）最相关的方向</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

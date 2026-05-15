@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12 前沿与开放问题 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>12 前沿与开放问题</h1>
+    <p>前沿与开放问题</p>
+  </div>
+
+  <div class="section">
+    <h2>世界模型：GAIA-1 / UniSim / DriveGPT / World Models</h2>
+    <p>世界模型（World Model）是自动驾驶的核心目标：学习环境的动态演化规律，实现长时域仿真和规划</p>
+  </div>
+  <div class="card">
+    <h3>世界模型对比</h3>
+    <table style="font-size:12px">
+      <tr><th>模型</th><th>公司</th><th>骨干</th><th>核心能力</th><th>时间粒度</th></tr>
+      <tr><td><strong>GAIA-1</strong></td><td>Wayve</td><td>Transformer</td><td>视频预测+动作控制</td><td>8Hz, 25s</td></tr>
+      <tr><td><strong>UniSim</strong></td><td>Waymo</td><td>LDM + Sensor</td><td>多传感器仿真</td><td>可调</td></tr>
+      <tr><td><strong>DriveGPT</strong></td><td>毫末智行</td><td>LLaMA + 视频</td><td>场景理解+规划</td><td>可调</td></tr>
+      <tr><td><strong>DriveDreamer</strong></td><td>清华大学</td><td>Diffusion</td><td>文本→3D场景视频</td><td>可调</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">GAIA-1 使用 Transformer Encoder 生成视频 tokens，同时学习车辆动作的预测。UniSim 使用 LDM 生成多传感器数据（相机+LiDAR）。DriveGPT 将大语言模型的推理能力引入驾驶。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>世界模型的核心价值</strong><br>
+      世界模型的核心是"预测未来"。给定当前状态（相机图像、车辆速度）和动作（转向、油门），世界模型预测未来的环境状态。这种能力让自动驾驶系统能够在规划前评估不同动作的后果。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>视频扩散：W.A.L.T / SVD / Open-Sora / Video Diffusion</h2>
+    <p>视频生成扩散模型的发展：从图像到视频，temporal consistency 是核心挑战</p>
+  </div>
+  <div class="card green">
+    <h3>视频扩散模型对比</h3>
+    <table style="font-size:12px">
+      <tr><th>模型</th><th>公司</th><th>架构</th><th>分辨率</th><th>时长</th><th>帧率</th></tr>
+      <tr><td><strong>W.A.L.T</strong></td><td>Google</td><td>Transformer (Diffusion)</td><td>1024×1024</td><td>2.4s</td><td>8fps</td></tr>
+      <tr><td><strong>SVD</strong></td><td>Stability AI</td><td>LDM + Temporal Attn</td><td>576×1024</td><td>3.6s</td><td>25fps</td></tr>
+      <tr><td><strong>Open-Sora</strong></td><td>开源</td><td>DiT + Temporal Attn</td><td>1080p</td><td>可调</td><td>可调</td></tr>
+      <tr><td><strong>Sora</strong></td><td>OpenAI</td><td>DiT（未公开）</td><td>1080p</td><td>60s+</td><td>可调</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">W.A.L.T 使用因果 Temporal Attention 沿帧维度建模时间一致性。SVD 在 Stable Diffusion 基础上增加 Temporal Attention 层，实现 camera video 生成。Open-Sora 是开源复现。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>Zero-Terminal SNR 的重要性</strong><br>
+      W.A.L.T 和 SVD 都使用 Zero-Terminal SNR 训练策略：强制 $x_0 = x_T$（在训练末期噪声为零），使模型在 $t=0$ 时完全恢复原始信号。这提升了长视频生成的 temporal consistency。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>3D 生成：Point-E / LRM / One-2-3-45 / 3D Generation</h2>
+    <p>3D 扩散模型：从单张图像或文本生成 3D 资产（Mesh、NeRF、点云）</p>
+  </div>
+  <div class="card amber">
+    <h3>3D 生成方法对比</h3>
+    <table style="font-size:12px">
+      <tr><th>方法</th><th>输入</th><th>输出</th><th>生成时间</th><th>质量</th></tr>
+      <tr><td><strong>Point-E</strong></td><td>文本/图像</td><td>3D 点云</td><td>~2min</td><td>中等</td></tr>
+      <tr><td><strong>LRM</strong></td><td>单张图像</td><td>NeRF/3DGS</td><td>~5s</td><td>高</td></tr>
+      <tr><td><strong>One-2-3-45</strong></td><td>单张图像</td><td>多视角→3D Mesh</td><td>~1min</td><td>高</td></tr>
+      <tr><td><strong>DreamFusion</strong></td><td>文本</td><td>NeRF</td><td>~1h</td><td>高（但慢）</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Point-E 使用 3D 数据集（Objaverse）训练 diffusion model，直接生成点云。LRM（Large Reconstruction Model）使用大规模重建数据训练，实现单张图像到 3D 的快速重建（5秒）。</p>
+  </div>
+  <div class="section">
+    <h2>GPT-4V 视觉起源 / Vision Foundation of GPT-4V</h2>
+    <p>大视觉模型（Large Vision Models）是多模态 AI 的基础，扩散模型正在成为视觉编码器的重要选择</p>
+  </div>
+  <div class="card">
+    <h3>视觉编码器的发展</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">传统视觉编码器</p>
+        <p style="font-size:12px;color:var(--text-2)">ResNet, ViT (CLIP), SwinTransformer。特点：固定 backbone + 轻量 adaptation。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">扩散视觉编码器</p>
+        <p style="font-size:12px;color:var(--text-2)">Diffusion FE + LLM。特点：扩散模型作为视觉特征提取器，与 LLM 对齐。</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">GPT-4V 的视觉编码器很可能是：一个类似于 CLIP 的视觉 Transformer（来自 GPT-4 的视觉预训练），与 LLM 的 token embedding space 对齐。扩散模型在这个 pipeline 中可能用于：视觉特征的增强（去噪）、多模态蒸馏（将扩散特征蒸馏到 LLM）。</p>
+  </div>
+  <div class="card">
+    <h3>Score Matching 统一框架</h3>
+    <p style="font-size:12px;color:var(--text-2)">Score Matching 和扩散模型实际上是同一个框架：</p>
+    <div class="formula">$$\nabla_{x} \log p(x) = -\mathbb{E}_{\epsilon \sim \mathcal{N}}\left[\frac{\epsilon - \epsilon_\theta(x, t)}{1-\bar{\alpha}_t}\right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Score Matching 直接学习对数概率密度的梯度（score），扩散模型的 $\epsilon_\theta$ 与 score 函数之间存在确定性关系。这个统一框架为理解扩散模型提供了更深的理论视角。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>Score SDE</strong><br>
+      Song et al. (2021) 的 Score SDE 将扩散模型推广到连续时间形式：通过随机微分方程（SDE）描述前向过程，通过 reverse SDE 描述采样过程。这统一了 DDPM、Score Matching、Langevin Dynamics 等多种方法。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>端到端规划：DriveDreamer / DiffusionDrive / End-to-End Planning</h2>
+    <p>扩散模型正在向端到端自动驾驶规划扩展——从感知到规划的单一扩散模型</p>
+  </div>
+  <div class="card purple">
+    <h3>端到端扩散规划</h3>
+    <p style="font-size:12px;color:var(--text-2)">DriveDreamer 和 DiffusionDrive 尝试用扩散模型统一感知和规划：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>方法</th><th>输入</th><th>输出</th><th>架构</th></tr>
+      <tr><td><strong>DriveDreamer</strong></td><td>HD Map + 文本描述</td><td>驾驶视频</td><td>两阶段：Map→BEV→Video</td></tr>
+      <tr><td><strong>DiffusionDrive</strong></td><td>传感器数据</td><td>多条轨迹样本</td><td>条件扩散 + 轨迹采样</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">DiffusionDrive 的创新在于：生成多条可能的轨迹样本（而非单一最优轨迹），这对于安全关键的规划非常重要——可以表示轨迹分布的不确定性。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>扩散模型的规划优势</strong><br>
+      传统规划器输出单一轨迹，扩散规划器输出轨迹分布。这在多模态场景（"这个路口可以左转也可以右转"）中特别有价值：规划者可以看到不同意图的可能轨迹，而不是被迫选择一个"平均"轨迹。
+    </div>
+  </div>
+  <div class="section">
+    <h2>扩散模型与未来 / The Future</h2>
+  </div>
+  <div class="card">
+    <h3>开放问题与前沿方向</h3>
+    <table style="font-size:12px">
+      <tr><th>方向</th><th>核心问题</th><th>当前进展</th></tr>
+      <tr><td><strong>更快的采样</strong></td><td>能否 1 步生成高质量图像？</td><td>Consistency Model 接近但质量仍不如多步</td></tr>
+      <tr><td><strong>更好的 scaling</strong></td><td>DiT Scaling Law 能持续多久？</td><td>SD3 (MM-DiT) 已到 8B，效果显著</td></tr>
+      <tr><td><strong>统一世界模型</strong></td><td>能否用单一扩散模型建模整个驾驶环境？</td><td>GAIA-1/UniSim 初步展示，但泛化性仍有限</td></tr>
+      <tr><td><strong>实时端到端</strong></td><td>扩散能否真正用于车载实时规划？</td><td>LCM 等方法展示可能性，但质量有待提升</td></tr>
+      <tr><td><strong>3D 生成与感知</strong></td><td>能否实时生成高质量 3D 资产用于仿真？</td><td>LRM 等方法展示 5 秒级重建，但实时仍是挑战</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>最终愿景</strong><br>
+      扩散模型正在成为自动驾驶的核心基础设施：从感知增强、仿真数据生成、到端到端规划，扩散模型凭借其强大的分布建模能力，正在重塑自动驾驶的整个 pipeline。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 12 前沿与开放问题 · <a href="../index.html">← 总目录</a> · <a href="../11-controlnet/index.html">← 11 ControlNet与可控生成</a> 
+  </div>
+</div>
+</body>
+</html>

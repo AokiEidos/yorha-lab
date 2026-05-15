@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 语言与视觉的对齐：CLIP、SigLIP 与多模态大模型</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+  <div class="title-bar">
+    <h1>03 · 语言与视觉的对齐：CLIP、SigLIP 与多模态大模型</h1>
+    <p>对比学习 · LLaVA 架构 · 视觉-语言预训练 · 指令微调</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 1. 视觉-语言对齐的问题定义 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>1. 视觉-语言对齐的问题定义</h2>
+    <p>What: 融合视觉与语言；Why: 开放词汇理解；How: 对比学习与融合架构</p>
+  </div>
+
+  <div class="card">
+    <h3>1.1 What — 什么是视觉-语言对齐？</h3>
+    <p>视觉-语言对齐（Vision-Language Alignment）是将来自不同模态（图像和文本）的表示嵌入同一个语义空间，使得语义相关的图像和文本对在该空间中的距离最近，语义无关的则距离远。</p>
+    <p>形式化地，假设存在一个联合嵌入空间 $\mathcal{Z}$，图像编码器 $f_v: \mathcal{I} \to \mathcal{Z}$ 和文本编码器 $f_t: \mathcal{T} \to \mathcal{Z}$ 分别将图像和文本映射到 $\mathcal{Z}$。对齐的目标是：</p>
+    <div class="formula">$$\forall (i,t) \in \mathcal{P}: \quad \|f_v(i) - f_t(t)\|_2 \ll \|f_v(i) - f_t(t')\|_2, \quad \forall t' \neq t$$</div>
+    <p>即匹配的图文对 $(i, t) \in \mathcal{P}$ 在嵌入空间中的欧氏距离远小于任意不匹配对 $(i, t')$ 的距离。</p>
+  </div>
+
+  <div class="card">
+    <h3>1.2 Why — 为什么需要视觉-语言对齐？</h3>
+    <p>在 VLA 系统中，视觉-语言对齐是实现语言指令控制的核心基础。具体而言：</p>
+    <ul>
+      <li><strong>开放词汇感知：</strong>传统目标检测只能识别预定义类别的物体（如 COCO 的 80 类）。通过 CLIP 风格的视觉-语言对齐，VLA 可以理解任意语言描述的物体（如"前方那个穿蓝色外套的行人"），无需在训练集中显式标注。</li>
+      <li><strong>指令跟随（Instruction Following）：</strong>"在那个广告牌旁边左转"、"绕开前方那辆白色卡车"等自然语言指令，需要模型将语言中的指代表达（deictic reference，"那个"、"前方"）映射到视觉空间中的具体目标。</li>
+      <li><strong>零样本泛化：</strong>预训练的视觉-语言对齐模型在未见过的任务上具有零样本迁移能力，大幅降低了 VLA 对特定任务数据的依赖。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>1.3 How — 三种主流技术路线</h3>
+    <p>视觉-语言对齐的技术发展经历了三个阶段：</p>
+    <ul>
+      <li><strong>对比学习（Contrastive Learning）：</strong>以 CLIP、SigLIP 为代表，通过对比损失在海量图文对数据上学习联合嵌入空间。优点：规模化能力强，缺点：只能做全局对齐，无法精细到像素级。</li>
+      <li><strong>融合编码器（Fusion Encoder）：</strong>以 BLIP-2、Flamingo 为代表，在融合编码器中通过跨模态注意力将视觉和语言深度交互。优点：支持图文交错的细粒度推理，缺点：计算量更大。</li>
+      <li><strong>语言模型前缀（LLM Prefix）：</strong>以 LLaVA、MiniGPT-4 为代表，将视觉编码器作为大语言模型的输入前缀，视觉信息以特征向量的形式注入 LLM 的自回归生成过程。优点：继承了 LLM 的推理能力，VLA 的主流选择。</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 2. CLIP 与对比学习 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>2. CLIP：对比学习的基础</h2>
+    <p>Contrastive Language-Image Pre-training · InfoNCE 损失 · 数据飞轮</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.1 CLIP 的核心设计</h3>
+    <p>CLIP（OpenAI, 2021）的核心是双塔架构（Dual-Encoder）：图像和文本各自通过独立的编码器映射到共享的嵌入空间，然后在对比损失上进行训练。</p>
+    <p><strong>图像编码器：</strong>Vision Transformer（ViT-L/ViT-B）或 ResNet backbone，输入图像 $I$ 输出归一化嵌入向量 $v = \text{normalize}(f_v(I))$。</p>
+    <p><strong>文本编码器：</strong>Transformer Encoder，输入文本 $T$（经过 BPE 分词）输出归一化嵌入向量 $t = \text{normalize}(f_t(T))$。</p>
+    <p><strong>温度参数：</strong>$\tau$ 是可学习的对数尺度参数，原始 CLIP 论文发现将其参数化有助于优化稳定性：</p>
+    <div class="formula">$$\tau = \exp(w), \quad w \in \mathbb{R} \text{ 为可学习标量}$$</div>
+  </div>
+
+  <div class="card green">
+    <h3>2.2 InfoNCE 损失函数</h3>
+    <p>给定一个 batch 中的 $N$ 对图文数据 $(I_i, T_i)$，CLIP 使用对称的 InfoNCE（又称 NT-Xent）损失：</p>
+    <div class="formula">$$\mathcal{L}_{\text{CLIP}} = \frac{1}{2N}\sum_{i=1}^{N}\left[\mathcal{L}_i^t + \mathcal{L}_i^v\right]$$</div>
+    <p>其中图文匹配损失为：</p>
+    <div class="formula">$$\mathcal{L}_i^t = -\log\frac{\exp(v_i \cdot t_i / \tau)}{\sum_{j=1}^{N}\exp(v_i \cdot t_j / \tau)}$$</div>
+    <div class="formula">$$\mathcal{L}_i^v = -\log\frac{\exp(t_i \cdot v_i / \tau)}{\sum_{j=1}^{N}\exp(t_i \cdot v_j / \tau)}$$</div>
+    <p>直观理解：对于第 $i$ 个图像 $v_i$，损失鼓励它与配对的文本 $t_i$ 的相似度远高于与 batch 内其他 $N-1$ 个不配对文本的相似度。温度参数 $\tau$ 控制相似度分布的锐度——$\tau$ 越小，模型对高相似度样本的注意力越集中。</p>
+    <p>当 batch size $N=32,768$（OpenAI 训练配置）时，每一步对比损失需要计算 $32,768 \times 32,768$ 的相似度矩阵，GPU 内存压力极大，但大规模对比训练的收益也确实显著。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.3 规模化数据与数据飞轮</h3>
+    <p>CLIP 训练数据来自互联网，总量超过 4 亿图文对。这些数据没有人工标注，质量参差不齐，但规模化弥补了噪声问题——这被称为"自然语言监督"（Natural Language Supervision）的力量。</p>
+    <p>OpenAI 发现，训练数据规模翻倍，模型零样本分类精度几乎线性提升（对数线性关系），这与神经语言模型的 Scaling Law 一致：</p>
+    <div class="formula">$$\text{Accuracy}_{\text{zeroshot}} \approx \alpha \cdot \log(N_{\text{data}}) + \beta$$</div>
+    <p>此外，在 VLA 下游应用中，CLIP 的视觉编码器可以不断复用，下游模型生成的带语言标签的伪标注又可以反哺 CLIP 的视觉编码器，形成数据飞轮。</p>
+
+    <div class="tech-canvas">
+      <div style="padding:12px 16px">
+        <div style="text-align:center;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">CLIP 数据飞轮</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px">
+              <div style="font-size:10px;color:var(--text-2)">4亿图文对</div>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1.5px solid var(--blue);border-radius:4px">
+              <div style="font-size:10px;color:var(--blue);font-weight:600">CLIP 预训练</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+            <div class="flow-arrow" style="font-size:20px;margin:0 8px">→</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1.5px solid var(--green);border-radius:4px">
+              <div style="font-size:10px;color:var(--green);font-weight:600">视觉编码器</div>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1.5px solid var(--purple);border-radius:4px">
+              <div style="font-size:10px;color:#5b21b6;font-weight:600">VLA / 检测</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+            <div class="flow-arrow" style="font-size:20px;margin:0 8px">→</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1.5px solid var(--amber);border-radius:4px">
+              <div style="font-size:10px;color:#b45309;font-weight:600">伪标签生成</div>
+            </div>
+            <div class="flow-arrow" style="transform:rotate(135deg);font-size:16px">↙</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-left:20px">
+            <div class="tech-data-block" style="width:90px;text-align:center;padding:8px">
+              <div style="font-size:10px;color:var(--text-2)">扩增数据</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. SigLIP -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section amber">
+    <h2>3. SigLIP：突破性的规模化对比学习</h2>
+    <p>Sigmoid 损失 · 无温度归一化 · Google ViT-22B</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.1 CLIP 的局限性</h3>
+    <p>CLIP 使用 softmax 归一化的对比损失，存在两个训练不稳定性问题：</p>
+    <ul>
+      <li><strong>全局归一化依赖 batch size：</strong>InfoNCE 的分母需要遍历整个 batch 的负样本。当 batch size 缩小（如 GPU 内存受限时），负样本数量减少，对比学习信号变弱。</li>
+      <li><strong>温度 $\tau$ 的梯度不稳定：</strong>当相似度超出温度量级时，softmax 梯度趋向无穷，导致训练震荡。</li>
+    </ul>
+  </div>
+
+  <div class="card amber">
+    <h3>3.2 SigLIP 的核心创新：Sigmoid 损失</h3>
+    <p>SigLIP（Google DeepMind, 2024）将配对匹配的建模方式从 softmax 改为<strong>逐对 Sigmoid</strong>，完全摆脱了对 batch 内负样本的依赖：</p>
+    <div class="formula">$$\mathcal{L}_{\text{SigLIP}} = -\frac{1}{N^2}\sum_{i=1}^{N}\sum_{j=1}^{N} \left[y_{ij}\log\sigma(z_{ij}) + (1-y_{ij})\log(1-\sigma(z_{ij}))\right]$$</div>
+    <p>其中 $z_{ij} = v_i \cdot t_j / \tau$ 是相似度，$y_{ij} \in \{0,1\}$ 是配对标签（配对为 1，否则为 0），$\sigma$ 是 Sigmoid 函数。</p>
+    <p>SigLIP 的核心优势：</p>
+    <ul>
+      <li><strong>Batch-size Independence：</strong>损失在每对 $(i,j)$ 上独立计算，不需要 batch 内全部负样本参与，分母只是当前 pair 的 Sigmoid，梯度稳定。</li>
+      <li><strong>可学习的阈值：</strong>标准 CLIP 的相似度阈值隐式由温度决定，SigLIP 可以额外学习一个偏置项 $b$，使模型自动调整匹配阈值。</li>
+      <li><strong>更强的零样本泛化：</strong>在 ImageNet 零样本分类上，SigLIP-ViT-SO400m 达到 83.6%，超过 CLIP-ViT-L 的 81.3%。</li>
+    </ul>
+  </div>
+
+  <div class="card amber">
+    <h3>3.3 ViT-22B：最大规模的视觉编码器</h3>
+    <p>SigLIP 与 Google 的 ViT-22B（220 亿参数 Vision Transformer）结合，是目前最强的开源视觉-语言编码器之一。ViT-22B 使用 FFN 中间层扩展（Sandwich-LN）、GroupNorm 归一化等训练稳定性技术，在 32,768 的等效 batch size 下完成对比训练。</p>
+    <p>对于 VLA 系统，SigLIP-ViT-22B 提供了目前最强大的开放词汇视觉语义特征，可以支撑自动驾驶中的指代分割（Referring Segmentation）和语言定位（Language Grounding）任务。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. LLaVA 与 VLM -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section purple">
+    <h2>4. LLaVA 与视觉语言模型（VLM）</h2>
+    <p>LLaVA 架构 · 多模态指令微调 · MiniGPT-4 / CogVLM</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.1 LLaVA 的两阶段训练</h3>
+    <p>LLaVA（Large Language and Vision Assistant，MIT 2023）是开源 VLM 的里程碑。相比端到端训练 VLU（Vision-Language-U）的巨大计算成本，LLaVA 提出了高效的预训练-微调两阶段范式：</p>
+    <p><strong>阶段一：线性投影对齐（Linear Projection Alignment）</strong></p>
+    <p>固定预训练的 ViT（CLIP ViT-L/14）和 LLM（Vicuna-7B），只训练一个线性投影层 $\mathbf{W}$，将视觉特征 $\mathbf{F}_v$ 映射到 LLM 的词嵌入空间：</p>
+    <div class="formula">$$\mathbf{H}_v = \mathbf{W} \cdot \mathbf{F}_v, \quad \mathbf{W} \in \mathbb{R}^{D_{\text{LLM}} \times D_{\text{ViT}}}$$</div>
+    <p>训练目标是使 $\mathbf{H}_v$ 与对应图文 caption 的文本嵌入在空间中对齐。数据是 CC3M（59.5万图文对）的子集。</p>
+
+    <p><strong>阶段二：指令微调（Instruction Tuning）</strong></p>
+    <p>端到端微调 ViT、投影层和 LLM，使用 GPT-4 生成的视觉语言指令数据（约 15 万条），涵盖对话、详细描述和复杂推理三类任务。</p>
+    <div class="formula">$$\mathcal{L} = \sum_{(v,l,a)} -\log p_\theta(a_{\lt t} \mid v, a_{\lt t})$$</div>
+    <p>其中 $v$ 是图像，$a$ 是响应文本，$\theta$ 是 ViT + 投影层 + LLM 的全部可训练参数。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.2 LLaVA-1.5 的改进</h3>
+    <p>LLaVA-1.5（2023）在架构和数据上做了关键改进：</p>
+    <ul>
+      <li><strong>MLP 投影：</strong>将单层线性投影替换为两层 MLP（GeLU 激活），增强视觉-语言模态融合能力。</li>
+      <li><strong>学术数据集融合：</strong>在指令微调阶段引入 VQAv2、GQA、VisualGenome 等学术数据集的标注数据，提升视觉问答能力。</li>
+      <li><strong>数据配比优化：</strong>通过数据课程（Data Curriculum）调整不同类型数据的采样权重，在保持对话能力的同时提升推理性能。</li>
+    </ul>
+    <p>LLaVA-1.5-13B 在多项 VLM 基准上追平 GPT-4V，同时完全开源权重和训练代码，是目前最被广泛使用的开源 VLM 基础模型之一。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.3 多模态大模型家族对比</h3>
+    <table>
+      <tr><th>模型</th><th>机构</th><th>视觉编码器</th><th>LLM</th><th>关键创新</th><th>开源</th></tr>
+      <tr>
+        <td><strong>LLaVA</strong></td>
+        <td>MIT</td>
+        <td>CLIP ViT-L/14</td>
+        <td>Vicuna</td>
+        <td>两阶段训练、线性投影</td>
+        <td><span class="tech-status high">✓</span></td>
+      </tr>
+      <tr>
+        <td><strong>MiniGPT-4</strong></td>
+        <td>KAUST</td>
+        <td>CLIP ViT-L/14</td>
+        <td>Vicuna / LLaMA</td>
+        <td>Q-Former 桥接层</td>
+        <td><span class="tech-status high">✓</span></td>
+      </tr>
+      <tr>
+        <td><strong>BLIP-2</strong></td>
+        <td>Salesforce</td>
+        <td>CLIP / ViT-L</td>
+        <td>Flan-T5 / LLaMA</td>
+        <td>Q-Former 轻量级对齐，12× 更少训练参数</td>
+        <td><span class="tech-status high">✓</span></td>
+      </tr>
+      <tr>
+        <td><strong>Flamingo</strong></td>
+        <td>DeepMind</td>
+        <td>NFNet-F6</td>
+        <td>Chinchilla-like</td>
+        <td>GATED XATTN-DENSE 交错融合</td>
+        <td><span class="tech-status low">✗</span></td>
+      </tr>
+      <tr>
+        <td><strong>GPT-4V</strong></td>
+        <td>OpenAI</td>
+        <td>未知</td>
+        <td>GPT-4</td>
+        <td>多模态推理、视觉令牌化</td>
+        <td><span class="tech-status low">✗</span></td>
+      </tr>
+      <tr>
+        <td><strong>Gemini</strong></td>
+        <td>Google</td>
+        <td>专用视觉编码器</td>
+        <td>Gemini LLM</td>
+        <td>原位多模态、工具调用</td>
+        <td><span class="tech-status low">✗</span></td>
+      </tr>
+      <tr>
+        <td><strong>Qwen-VL</strong></td>
+        <td>阿里</td>
+        <td>OpenGVLab ViT</td>
+        <td>Qwen-7B</td>
+        <td>中文优化、开源可部署</td>
+        <td><span class="tech-status high">✓</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 5. 指代分割与语言定位 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section red">
+    <h2>5. 语言定位与开放词汇感知</h2>
+    <p>指代分割 · GRES · CLIP 驱动的检测器</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.1 指代分割（Referring Expression Segmentation）</h3>
+    <p>指代分割要求模型根据语言描述在图像中分割出对应区域。例如给定文本"前方最右侧车道的那辆红色卡车"，模型需要输出该卡车在图像中的像素级掩码。</p>
+    <p>这是 VLA 中语言理解映射到视觉空间的关键能力——用于将语言指代（"那辆白色 SUV"）转换为可行驶区域规划中的实际障碍物掩码。</p>
+    <p>主流方法以 CLIP 视觉特征为骨干，加入语言引导的注意力模块：</p>
+    <div class="formula">$$\mathbf{M} = \text{Sigmoid}(\text{CrossAttn}(\mathbf{F}_v, \mathbf{E}_t))$$</div>
+    <p>其中 $\mathbf{M}$ 是预测的二元掩码，$\mathbf{F}_v$ 是视觉特征，$\mathbf{E}_t$ 是 CLIP 文本编码器输出的语言嵌入。</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.2 开放词汇检测（Open-Vocabulary Detection）</h3>
+    <p>开放词汇检测（OVD）让检测器能够识别训练集外的物体类别。典型方法以 CLIP 知识蒸馏为核心：</p>
+    <ul>
+      <li><strong>WSDAN 路线：</strong>将 CLIP 视觉特征蒸馏到检测器的特征空间，检测头使用 CLIP 的词嵌入分类器，实现开放词汇分类。</li>
+      <li><strong>RegionCLIP：</strong>将 CLIP 图像-文本匹配能力迁移到区域级别，使检测出的 RoI 特征能够用 CLIP 文本分类器进行开放词汇标签预测。</li>
+    </ul>
+    <div class="callout red">
+      <strong>⚠ 开放词汇检测的精度挑战：</strong>开放词汇检测的 AP（Average Precision）通常比闭词汇（closed-vocabulary）低 5–15%，因为模型需要用 CLIP 的语义表示推断未见类别的边界，而 CLIP 的知识表示是全局图像级别的，直接迁移到区域特征存在领域差异。
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 6. 视觉-语言对齐在 VLA 中的角色 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>6. 视觉-语言对齐在 VLA 系统中的角色</h2>
+    <p>从感知到语言指令理解的桥梁</p>
+  </div>
+
+  <div class="card green">
+    <h3>6.1 对齐质量决定 VLA 的语言理解上限</h3>
+    <p>在 VLA 系统中，视觉-语言对齐的质量直接影响三个关键能力：</p>
+    <ul>
+      <li><strong>指代消解（Referential Resolution）：</strong>语言指令"在那个蓝色的交通标志旁边"中的"那个"必须正确指向图像中的特定目标。如果视觉-语言对齐不够精确，VLA 会错误理解指令意图。</li>
+      <li><strong>语义安全校验：</strong>VLA 生成动作前，需要用视觉-语言对齐能力验证动作是否与场景语义一致（如"不应该驶入人行道"）。</li>
+      <li><strong>长程指令理解：</strong>"前方第二个路口左转"等复合指令，需要将语言中的序数词（"第二个"）与视觉空间中的路口位置序列对应起来。</li>
+    </ul>
+  </div>
+
+  <div class="card green">
+    <h3>6.2 VLA 中的视觉-语言融合策略</h3>
+    <p>在 VLA 架构中，视觉-语言融合通常有两种策略：</p>
+    <p><strong>早期融合（Early Fusion）：</strong>视觉 token 和文本 token 在输入层就开始交互，LLaVA、GPT-4V 采用此策略。优点：跨模态注意力强，适合复杂推理；缺点：计算量大，推理延迟高。</p>
+    <p><strong>晚期融合（Late Fusion）：</strong>视觉和语言各自独立编码，仅在决策层（动作头）融合。优点：模块化，可单独升级视觉编码器或语言编码器；缺点：跨模态推理能力弱。SigLIP 类模型更常用于晚期融合架构。</p>
+    <p>当前 VLA 的主流选择是早期融合（以 LLaVA-style VLM 为动作解码器），因为动作生成的精细度要求在输入层就有充分的视觉-语言交互。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 7. 小结 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>7. 本章小结</h2>
+    <p>第三章核心要点回顾</p>
+  </div>
+
+  <div class="card green">
+    <p>本章围绕"视觉与语言如何对齐"这一核心问题，从对比学习到 VLM 架构全面展开：</p>
+    <ul>
+      <li><strong>CLIP</strong> 以 InfoNCE 对比损失和 4 亿图文对数据建立了视觉-语言联合嵌入的基础范式，Scaling Law 证明了规模化训练的有效性。</li>
+      <li><strong>SigLIP</strong> 用 Sigmoid 损失替代 InfoNCE，实现了 batch-size independence 和更强的零样本泛化，与 ViT-22B 结合代表了当前开源视觉编码器的最高水平。</li>
+      <li><strong>LLaVA</strong> 的两阶段训练（投影对齐 + 指令微调）提供了一条高效训练 VLM 的工程路径，使开源社区能够以有限算力构建强大的视觉-语言模型。</li>
+      <li>视觉-语言对齐是 VLA 感知指令映射、语义安全校验和开放词汇理解的基石，直接决定 VLA 对自然语言控制信号的响应质量。</li>
+    </ul>
+    <p>有了视觉感知（第二章）和语言对齐（本章）的基础，第四章将进入 VLA 的最终输出环节：<strong>动作生成</strong>，深入 Diffusion Policy、Flow Matching 和 Transformer Action Generation 的技术细节。</p>
+  </div>
+
+</div><!-- .container -->
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · 03 语言与视觉的对齐：CLIP、SigLIP 与多模态大模型 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../02-perception/index.html">← 02 视觉感知</a> ·
+  <a href="../04-action-generation/index.html">下一篇：04 动作生成 →</a>
+</div>
+
+</body>
+</html>

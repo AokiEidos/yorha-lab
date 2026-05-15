@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 基于模型的强化学习 / Model-Based RL — 强化学习</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>08 基于模型的强化学习 / Model-Based Reinforcement Learning</h1>
+    <p>World Models、Dreamer、MuZero、Sim2Real — 学习环境动力学模型以实现样本高效学习</p>
+  </div>
+
+  <!-- 核心动机 -->
+  <div class="section">
+    <h2>为什么需要模型 / Why Model-Based RL?</h2>
+    <p>Model-Free RL 的样本效率瓶颈是工业应用的主要障碍——Model-Based RL 通过学习环境模型来打破这个限制</p>
+  </div>
+
+  <div class="card">
+    <h3>样本效率的根本差距 / Sample Efficiency Gap</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px"><strong>Model-Free（无模型）</strong></p>
+        <ul style="font-size:12px">
+          <li>DQN/PPO/SAC 等都需要大量真实环境交互</li>
+          <li>Atari 游戏：约 200M 帧（~10 小时游戏时间）</li>
+          <li>Mujoco 机器人：约 1-10M 步（~数十小时物理模拟）</li>
+          <li>真实机器人：收集 1M 条高质量轨迹可能需要数周</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px"><strong>Model-Based（基于模型）</strong></p>
+        <ul style="font-size:12px">
+          <li>学习环境转移模型 $p(s'|s,a)$ 和奖励模型 $r(s,a)$</li>
+          <li>在模型内部做"想象"的规划，样本效率 10-100× 提升</li>
+          <li>理论上可以在真实交互后快速泛化</li>
+          <li>挑战：模型误差会随预测步数指数增长</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow" style="margin-top:12px">
+      <div class="flow-node">真实环境交互<br><small>（有限数据）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">学习转移模型 $\hat{p}(s'|s,a)$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node amber">在模型内规划/学习<br><small>（无限合成数据）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">迁移到真实环境</div>
+    </div>
+  </div>
+
+  <!-- Dyna -->
+  <div class="section green" style="margin-top:20px">
+    <h2>Sutton 的 Dyna 架构 / Dyna Architecture (1991)</h2>
+    <p>Model-Based RL 的理论基础——Sutton 提出的"学习模型 + 使用模型"的通用框架</p>
+  </div>
+
+  <div class="card green">
+    <h3>Dyna 的五步循环 / Five-Step Cycle</h3>
+    <p style="font-size:12px;color:var(--text-2)">Sutton 证明：对于已知环境模型的问题，Model-Based 方法比 Model-Free 样本效率高数个量级。Dyna 将这个思想延伸到模型未知的情况：</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <ol style="font-size:12px">
+          <li><strong>Direct RL（直接学习）</strong>：用真实交互数据直接用 TD / MC 更新价值/策略</li>
+          <li><strong>Model Learning（模型学习）</strong>：从交互数据中学习 $\hat{p}(s'|s,a)$ 和 $\hat{r}(s,a)$</li>
+          <li><strong>Indirect RL（间接学习）</strong>：用学到的模型生成模拟数据，用 TD/MC 更新价值/策略</li>
+        </ol>
+      </div>
+      <div>
+        <div class="formula">$$\hat{p}(s'\mid s,a) \approx \frac{\text{count}(s,a,s')}{\text{count}(s,a)}$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">表格形式：直接统计转移频率。神经网络形式：用回归/分类学习 $p(s'|s,a)$。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <strong>📐 Dyna 的核心洞察</strong>
+    直接学习（direct）和间接学习（indirect）同样重要。直接学习保证了对真实环境的适应，间接学习提高了样本效率。两者结合的 Dyna 在表格形式下可以比纯 Model-Free 快 10 倍以上。
+  </div>
+
+  <!-- World Models -->
+  <div class="section" style="margin-top:20px">
+    <h2>World Models / 世界模型 (Ha & Schmidhuber, 2019)</h2>
+    <p>用变分自编码器（VAE）压缩视觉输入，用 MDN-RNN 学习世界动态，用进化策略训练极简线性控制器</p>
+  </div>
+
+  <div class="card">
+    <h3>三组件架构 / Three-Component Architecture</h3>
+    <div class="grid-3" style="margin-top:10px">
+      <div class="card" style="border-left-color:var(--blue);margin-bottom:0">
+        <h3 style="color:var(--blue)">VAE (V)</h3>
+        <p style="font-size:12px;color:var(--text-2)">变分自编码器：将每帧图像 $o_t$ 压缩为 32 维隐向量 $z_t = \text{VAE}(o_t)$。实现降维 + 去噪，只保留对决策重要的视觉信息。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">VAE 训练目标：$\mathcal{L}_{\text{VAE}} = \mathbb{E}_{z\sim q_\phi}[-\log p_\theta(o_t|z)] + D_{\text{KL}}(q_\phi(z|o_t) \| p(z))$</p>
+      </div>
+      <div class="card" style="border-left-color:var(--green);margin-bottom:0">
+        <h3 style="color:var(--green)">MDN-RNN (M)</h3>
+        <p style="font-size:12px;color:var(--text-2)">Mixture Density Network + RNN：学习 $p(z_{t+1}|z_t, a_t)$，预测未来隐状态的概率分布。输出一个高斯混合模型，处理多模态未来（同一状态可能有多种走向）。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">RNN 记忆序列历史 $(z_0, a_0, \ldots, z_t)$，输出下一时刻隐状态的分布参数。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--amber);margin-bottom:0">
+        <h3 style="color:var(--amber)">Controller (C)</h3>
+        <p style="font-size:12px;color:var(--text-2)">极简线性控制器：$a_t = \tanh(W_z z_t + W_a a_{t-1} + b)$，只有几百个参数。在"想象的环境"（VAE+RNN）中用进化策略（ES）优化 $W$。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">用 ES 而非梯度：避免 RNN 的不可微性，直接在参数空间搜索。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <strong>🎯 World Models 的关键创新：完全在想象中训练</strong>
+    智能体通过 VAE 看到世界，通过 MDN-RNN 模拟世界动态，然后在 Controller + RNN 组成的想象环境中用进化策略训练策略。<strong>整个过程不需要真实环境交互</strong>。在 CarRacing 任务上，World Models 仅用约 300 步真实交互就能学会（相比之下 DQN 需要上百万步）。
+  </div>
+
+  <!-- Dreamer -->
+  <div class="section green" style="margin-top:20px">
+    <h2>Dreamer / 梦中策略学习 (Hafner et al., 2020)</h2>
+    <p>RSSM（循环状态空间模型）在隐空间学习世界模型，在模型内部用 TD/策略梯度训练，然后只把动作映射回真实空间</p>
+  </div>
+
+  <div class="card green">
+    <h3>RSSM 的数学框架 / Recurrent State-Space Model</h3>
+    <p style="font-size:12px;color:var(--text-2)">RSSM 是 Dreamer 系列的核心创新，结合了确定性路径（捕捉序列依赖）和随机路径（建模不确定性）：</p>
+    <div class="grid-2" style="margin-top:10px">
+      <div>
+        <div class="formula">$$\text{先验: } p_\phi(z_t|h_t) = \text{Cat}(\pi_\phi(\cdot|h_t))$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">$h_t$ 是确定性隐状态（RNN 的隐藏向量），由前一时刻的 $h_{t-1}$、动作 $a_{t-1}$、随机状态 $z_{t-1}$ 决定。</p>
+        <div class="formula">$$h_t = f_\phi(h_{t-1}, a_{t-1}, z_{t-1})$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">$f_\phi$ 是一个 GRU/LSTM/MLP 结构的确定性转换。</p>
+      </div>
+      <div>
+        <div class="formula">$$\text{后验: } q_\phi(z_t|h_t, o_t) = \text{Cat}(\pi_\phi(\cdot|h_t, o_t))$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">给定当前隐状态 $h_t$ 和真实观察 $o_t$，用贝叶斯推断得到后验分布 $z_t$。这让模型知道"实际发生了什么"来纠正预测。</p>
+        <div class="formula">$$\text{观察: } p_\phi(o_t|h_t, z_t)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">给定隐状态 $h_t, z_t$，重建观察 $o_t$（图像解码器）。</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这种设计的精妙之处：$h_t$ 提供记忆能力（"球在哪里？"），$z_t$ 捕捉不确定性（"球会不会弹回来？"）。预测时只用先验 $p(z_t|h_t)$，学习时用后验 $q(z_t|h_t, o_t)$ 来修正。</p>
+  </div>
+
+  <div class="card">
+    <h3>Dreamer 训练三阶段 / Three Training Phases</h3>
+    <div class="grid-3" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Phase 1: 模型学习</p>
+        <p style="font-size:12px;color:var(--text-2)">用 ELBO（Evidence Lower Bound）训练 RSSM：</p>
+        <div class="formula">$$\mathcal{L}_\phi = \mathbb{E}_{s\sim\text{data}} \left[ -\sum_t \log p_\phi(o_t|h_t,z_t) + D_{\text{KL}}(q_\phi(z_t|h_t,o_t) \mid p_\phi(z_t|h_t)) \right]$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">重建损失（让模型能预测观察）+ KL 损失（让先验和后验接近）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Phase 2: 价值估计</p>
+        <p style="font-size:12px;color:var(--text-2)">在想象的 rollout 中，从每个隐状态出发用 TD($\lambda$) 估计 $V_\psi(h_T, z_T)$。</p>
+        <div class="formula">$$V_\psi(h_T, z_T) \approx \sum_{t=T}^{T+H} \gamma^{t-T} r(\cdot) + \gamma^H V_\psi(h_{T+H}, z_{T+H})$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">在模型内部展开 $H$ 步，用折扣回报估计价值。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">Phase 3: 策略学习</p>
+        <p style="font-size:12px;color:var(--text-2)">在想象中从当前状态展开，用 REINFORCE 或 Actor-Critic 梯度更新策略网络 $\pi_\theta$。</p>
+        <div class="formula">$$\nabla_\theta J \approx \mathbb{E}_\pi \left[ \sum_{t=T}^{T+H} \nabla_\theta \log \pi_\theta(a_t|h_t) \cdot \hat{V}_\psi(h_t) \right]$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">策略梯度在模型内部展开，梯度只流经策略网络 $\pi_\theta$，不经过世界模型（stop-gradient）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MuZero -->
+  <div class="section" style="margin-top:20px">
+    <h2>MuZero / 隐空间规划 (Schrittwieser et al., 2020)</h2>
+    <p>不学习真实的转移概率，而是学习一个隐空间模型，使得在隐空间中的 MCTS 规划能够最大化累积奖励</p>
+  </div>
+
+  <div class="card">
+    <h3>MuZero 三大组件的数学形式</h3>
+    <div class="grid-3" style="margin-top:8px">
+      <div class="card" style="border-left-color:var(--blue);margin-bottom:0">
+        <h3 style="color:var(--blue)">Representation $h$</h3>
+        <p style="font-size:12px;color:var(--text-2)">将原始观察 $o_t$ 编码为初始隐状态：</p>
+        <div class="formula">$$s_0 = h_\phi(o_1), \; s_0 = h_\phi(o_2), \; \ldots$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">$h_\phi$ 是一个深度卷积网络（如 ResNet），将原始像素映射到隐空间。$s_0$ 是规划所需的"种子状态"。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--green);margin-bottom:0">
+        <h3 style="color:var(--green)">Dynamics $g$</h3>
+        <p style="font-size:12px;color:var(--text-2)">学习隐空间的转移 + 奖励预测：</p>
+        <div class="formula">$$s_{k+1}, r_k = g_\phi(s_k, a_k)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">输入当前隐状态 $s_k$ 和动作 $a_k$，输出下一隐状态 $s_{k+1}$ 和即时奖励 $r_k$。注意：这里的 $r_k$ 是对真实奖励的预测，而不是真实的奖励。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--amber);margin-bottom:0">
+        <h3 style="color:var(--amber)">Prediction $f$</h3>
+        <p style="font-size:12px;color:var(--text-2)">从隐状态预测策略和价值：</p>
+        <div class="formula">$$P_k, V_k = f_\phi(s_k)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">$P_k$ 是动作空间上的 softmax 概率分布，$V_k$ 是价值估计。两者一起构成 MCTS 的先验和评估信号。</p>
+      </div>
+    </div>
+    <div class="callout blue" style="margin-top:10px">
+      <strong>🎯 MuZero 与 AlphaZero 的关键区别</strong>
+      AlphaZero 使用围棋/象棋的已知规则（精确的转移模型），而 MuZero 不需要任何环境规则——它学习的是一个"有用的隐表示"来代替真实转移。MuZero 可以从零开始学习任何环境动态，包括那些规则未知的复杂环境（如 Atari）。
+    </div>
+  </div>
+
+  <!-- MBPO -->
+  <div class="section green" style="margin-top:20px">
+    <h2>MBPO / 基于模型的策略优化 (Janner et al., 2019)</h2>
+    <p>"When to Trust Your Model" — 用 rollout 长度的自适应控制来平衡模型利用与模型误差</p>
+  </div>
+
+  <div class="card green">
+    <h3>Branch Rollout：模型使用边界的自适应控制</h3>
+    <p style="font-size:12px;color:var(--text-2)">MBPO 的核心洞察：模型误差 $\epsilon$ 随预测步数 $k$ 指数增长，因此不应该盲目在模型中展开很长。MBPO 只从真实环境交互几步后进入模型：</p>
+    <div class="formula">$$\tau = s_0 \xrightarrow{\pi} s_1 \xrightarrow{\pi} \cdots \xrightarrow{\pi} s_k \xrightarrow{\hat{p}_\phi} \hat{s}_{k+1} \xrightarrow{\hat{p}_\phi} \cdots \xrightarrow{\hat{p}_\phi} \hat{s}_{k+H}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">真实交互 $k$ 步后，进入模型 rollout $H$ 步。$k$ 越小（越早进入模型）样本效率越高，但模型误差越大；$k$ 越大，模型误差越小但样本效率降低。最优 $k$ 取决于模型的可靠性。</p>
+    <div class="callout amber" style="margin-top:8px;font-size:12px">
+      <strong>如何确定最优 horizon $k$？</strong>
+      MBPO 提出了"episode rollout 长度分布"的概念：统计真实环境中 episode 长度的分布，确保模型的 rollout 长度远短于平均 episode 长度。随着模型训练越来越准确，$k$ 可以逐渐减小（让模型更早介入）。
+    </div>
+  </div>
+
+  <!-- 模型学习的不确定性 -->
+  <div class="section amber" style="margin-top:20px">
+    <h2>模型不确定性 / Model Uncertainty & Ensembles</h2>
+    <p>模型误差是 MBRL 的核心瓶颈——ensemble 方法是当前最佳解决方案</p>
+  </div>
+
+  <div class="card">
+    <h3>为什么模型误差如此危险 / Why Model Error Compounds</h3>
+    <p style="font-size:12px;color:var(--text-2)">假设每步模型预测的均方误差为 $\epsilon$，则在 $H$ 步 rollout 后，误差可能累积为 $H \cdot \epsilon$（线性）甚至指数级增长。这在视觉丰富、动力学复杂的环境中尤其严重。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:600;color:var(--blue)">Aleatoric Uncertainty（偶然不确定性）</p>
+        <p style="font-size:12px;color:var(--text-2)">环境本身的随机性（如骰子结果、滑动的冰面），无法通过更多数据消除。需要用概率模型表达（如高斯输出、Boltzmann 分布）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:600;color:var(--green)">Epistemic Uncertainty（认知不确定性）</p>
+        <p style="font-size:12px;color:var(--text-2)">数据不足导致的模型不知道（"不知道我不知道"）。可以通过更多数据减少。Ensemble/Bayesian 方法专门建模这种不确定性。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>Ensemble 模型 / Model Ensembles</h3>
+    <p style="font-size:12px;color:var(--text-2)">训练 $K$ 个独立的转移模型 $\{\hat{p}_1, \ldots, \hat{p}_K\}$，每个用不同的随机初始化和不同的数据子集。在规划时，聚合多个模型的预测：</p>
+    <div class="formula">$$\hat{p}(s'\mid s,a) = \frac{1}{K}\sum_{k=1}^{K} \hat{p}_k(s'\mid s,a)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">预测的方差（模型间的分歧程度）可以作为认知不确定性的代理：当模型们分歧大时，说明在当前 $(s,a)$ 处数据不足，应该减少 rollout 深度。ME-TRPO、PETS 等都用 ensemble 来检测模型不可靠区域。</p>
+  </div>
+
+  <!-- Sim2Real -->
+  <div class="section red" style="margin-top:20px">
+    <h2>Sim-to-Real / 仿真到真实的迁移</h2>
+    <p>MBRL 在真实机器人上的最大挑战：仿真器永远不完美，模型在仿真中学到的策略迁移到真实环境会失败</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>Domain Randomization</h3>
+      <p style="font-size:12px;color:var(--text-2)">在仿真中随机化物理参数（摩擦力、质量、延迟等），让策略在多种模拟变体上训练。真实环境是这个分布中的一个样本，策略自然泛化。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型参数：$\{m \pm 10\%, \mu \pm 20\%, g \pm 5\%\}$ 等。OpenAI 在 ShadowHand 上用此方法实现了零样本迁移。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>System Identification + Adaptive Control</h3>
+      <p style="font-size:12px;color:var(--text-2)">先用真实环境交互数据估计物理参数（System ID），然后在修正后的仿真中训练。例如学习摩擦系数 $\mu$、重力 $g$、延迟 $\tau$。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">更鲁棒的方法：在线适应（online adaptation）——在真实环境中运行时持续更新模型，如 Meta-Learning 上的 MAESN。</p>
+    </div>
+  </div>
+
+  <!-- 全家福 -->
+  <div class="callout blue" style="margin-top:16px">
+    <strong>📊 MBRL 算法全家福</strong>
+    <table style="font-size:11.5px;margin-top:8px">
+      <tr><th>算法</th><th>模型类型</th><th>规划方法</th><th>模型误差处理</th><th>代表任务</th></tr>
+      <tr><td>Dyna</td><td>表格/线性</td><td>Dyna-Q（直接+间接）</td><td>无</td><td>GridWorld</td></tr>
+      <tr><td>PETS</td><td>概率（Ensemble）</td><td>模型预测控制（MPC）</td><td>概率预测分布</td><td>Mujoco</td></tr>
+      <tr><td>World Models</td><td>VAE + MDN-RNN</td><td>Evolution Strategy</td><td>无</td><td>简单游戏</td></tr>
+      <tr><td>Dreamer v1/v2/v3</td><td>RSSM（变分）</td><td>TD + PG（隐空间）</td><td>变分推断</td><td>Atari, DM Lab</td></tr>
+      <tr><td>MBPO</td><td>Ensemble</td><td>Short-horizon Rollout</td><td>Horizon 自适应</td><td>Mujoco</td></tr>
+      <tr><td>MuZero</td><td>隐空间 Dynamics</td><td>MCTS</td><td>隐表示隐式平滑</td><td>Atari, 棋类</td></tr>
+      <tr><td>AlphaZero</td><td>已知规则</td><td>MCTS</td><td>N/A（规则精确）</td><td>Go, Chess</td></tr>
+    </table>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 08 基于模型的方法 · <a href="../index.html">← 总目录</a> · <a href="../07-off-policy/index.html">← 07 Off-Policy</a> · <a href="../09-multi-agent/index.html">下一篇：09 多智能体 →</a>
+  </div>
+</div>
+</body>
+</html>

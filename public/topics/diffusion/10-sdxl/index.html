@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 SDXL与高速生图（LCM/DiT） — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>10 SDXL与高速生图（LCM/DiT）</h1>
+    <p>SDXL与高速生图（LCM/DiT）</p>
+  </div>
+
+  <div class="section">
+    <h2>为什么需要 SDXL / Why SDXL Exists</h2>
+    <p>SD1.5 的局限：固定 512×512 分辨率、浅层文本理解、弱的条件对齐——SDXL 是一次全面升级</p>
+  </div>
+  <div class="card">
+    <h3>SD1.5 的三大局限</h3>
+    <p style="font-size:12px;color:var(--text-2)">Stable Diffusion v1.5 是历史上最流行的开源文生图模型，但其设计存在明显天花板：</p>
+    <div class="grid-3">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">① 分辨率上限</p>
+        <p style="font-size:12px;color:var(--text-2)">原生只支持 512×512，生成高分辨率图像需要附加的后处理（如 ESRGAN）或多图拼接，质量难以保证</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">② 文本理解浅</p>
+        <p style="font-size:12px;color:var(--text-2)">CLIP Text Encoder 能力有限，复杂长提示词（颜色关系、空间位置、数量）经常被忽略或误解</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">③ 调节器脆弱</p>
+        <p style="font-size:12px;color:var(--text-2)">SD1.5 的 VAE（KL-VAE）和 Text Encoder（CLIP）绑定在 UNet 训练时共同优化，无法单独升级某一模块</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这些局限在实际应用中频繁出现——用户抱怨"手指画不对"、"文字写不对"、"构图乱"——这些问题在 SD1.5 的架构下很难根本解决。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>SDXL 的设计目标</strong><br>
+      SDXL 的目标不是小幅改进而是全面升级：原生 1024×1024、更强的 Text Encoder（OpenCLIP ViT-L）、解耦的调节器设计、更好的颜色和构图控制。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>SD1.5 vs SDXL 核心差异</h3>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>维度</th><th>SD1.5</th><th>SDXL</th></tr>
+      <tr><td><strong>分辨率</strong></td><td>512×512 原生</td><td>1024×1024 原生</td></tr>
+      <tr><td><strong>Text Encoder</strong></td><td>CLIP ViT-L</td><td>OpenCLIP ViT-L + 额外小型编码器</td></tr>
+      <tr><td><strong>VAE</strong></td><td>KL-VAE（与 UNet 耦合）</td><td>改进的 VAE（更强的重建能力）</td></tr>
+      <tr><td><strong>UNet</strong></td><td>~860M 参数</td><td>~3.5B 参数（参数量 4×）</td></tr>
+      <tr><td><strong>调节器设计</strong></td><td>与 UNet 联合训练</td><td>解耦调节器，可独立升级</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px">
+      <strong>SDXL 的代价</strong><br>
+      SDXL 参数量是 SD1.5 的 4 倍，推理速度更慢。需要更长的采样步数（20-30 步 vs 20 步）才能充分发挥其能力。消费级 GPU 上的实际体验取决于具体的优化实现（如 SDXL-Turbo 等蒸馏版本）。
+    </div>
+  </div>
+  <div class="section">
+    <h2>SDXL Base + Refiner 双阶段 / Two-Stage Architecture</h2>
+    <p>SDXL 使用 Base model 生成低分辨率图像 + Refiner model 进行细化，是当前质量最高的开源文生图架构之一</p>
+  </div>
+  <div class="card">
+    <h3>双阶段生成流程</h3>
+    <div class="flow" style="margin-top:8px">
+      <div class="flow-node amber">文本提示 $c$<br><small>CLIP Text Encoder</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">SDXL Base<br><small>1024×1024, T=50 DDIM</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">Latent $z$<br><small>64×64×4</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Refiner<br><small>1024×1024, 增强细节</small></div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Base model 在 $64\times64$ latent space 生成基础构图，Refiner 在相同 latent space 进行细化（additional denoising steps），提升细节和纹理质量。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>为什么需要 Refiner？</strong><br>
+      Base model 的目标是学习全局构图（物体位置、整体风格），Refiner 的目标是提升局部细节（纹理、光照、边缘锐度）。两者分工明确，比用单一模型同时学习全局+局部更高效。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>LCM 一致性模型 / Latent Consistency Models</h2>
+    <p>LCM 通过在 PF-ODE 轨迹上直接学习从噪声到数据的一致性映射，实现 1-4 步超快采样</p>
+  </div>
+  <div class="card green">
+    <h3>LCM 核心思想</h3>
+    <p style="font-size:12px;color:var(--text-2)">PF-ODE 的解轨迹是确定性的：从同一个起点出发，ODE 轨迹唯一确定。LCM 训练一个模型 $f_\theta(x_t, t)$ 直接预测轨迹上的"终点" $x_0$：</p>
+    <div class="formula">$$f_\theta(x_t, t) \approx x_0^{*}, \quad \text{where } x_t = \sqrt{\bar{\alpha}_t} x_0^{*} + \sqrt{1-\bar{\alpha}_t} \epsilon$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">对于任意 $t$，只要知道 $x_t$ 就能直接预测 $x_0$，从而实现单步生成。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>LCM 的蒸馏训练</strong><br>
+      LCM 从预训练的 DDPM/DDIM 模型蒸馏而来。训练目标是最小化 $f_\theta(x_t, t)$ 与 $x_0$ 的差异。由于 $x_0$ 是通过 DDIM 多次迭代得到的近似真值，LCM 实际上是在学习"从噪声一步到数据"的捷径。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>CFG 无分类器引导高速生成 / CFG for Fast Generation</h2>
+    <p>CFG 在 LCM 中的特殊作用：CFG 补偿蒸馏带来的质量损失，同时维持高速</p>
+  </div>
+  <div class="card amber">
+    <h3>LCM + CFG 的协同效应</h3>
+    <p style="font-size:12px;color:var(--text-2)">蒸馏后的 LCM 损失了部分条件跟随能力。CFG 可以补偿这个损失：</p>
+    <div class="formula">$$\tilde{x}_0 = (1+w) \cdot f_\theta(x_t, t, c) - w \cdot f_\theta(x_t, t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">在 LCM 中，CFG 的作用比标准 DDPM/DDIM 更强——因为 LCM 的条件跟随能力较弱，需要更大的 $w$（通常 $w=8\text{--}12$）来补偿。</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>模型</th><th>采样步数</th><th>CFG $w$</th><th>质量 (FID)</th><th>速度</th></tr>
+      <tr><td>SDXL + DDIM</td><td>50</td><td>7.5</td><td>2.3</td><td>慢</td></tr>
+      <tr><td>SDXL-Turbo (LCM)</td><td>2</td><td>1.0</td><td>3.8</td><td>极快</td></tr>
+      <tr><td>SDXL-Turbo + CFG</td><td>2</td><td>5.0</td><td>2.9</td><td>极快</td></tr>
+    </table>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>SDXL-Turbo 的关键发现</strong><br>
+      LCM 蒸馏后，CFG 强度 $w$ 需要提高（从 7.5 → 5.0）以补偿质量损失。实验证明：LCM+CFG (2步, w=5) 可以达到接近 DDIM (50步) 的质量，而速度提升 25 倍。
+    </div>
+  </div>
+  <div class="section">
+    <h2>DiT Scaling Law / Scaling 特性</h2>
+    <p>DiT 的生成质量随模型规模和训练数据量呈现良好的 Scaling Law，为大模型时代铺路</p>
+  </div>
+  <div class="card">
+    <h3>DiT Scaling Law 实验</h3>
+    <table style="font-size:12px">
+      <tr><th>模型规模</th><th>参数量</th><th>Tokens/Forward</th><th>FID (ImageNet 256)</th></tr>
+      <tr><td>DiT-S</td><td>39M</td><td>~0.1B</td><td>15.2</td></tr>
+      <tr><td>DiT-B</td><td>305M</td><td>~0.8B</td><td>6.9</td></tr>
+      <tr><td>DiT-L</td><td>675M</td><td>~1.8B</td><td>4.3</td></tr>
+      <tr><td>DiT-XL/2B</td><td>2B</td><td>~5B</td><td>2.7</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">DiT-XL/2B 在 ImageNet 256×256 达到 FID 2.7，超越所有 GAN 和早期扩散模型。这个 Scaling Law 与 GPT 系列的规律类似：模型规模越大、训练数据越多，质量越高。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>DiT vs UNet Scaling 对比</strong><br>
+      UNet 的 Scaling 特性不如 DiT 显著——增加 UNet 规模到一定程度后，收益递减。DiT 的 Transformer 架构更好地利用了 GPU 并行计算，并且 Scaling Law 更干净（更多的参数直接转化为更低的 FID）。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>渐进式蒸馏与一致性蒸馏 / Progressive Distillation</h2>
+    <p>模型蒸馏的两条路线：渐进式蒸馏（Progressive）和一致性蒸馏（Consistency）</p>
+  </div>
+  <div class="card purple">
+    <h3>蒸馏路线对比</h3>
+    <table style="font-size:12px">
+      <tr><th>方法</th><th>原理</th><th>步数</th><th>质量损失</th><th>代表工作</th></tr>
+      <tr><td><strong>渐进式蒸馏</strong></td><td>逐步减少步数（1000→500→250→125→...）</td><td>2-8</td><td>中等</td><td>ProgressVE, LCM</td></tr>
+      <tr><td><strong>一致性蒸馏</strong></td><td>直接学习 $x_0 = f(x_t, t)$</td><td>1-2</td><td>较大</td><td>Consistency Model, LCMScheduler</td></tr>
+      <tr><td><strong>Trajectory Consistency</strong></td><td>利用 ODE 轨迹自洽性</td><td>1-4</td><td>较小</td><td>TC-Former</td></tr>
+    </table>
+  </div>
+  <div class="section">
+    <h2>车载实时推理 / Vehicle Real-Time Inference</h2>
+    <p>车载 GPU（如 NVIDIA Orin）的算力预算分析：100ms 内完成端到端扩散推理</p>
+  </div>
+  <div class="card">
+    <h3>算力预算分析</h3>
+    <p style="font-size:12px;color:var(--text-2)">NVIDIA Orin AGX 提供 275 TOPS（INT8）算力，但车载感知 pipeline 通常只能分配 20-30 TOPS 给扩散模型：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>模型方案</th><th>参数量</th><th>步数</th><th>延迟</th><th>TOPS (INT8)</th></tr>
+      <tr><td>SDXL-Turbo + LCM</td><td>~3B</td><td>1-2</td><td>30-50ms</td><td>~20</td></tr>
+      <tr><td>SD 1.5 + DPMSolver</td><td>~1B</td><td>15</td><td>50-80ms</td><td>~15</td></tr>
+      <tr><td>DiT-XL (FP16)</td><td>~2B</td><td>20</td><td>100-150ms</td><td>~25</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>车载建议</strong><br>
+      对于 BEV 语义分割等感知任务，SD 1.5 + DPMSolver 15步是最佳平衡点。对于场景仿真（延迟不敏感），SDXL + DDIM 50步可以获得更高质量。关键原则：在满足延迟要求的前提下，选择质量最高的方案。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 10 SDXL与高速生图（LCM/DiT） · <a href="../index.html">← 总目录</a> · <a href="../09-conditional/index.html">← 09 条件生成与文生图/视频</a>  · <a href="../11-controlnet/index.html">下一篇：11 ControlNet与可控生成 →</a>
+  </div>
+</div>
+</body>
+</html>

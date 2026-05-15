@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 价值函数近似 / Value Function Approximation — 强化学习</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+  <!-- KaTeX for math rendering -->
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>03 价值函数近似 / Value Function Approximation</h1>
+    <p>从表格方法到函数近似：Monte Carlo、TD 学习、资格迹与深度价值网络</p>
+  </div>
+
+  <!-- 从表格到函数 -->
+  <div class="section">
+    <h2>表格方法的局限 / Limitations of Tabular Methods</h2>
+    <p>在 MDP 基础章节中，价值函数存储在 $|S|$ 或 $|S|\times|A|$ 的表格中（Tabular），这在状态空间很大时不可行</p>
+  </div>
+
+  <div class="card">
+    <h3>表格 vs 函数近似 / Tabular vs Function Approximation</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px"><strong>表格法（Tabular）</strong></p>
+        <ul style="font-size:12px">
+          <li>$V(s)$ 存储为数组，每个状态一个值</li>
+          <li>精确收敛，无逼近误差</li>
+          <li>问题：围棋 $10^{170}$ 个状态，CartPole 连续空间，无法存储</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px"><strong>函数近似（Function Approximation）</strong></p>
+        <ul style="font-size:12px">
+          <li>$V(s) \approx \hat{V}(s; \mathbf{w})$，用参数 $\mathbf{w}$ 的函数近似</li>
+          <li>可以泛化到未见状态（泛化能力）</li>
+          <li>问题：引入近似误差，训练不稳定（特别是与非平稳数据结合时）</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow" style="margin-top:12px">
+      <div class="flow-node">状态 $s$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">特征提取 $\phi(s)$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">近似器 $\hat{V}(s,\mathbf{w})$</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">价值估计 $\hat{V}(s)$</div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <strong>⚠️ 三个核心挑战 / Core Challenges of Function Approximation in RL</strong>
+    <ol style="margin-top:6px;font-size:12px">
+      <li><strong>非平稳性（Non-Stationarity）</strong>：off-policy 时数据分布随策略变化，函数近似会导致"死亡螺旋"（训练不稳定）</li>
+      <li><strong> bootstrapping 与函数近似的结合</strong>：TD learning 用了自己未来的估计，函数近似放大了这个误差</li>
+      <li><strong>方差-偏差权衡</strong>：线性模型偏差低但方差也低（表达力有限）；深度网络方差高但可能不稳定</li>
+    </ol>
+  </div>
+
+  <!-- Monte Carlo -->
+  <div class="section green">
+    <h2>蒙特卡洛方法 / Monte Carlo (MC) Methods</h2>
+    <p>用完整 episode 的实际累积回报来估计价值函数，无需环境模型</p>
+  </div>
+
+  <div class="card green">
+    <h3>MC 估计 / Monte Carlo Estimation</h3>
+    <p style="font-size:12px;color:var(--text-2)">对于一个完整的 trajectory $\tau = (s_0, a_0, r_0, s_1, \ldots, s_T)$，从时间 $t$ 开始的回报为：</p>
+    <div class="formula">$$G_t = \sum_{k=0}^{T-t} \gamma^k r_{t+k}$$</div>
+    <p style="font-size:12px;color:var(--text-2)">MC 直接用 $G_t$ 作为 $V(s_t)$ 的无偏估计：$V(s_t) \leftarrow V(s_t) + \alpha (G_t - V(s_t))$</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>MC 的优点 / Advantages of MC</h3>
+      <ul style="font-size:12px">
+        <li><strong>无偏估计</strong>：$G_t$ 是真实的期望回报，无偏</li>
+        <li><strong>无需环境模型</strong>：直接与环境交互</li>
+        <li><strong>简单理解</strong>：直接累加奖励，直观</li>
+        <li><strong>适合回合制任务</strong>：等 episode 结束后再更新</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>MC 的缺点 / Disadvantages of MC</h3>
+      <ul style="font-size:12px">
+        <li><strong>高方差</strong>：不同 episode 轨迹差异很大，$G_t$ 的方差随步数指数增长</li>
+        <li><strong>无法在线学习</strong>：必须等 episode 结束</li>
+        <li><strong>不适合连续任务</strong>：无终止状态意味着无限回报</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>MC 伪代码 / Monte Carlo Learning</h3>
+    <pre><code><span class="cmt"># Every-visit MC 策略评估</span>
+<span class="kw">def</span> <span class="fn">mc_evaluation</span>(env, pi, n_episodes, alpha, gamma):
+    V = zero_dict()   <span class="cmt"># 价值表</span>
+
+    <span class="kw">for</span> episode <span class="kw">in</span> range(n_episodes):
+        trajectory = []          <span class="cmt"># 存储 (s, a, r) 序列</span>
+        s = env.reset()
+        <span class="kw">while</span> <span class="num">1</span>:
+            a = pi(s)            <span class="cmt"># 按策略选择动作</span>
+            s_next, r, done = env.step(a)
+            trajectory.append((s, r))
+            <span class="kw">if</span> done: <span class="kw">break</span>
+            s = s_next
+
+        <span class="cmt"># 计算每个时间步的回报 G</span>
+        G = <span class="num">0</span>
+        <span class="kw">for</span> t <span class="kw">in</span> reversed(range(len(trajectory))):
+            s, r = trajectory[t]
+            G = r + gamma * G          <span class="cmt"># 倒推计算回报</span>
+            <span class="cmt"># 更新: V(s) += alpha * (G - V(s))</span>
+            V[s] = V.get(s, <span class="num">0</span>) + alpha * (G - V.get(s, <span class="num">0</span>))
+
+    <span class="kw">return</span> V</code></pre>
+  </div>
+
+  <!-- TD Learning -->
+  <div class="section">
+    <h2>时序差分学习 / Temporal Difference (TD) Learning</h2>
+    <p>TD 是 MC 与动态规划的折中：不需要完整 episode，也不需要环境模型</p>
+  </div>
+
+  <div class="card">
+    <h3>TD(0) / One-Step TD</h3>
+    <div class="formula">$$V(s_t) \leftarrow V(s_t) + \alpha \underbrace{[r_t + \gamma V(s_{t+1}) - V(s_t)]}_{\text{TD Error } \delta_t}$$</div>
+    <p style="font-size:12px;color:var(--text-2)">
+      $r_t + \gamma V(s_{t+1})$ 叫做 <strong>TD target（TD 目标）</strong>，是对真实回报 $G_t$ 的估计，但只往前看一步。<br>
+      $\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ 叫做 <strong>TD 误差（TD Error）</strong>，是当前估计与目标之间的差距。
+    </p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3>MC vs TD vs DP 对比</h3>
+      <table style="font-size:11.5px">
+        <tr><th>方法</th><th>估计目标</th><th>方差</th><th>偏差</th><th>需要模型</th></tr>
+        <tr><td>Monte Carlo</td><td>$G_t$（真实回报）</td><td>高</td><td>零</td><td>否</td></tr>
+        <tr><td>TD(0)</td><td>$r_t + \gamma V(s_{t+1})$</td><td>低</td><td>低</td><td>否</td></tr>
+        <tr><td>DP</td><td>$\sum_{s'} p(s'|s,a)[r + \gamma V(s')]$</td><td>低</td><td>高</td><td>是</td></tr>
+      </table>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>n-Step TD / TD(λ)</h3>
+      <p style="font-size:12px;color:var(--text-2)">n 步回报：$G_t^{(n)} = r_t + \gamma r_{t+1} + \cdots + \gamma^{n-1} r_{t+n-1} + \gamma^n V(s_{t+n})$</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">n=1 时是 TD(0)，n→∞ 时是 MC。TD(λ) 通过 λ 参数在所有 n 步之间加权平均：</p>
+      <div class="formula">$$G_t^\lambda = (1-\lambda) \sum_{n=1}^{\infty} \lambda^{n-1} G_t^{(n)}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">λ=0 时退化为 TD(0)，λ=1 时接近 MC。TD(λ) 在实际中常用于 GAE（见策略梯度章节）。</p>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <strong>📐 TD 误差的直觉理解</strong>
+    把 $V(s)$ 看作你对"从 $s$ 出发能获得多少奖励"的猜测。TD 误差 $\delta_t$ 是你收到的"好消息"或"坏消息"：<br>
+    你原本以为从 $s_t$ 能拿到 $V(s_t)$，结果实际拿到 $r_t$ 加上你对未来的估计 $\gamma V(s_{t+1})$。<br>
+    如果 $r_t + \gamma V(s_{t+1}) > V(s_t)$（$\delta_t > 0$），说明之前的估计太低了，需要上调。反之亦然。<br>
+    这个"自我修正"的机制是 TD 学习的核心。
+  </div>
+
+  <!-- Sarsa & Q-Learning -->
+  <div class="section green" style="margin-top:20px">
+    <h2>动作价值近似：Sarsa 与 Q-Learning / Action-Value Approximation</h2>
+    <p>MC 和 TD 方法应用于动作价值函数时，得到两种经典的无模型 RL 算法</p>
+  </div>
+
+  <div class="card green">
+    <h3>Q-Learning / Off-Policy TD Control</h3>
+    <div class="formula">$$Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_t + \gamma \max_{a'} Q(s_{t+1}, a') - Q(s_t, a_t) \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">
+      <strong>Q-Learning（Watkins, 1989）</strong> 是最经典的 off-policy TD 控制算法：使用 $\max_{a'} Q(s_{t+1}, a')$ 作为未来价值估计（来自当前对最优策略的估计），同时用 $\epsilon$-greedy 策略收集数据。
+    </p>
+    <div class="callout amber" style="margin-top:8px;font-size:12px">
+      <strong>为什么叫 off-policy？</strong>
+      收集数据的策略（$\epsilon$-greedy）和被优化的目标（$\max_a Q$）不同。这允许用历史数据更新，但引入了非平稳性问题（后续 DQN 引入目标网络来解决）。
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>Sarsa / On-Policy TD Control</h3>
+    <div class="formula">$$Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_t + \gamma Q(s_{t+1}, a_{t+1}) - Q(s_t, a_t) \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">
+      <strong>Sarsa</strong>（Rummery & Niranjan, 1994）使用实际执行的动作 $a_{t+1}$ 来计算 TD 目标，而不是 $\max$。这使得它成为 on-policy 算法——只能用当前策略收集的样本更新。
+    </p>
+  </div>
+
+  <div class="grid-2" style="margin-top:8px">
+    <div class="callout blue" style="font-size:12px">
+      <strong>Q-Learning vs Sarsa</strong>
+      <ul style="margin-top:4px">
+        <li><strong>Q-Learning</strong>：off-policy，学习最优动作价值，不受行为策略影响；但 $\max$ 操作会过度估计（Overestimation）Q 值</li>
+        <li><strong>Sarsa</strong>：on-policy，考虑实际行为策略，更保守；适合连续控制或安全性要求高的场景（如机器人避免碰撞）</li>
+      </ul>
+    </div>
+    <div class="callout green" style="font-size:12px">
+      <strong>收敛性</strong>
+      在有限状态-动作空间且所有状态-动作对无限次访问的条件下，Sarsa 和 Q-Learning 都保证收敛到最优动作价值函数（前提是步长 $\alpha$ 满足特定条件，且 $\epsilon$ 退火到 0）。
+    </div>
+  </div>
+
+  <!-- 资格迹 -->
+  <div class="section" style="margin-top:20px">
+    <h2>资格迹 / Eligibility Traces</h2>
+    <p>资格迹是结合 MC（高方差）和 TD（高偏差）优点的高效机制，兼顾快速 bootstrapping 和长远回报</p>
+  </div>
+
+  <div class="card">
+    <h3>资格迹机制 / Mechanism of Eligibility Traces</h3>
+    <p style="font-size:12px;color:var(--text-2)">为每个状态（或状态-动作对）维护一个"资格"值 $e(s)$，表示该状态在最近几步内被访问的程度。更新时不仅更新当前状态，还按资格迹更新所有相关状态：</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <div class="formula">$$e_t(s) = \gamma \lambda e_{t-1}(s) + \mathbf{1}(s_t = s)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">$\lambda \in [0,1]$ 控制资格衰减速度：λ 大时回溯更深（更像 MC）；λ 小时只看最近（更像 TD）</p>
+      </div>
+      <div>
+        <div class="formula">$$\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$$</div>
+        <div class="formula">$$V(s) \leftarrow V(s) + \alpha \delta_t \cdot e_t(s)$$</div>
+      </div>
+    </div>
+    <pre><code><span class="cmt"># TD(λ) 更新伪代码</span>
+<span class="kw">def</span> <span class="fn">td_lambda</span>(env, pi, n_steps, alpha, gamma, lamb):
+    V = {}; e = {}        <span class="cmt"># 价值函数 和 资格迹</span>
+
+    s = env.reset()
+    <span class="cmt"># 初始化资格迹</span>
+    e[s] = <span class="num">1.0</span>
+
+    <span class="kw">for</span> step <span class="kw">in</span> range(n_steps):
+        a = pi(s)
+        s_next, r, done = env.step(a)
+        delta = r + gamma * V.get(s_next, <span class="num">0</span>) - V.get(s, <span class="num">0</span>)
+        e[s] = e.get(s, <span class="num">0</span>) + <span class="num">1</span>       <span class="cmt"># 累积迹 += 1</span>
+        <span class="cmt"># 对所有状态按资格迹更新</span>
+        <span class="kw">for</span> s_key <span class="kw">in</span> V:
+            V[s_key] += alpha * delta * e[s_key]
+            e[s_key] *= gamma * lamb   <span class="cmt"># 衰减</span>
+        s = s_next
+        <span class="kw">if</span> done: s = env.reset(); e = {}</code></pre>
+  </div>
+
+  <div class="callout blue">
+    <strong>🔗 资格迹与 TD(λ) 的关系</strong>
+    TD(λ) 使用资格迹来实现 $\lambda$ 加权的 n 步回报。当 $\lambda=0$，$e(s)$ 只在当前状态为非零（TD(0)）；当 $\lambda=1$，$e(s)$ 是衰减的历史访问计数（接近 MC）。资格迹让 TD(λ) 不需要存储 n 步历史数据，计算高效。
+  </div>
+
+  <!-- 函数近似 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>从表格到深度网络 / From Tables to Deep Networks</h2>
+    <p>用神经网络（或其他函数近似器）来估计价值函数</p>
+  </div>
+
+  <div class="card green">
+    <h3>价值网络 / Value Network</h3>
+    <p style="font-size:12px;color:var(--text-2)">用参数 $\mathbf{w}$ 的函数 $\hat{V}(s; \mathbf{w})$ 近似 $V^\pi(s)$，通过梯度下降最小化 TD 误差的均方：</p>
+    <div class="formula">$$L(\mathbf{w}) = \mathbb{E} \left[ (r_t + \gamma \hat{V}(s_{t+1};\mathbf{w}) - \hat{V}(s_t;\mathbf{w}))^2 \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">类似地，动作价值网络 $\hat{Q}(s,a;\mathbf{w})$ 用于 DQN、DDPG、SAC 等算法。</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>线性近似器</h3>
+      <p style="font-size:12px;color:var(--text-2)">$\hat{V}(s) = \mathbf{w}^\top \phi(s)$，其中 $\phi(s)$ 是手动设计的特征（如多项式、Fourier 基）。适合简单问题，可解释性强。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>决策树 / 森林</h3>
+      <p style="font-size:12px;color:var(--text-2)">非参数方法，可以捕捉非线性决策边界。但在 RL 中不常用，因为每次更新需要重训。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>深度神经网络</h3>
+      <p style="font-size:12px;color:var(--text-2)">$\hat{V}(s) = \text{NN}(s; \mathbf{w})$，端到端学习特征表示。2013 年 DQN 开创了深度 RL 时代。</p>
+    </div>
+  </div>
+
+  <div class="callout amber" style="margin-top:8px">
+    <strong>⚠️ 深度 RL 的训练稳定性问题 / Deep RL Training Instability</strong>
+    <ol style="margin-top:6px;font-size:12px">
+      <li><strong>数据分布非平稳</strong>：随着策略更新，收集的数据分布变化，神经网络容易"遗忘"</li>
+      <li><strong> bootstrapping 误差累积</strong>：用自己未来的估计来更新自己，函数近似会放大这个误差</li>
+      <li><strong>过度估计（Overestimation）</strong>：Q-Learning 的 $\max$ 操作在函数近似下系统性过度估计</li>
+    </ol>
+    <p style="font-size:12px;margin-top:6px">这些问题的解决方案分别是：<strong>经验回放（Experience Replay）</strong>、<strong>目标网络（Target Network）</strong>、<strong>Double DQN</strong>——这是 DQN 系列的核心技术，将在第四章详细介绍。</p>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 03 价值函数近似 · <a href="../index.html">← 总目录</a> · <a href="../02-mdp-foundation/index.html">← 02 MDP基础</a> · <a href="../04-dqn-family/index.html">下一篇：04 DQN家族 →</a>
+  </div>
+</div>
+</body>
+</html>

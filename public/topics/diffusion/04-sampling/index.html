@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 采样过程与加速采样 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>04 采样过程与加速采样</h1>
+    <p>采样过程与加速采样</p>
+  </div>
+
+  <div class="section">
+    <h2>为什么需要加速采样 / The Slow Sampling Problem</h2>
+    <p>DDPM 的 1000 步采样是最大的实用瓶颈，加速采样是扩散模型落地的关键</p>
+  </div>
+  <div class="card">
+    <h3>DDPM 采样的计算成本</h3>
+    <p style="font-size:12px;color:var(--text-2)">DDPM 采样需要 $T$ 次完整的 UNet 前向传播（通常 $T=1000$）：</p>
+    <div class="formula">$$x_{T-1} \to x_{T-2} \to \cdots \to x_0$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">对于 $512\times512$ 的图像，每次前向传播约需 $30\text{–}100$ GFLOPs（取决于 UNet 规模）。总计算量：</p>
+    <div class="formula">$$\text{Total FLOPs} \approx T \times \text{FLOPs}_{\text{UNet}} = 1000 \times 50\text{G} = 50\text{T FLOPs}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">在消费级 GPU（30 TFLOPs）上需要 $\sim$1-2 秒单张图像。实时应用（如自动驾驶、视频生成）无法接受这个延迟。</p>
+    <div class="callout red" style="font-size:12px">
+      <strong>实时 vs 离线</strong><br>
+      离线生成（Logo、海报、插画）容忍 10 秒延迟；实时交互（对话、AR、游戏）需要 $<100$ms；自动驾驶感知需要 $<50$ms。DDPM 的 1000 步架构在这些场景完全不可用。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>两步本质：噪声调度 + 采样器设计</h3>
+    <p style="font-size:12px;color:var(--text-2)">加速采样从两个方向同时优化：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">① 噪声调度优化</p>
+        <p style="font-size:12px;color:var(--text-2)">设计更好的 $\beta_t$ 调度，使 $x_T \to x_0$ 的路径更短（如 LCM、cosine schedule）</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">② 采样器设计</p>
+        <p style="font-size:12px;color:var(--text-2)">设计更少的采样步数（如 DDIM、DPMSolver），每步走更大的距离但保持质量</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">两种策略可以叠加：改进的噪声调度 + 高效采样器（如 DPM-Solver++）可以将 $T$ 从 1000 降到 20 步，质量损失 $<5\%$。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>采样的精度-速度 trade-off</strong><br>
+      采样步数 $T$ 和生成质量之间不是简单的线性关系。关键在于采样轨迹是否接近真实的反向过程路径。DDIM 等方法通过改变噪声调度，保持轨迹方向的同时大步前进。
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>朴素 DDPM 采样的问题 / Naive DDPM Sampling</h2>
+    <p>DDPM 采样需要 $T=1000$ 步神经网络评估，延迟高达 10-30 秒——这是扩散模型最大的实用瓶颈</p>
+  </div>
+  <div class="card">
+    <h3>采样复杂度分析</h3>
+    <p style="font-size:12px;color:var(--text-2)">朴素 DDPM 采样（Algorithm 2）的每一步都需要：</p>
+    <div class="formula">$$\text{采样延迟} = T \times \underbrace{(\text{UNet/DiT 前向传播耗时})}_{\approx 10\text{ms--}30\text{ms}}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">在 $T=1000$、硬件为 A100 GPU 时，采样延迟约 10-30 秒。对于交互式应用（文生图）或实时自动驾驶感知，这个延迟完全无法接受。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>两步核心策略</strong><br>
+      加速采样有两个方向：<strong>①减少步数</strong>（从 1000 步 → 20-50 步），<strong>②单步多功能</strong>（合并多个去噪步骤）。DDIM 和 PF-ODE 是第一种策略的典型代表。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>DDIM 加速采样 / DDIM Accelerated Sampling</h2>
+    <p>将 DDPM 的马尔可夫反向过程替换为非马尔可夫过程，在不损失质量的前提下大幅减少步数</p>
+  </div>
+  <div class="card green">
+    <h3>DDIM 的核心思想</h3>
+    <p style="font-size:12px;color:var(--text-2)">DDIM（Denormalizing Diffusion Implicit Models）发现：DDPM 的训练目标（ELBO）和采样过程并不需要马尔可夫性质。通过设计非马尔可夫反向过程，可以在<strong>更少的步数</strong>达到相同甚至更好的生成质量：</p>
+    <div class="formula">$$x_{t-1} = \sqrt{\bar{\alpha}_{t-1}} \underbrace{\Bigl(\frac{x_t - \sqrt{1-\bar{\alpha}_t}\epsilon_\theta(x_t, t)}{\sqrt{\bar{\alpha}_t}}\Bigr)}_{\text{predicted } x_0} + \sqrt{1-\bar{\alpha}_{t-1} - \sigma_t^2} \cdot \epsilon_\theta(x_t, t) + \sigma_t \cdot z_t$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $z_t \sim \mathcal{N}(0, \mathbf{I})$，$\sigma_t$ 控制随机性。当 $\sigma_t = 0$（完全确定性），DDIM 等价于 DDPM 但步数更少；当 $\sigma_t > 0$，采样具有随机性。</p>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>DDIM vs DDPM 的关键区别</strong><br>
+      DDPM 每步都是马尔可夫的（$x_{t-1}$ 仅依赖 $x_t$）；DDIM 的反向过程是隐式的（$x_{t-1}$ 依赖从 $x_t$ 推导出的 $x_0$ 估计）。这个设计让 DDIM 能在 20-50 步内完成高质量生成，而 DDPM 需要 1000 步。
+    </div>
+  </div>
+  <div class="card">
+    <h3>DDIM 采样伪代码</h3>
+    <pre><code><span class="cmt"># DDIM 采样（Song et al. 2021）</span>
+xT ~ N(0, I)
+<span class="kw">for</span> t in [T, T - eta, T - 2*eta, ..., 1]:
+    <span class="cmt"># eta 是跳步大小，eta=1 时等价于 DDPM</span>
+    <span class="cmt"># eta < 1 时，跳过中间步，加速采样</span>
+    pred_x0 = (xt - sqrt(1-bar_alpha[t]) * eps_theta(xt, t)) \
+               / sqrt(bar_alpha[t])
+    dir_xt = sqrt(1 - bar_alpha[t-1] - sigma_t^2) * eps_theta(xt, t)
+    sigma_t = eta * sqrt((1 - bar_alpha[t-1]) / (1 - bar_alpha[t])) * \
+                      sqrt(1 - bar_alpha[t] / bar_alpha[t-1])
+    z = N(0,I) <span class="kw">if</span> t > 1 <span class="kw">else</span> 0
+    x_{t-1} = sqrt(bar_alpha[t-1]) * pred_x0 + dir_xt + sigma_t * z</code></pre>
+  </div>
+  <div class="section amber">
+    <h2>SDE vs ODE 视角 / SDE and ODE Perspectives</h2>
+    <p>随机微分方程（SDE）和常微分方程（ODE）为加速采样提供了统一的理论基础</p>
+  </div>
+  <div class="card amber">
+    <h3>两种等价视角</h3>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">SDE（随机微分方程）</p>
+        <p style="font-size:12px;color:var(--text-2)">Forward 过程是 SDE：$dx = f(x,t)dt + g(t)dw$。采样过程是 reverse SDE，需要噪声。DDPM 对应 VP-SDE（Variance Preserving）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">ODE（常微分方程）</p>
+        <p style="font-size:12px;color:var(--text-2)">去掉随机项 $dw$：$dx = \left[f(x,t) - \frac{1}{2}g(t)^2 \nabla \log p_t(x)\right]dt$。采样是确定性路径，$\sigma_t=0$。通过 ODE 离散化得到 DDIM。</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:10px">Song et al. (2021) 证明：DDIM 对应 VP-SDE 的概率流 ODE（PF-ODE）。这意味着 DDIM 的采样轨迹与 SDE 共享同样的边缘分布，但更快。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>Probability Flow ODE 的意义</strong><br>
+      当 $\sigma_t=0$ 时，DDIM 等价于 PF-ODE——从噪声到数据的确定性轨迹。这个轨迹上任意两点之间的插值都产生有效的中间结果，让"两步生成"成为可能（Consistency Model）。
+    </div>
+  </div>
+  <div class="section">
+    <h2>加速采样器对比 / Sampler Comparison</h2>
+  </div>
+  <div class="card">
+    <h3>主流采样器对比表</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:110px">采样器</th><th style="width:50px">步数</th><th style="width:70px">速度</th><th style="width:90px">质量</th><th>适用场景</th></tr>
+      <tr><td><strong>DDPM</strong></td><td>500-1000</td><td>很慢</td><td>最高</td><td>科研基准、质量优先</td></tr>
+      <tr><td><strong>DDIM</strong></td><td>20-100</td><td>快</td><td>接近 DDPM</td><td>通用文生图（SD 默认）</td></tr>
+      <tr><td><strong>DPMSolver++</strong></td><td>10-20</td><td>很快</td><td>高质量</td><td>实时推理、交互生成</td></tr>
+      <tr><td><strong>Euler</strong></td><td>20-30</td><td>快</td><td>良好</td><td>快速预览</td></tr>
+      <tr><td><strong>SA-Solver</strong></td><td>10-20</td><td>很快</td><td>高质量</td><td>高分辨率、复杂条件</td></tr>
+      <tr><td><strong>Consistency</strong></td><td>1-2</td><td>极快</td><td>中等</td><td>实时应用、边缘部署</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>DPMSolver++ 原理</strong><br>
+      DPMSolver++ 是悟空采样器，利用 PF-ODE 的高阶数值解法（Adams 方法），在 10-20 步内达到 DDIM 50步的质量。核心思想：在每步利用前两步的预测来近似高阶微分，代价是每步计算量略高，但总体步数大幅减少。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>自动驾驶实时推理 / AD Real-Time Inference</h2>
+    <p>车载扩散模型采样的延迟预算与硬件选择</p>
+  </div>
+  <div class="card purple">
+    <h3>延迟预算分析</h3>
+    <p style="font-size:12px;color:var(--text-2)">自动驾驶感知 pipeline 的实时要求：感知帧率 $\geq 10$ FPS（即延迟 $\leq 100$ms）。扩散模型采样需要在这个预算内完成：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>采样器</th><th>步数</th><th>单步延迟</th><th>总延迟</th><th>是否满足 $\leq 100$ms</th></tr>
+      <tr><td>DDIM</td><td>50</td><td>2ms</td><td>100ms</td><td>临界</td></tr>
+      <tr><td>DPMSolver++</td><td>15</td><td>2ms</td><td>30ms</td><td>✅ 满足</td></tr>
+      <tr><td>Euler</td><td>20</td><td>2ms</td><td>40ms</td><td>✅ 满足</td></tr>
+      <tr><td>Consistency</td><td>1-2</td><td>15ms</td><td>15-30ms</td><td>✅ 满足（但质量下降）</td></tr>
+    </table>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>实践建议</strong><br>
+      在自动驾驶场景，优先选择 DPMSolver++（15步）或 Euler（20步），在延迟和质量之间取得最佳平衡。Consistency Model 适合对质量要求不高但需要极低延迟的场景（如车道线实时检测）。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>视频 temporal consistency / Video Generation</h2>
+    <p>视频扩散模型的时间一致性保证机制</p>
+  </div>
+  <div class="card green">
+    <h3>时序一致性策略</h3>
+    <p style="font-size:12px;color:var(--text-2)">视频生成的采样过程需要保证 temporal consistency（时间一致性）：</p>
+    <div class="formula">$$\text{temporal consistency} \Rightarrow \mathbb{E}\left[\| x_{t}^{(i)} - x_{t}^{(i-1)} \|^2\right] < \epsilon, \quad \forall \text{ 连续帧 } i$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">为实现这一点，主流方法有三种：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>方法</th><th>原理</th><th>代表工作</th></tr>
+      <tr><td><strong>Latent Temporal Fusion</strong></td><td>在 latent space 进行帧间插值，避免像素级噪声</td><td>Stable Video Diffusion (SVD)</td></tr>
+      <tr><td><strong>Zero-Terminal SNR</strong></td><td>训练时强制 $x_0=x_T$，端到端保真</td><td>W.A.L.T, Open-Sora</td></tr>
+      <tr><td><strong>Consistency Model</strong></td><td>单步从噪声到生成，天然 temporal 平滑</td><td>LCM (Latent Consistency Models)</td></tr>
+    </table>
+  </div>
+  <div class="callout blue" style="font-size:12px">
+    <strong>训练-采样解耦的设计原则</strong><br>
+    训练阶段使用大量步数（如 1000 步）保证质量，采样阶段使用少量步数（如 20-50 步）保证速度。这种"训练-采样解耦"策略是扩散模型的标准范式。Scheduler 负责在采样时将 $T$ 步映射为 $S$ 步（$S \ll T$），而无需改变训练好的模型权重。
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 04 采样过程与加速采样 · <a href="../index.html">← 总目录</a> · <a href="../03-reverse-process/index.html">← 03 反向过程与DDPM目标</a>  · <a href="../05-ldm/index.html">下一篇：05 潜空间扩散（Latent Diffusion Models） →</a>
+  </div>
+</div>
+</body>
+</html>

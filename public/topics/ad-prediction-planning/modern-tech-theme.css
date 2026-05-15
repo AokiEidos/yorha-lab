@@ -1,0 +1,523 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ==========================================================================
+   Modern Technical & Academic Theme
+   Universal Light Mode — Base + Semantic Components
+   ========================================================================== */
+
+/* ─── CSS Custom Properties (Design Tokens) ─────────────────────────────── */
+:root {
+  /* Base colors */
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --border-dark: #cbd5e1;
+  --text: #1e293b;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
+
+  /* Semantic colors */
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #7c3aed;
+
+  /* Code */
+  --code-bg: #f1f5f9;
+  --code-border: #cbd5e1;
+
+  /* Typography */
+  --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Tech-* namespace (legacy / alternate) */
+  --tech-bg: #f8fafc;
+  --tech-card: #ffffff;
+  --tech-border: #e2e8f0;
+  --tech-border-dark: #cbd5e1;
+  --tech-text: #1e293b;
+  --tech-text-muted: #64748b;
+  --tech-blue: #3b82f6;
+  --tech-green: #10b981;
+  --tech-amber: #f59e0b;
+  --tech-red: #ef4444;
+  --tech-purple: #8b5cf6;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ==========================================================================
+   1. Base Layout
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* ==========================================================================
+   2. Title Bar
+   ========================================================================== */
+.title-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 28px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.title-bar h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+.title-bar p {
+  color: var(--text-2);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* ==========================================================================
+   3. Section Headers
+   ========================================================================== */
+.section {
+  border-left: 4px solid var(--blue);
+  background: linear-gradient(to right, #eff6ff, transparent);
+  padding: 12px 16px;
+  margin: 20px 0 12px;
+  border-radius: 0 6px 6px 0;
+}
+.section.green {
+  border-left-color: var(--green);
+  background: linear-gradient(to right, #f0fdf4, transparent);
+}
+.section.amber {
+  border-left-color: var(--amber);
+  background: linear-gradient(to right, #fffbeb, transparent);
+}
+.section.red {
+  border-left-color: var(--red);
+  background: linear-gradient(to right, #fef2f2, transparent);
+}
+.section.purple {
+  border-left-color: var(--purple);
+  background: linear-gradient(to right, #ede9fe, transparent);
+}
+.section h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.section p {
+  color: var(--text-2);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   4. Cards
+   ========================================================================== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--blue);
+}
+.card.green  { border-left-color: var(--green); }
+.card.amber  { border-left-color: var(--amber); }
+.card.red    { border-left-color: var(--red); }
+.card.purple { border-left-color: var(--purple); }
+.card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Accent variant (used by flow_matching.html style) */
+.card.accent-blue   { border-left-color: var(--blue); }
+.card.accent-green  { border-left-color: var(--green); }
+.card.accent-amber  { border-left-color: var(--amber); }
+.card.accent-red    { border-left-color: var(--red); }
+.card.accent-purple { border-left-color: var(--purple); }
+
+/* ==========================================================================
+   5. Callout Boxes
+   ========================================================================== */
+.callout {
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.callout.amber  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+.callout.blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+.callout.green  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.callout.red    { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.callout.purple { background: #ede9fe; border: 1px solid #ddd6fe; color: #5b21b6; }
+
+/* Alternate naming convention */
+.callout.why  { background: #fff7ed; border-left: 3px solid #f97316; color: #92400e; }
+.callout.note { background: #f0f9ff; border-left: 3px solid #3b82f6; color: #1e40af; }
+.callout.warn { background: #fef3c7; border-left: 3px solid #f59e0b; color: #92400e; }
+
+/* ==========================================================================
+   6. Formula Box
+   ========================================================================== */
+.formula {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+  font-family: 'Times New Roman', serif;
+  font-size: 14px;
+  color: #1e40af;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+/* ==========================================================================
+   7. Code Blocks
+   ========================================================================== */
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-left: 3px solid var(--code-border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+pre code { background: none; padding: 0; }
+
+/* Syntax highlighting */
+.kw  { color: #7c3aed; font-weight: 600; }
+.fn  { color: #1d4ed8; }
+.str { color: #166534; }
+.cmt { color: #94a3b8; font-style: italic; }
+.num { color: #b45309; }
+
+/* ==========================================================================
+   8. Tables
+   ========================================================================== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 10px 0;
+}
+th {
+  background: #f1f5f9;
+  color: var(--text-2);
+  font-weight: 600;
+  padding: 7px 10px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+td {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+}
+tr:nth-child(even) td { background: #f8fafc; }
+
+/* ==========================================================================
+   9. Flowchart Nodes (CSS-based diagram elements)
+   ========================================================================== */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.flow-node {
+  background: var(--card);
+  border: 1.5px solid var(--blue);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.flow-node.green  { border-color: var(--green); color: var(--green); }
+.flow-node.amber  { border-color: var(--amber); color: #b45309; }
+.flow-node.purple { border-color: var(--purple); color: #5b21b6; }
+.flow-arrow {
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font);
+}
+
+/* Flow-box variants (used by flow_matching.html) */
+.flow-box {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid;
+  text-align: center;
+}
+.flow-box.frozen { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
+.flow-box.train  { background: #fffbeb; border-color: var(--amber); color: #92400e; }
+.flow-box.loss   { background: #fef2f2; border-color: var(--red); color: #991b1b; }
+.flow-box.data   { background: #f0fdf4; border-color: var(--green); color: #166534; }
+.flow-box.core   { background: #eff6ff; border-color: var(--blue); color: #1e40af; }
+
+.flow-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0;
+}
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.v-arrow { font-size: 14px; color: #94a3b8; }
+.h-arrow { font-size: 14px; color: #94a3b8; }
+
+/* ==========================================================================
+   10. Grids
+   ========================================================================== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   11. Lists & Typography Helpers
+   ========================================================================== */
+ul, ol { padding-left: 20px; margin: 6px 0; }
+li { margin-bottom: 4px; }
+p { margin-bottom: 8px; }
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+h2 { font-size: 15px; font-weight: 700; margin: 14px 0 8px; }
+h3 { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+
+/* ==========================================================================
+   12. Semantic Components (tech-*) — structured data, architecture diagrams
+   ========================================================================== */
+
+/* Auto-fit multi-column grid for data blocks */
+.tech-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 12px 0;
+}
+
+/* High-quality data/feature block */
+.tech-data-block {
+  background: var(--tech-bg);
+  border: 1px solid var(--tech-border);
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 12px;
+}
+.tech-data-block .block-title {
+  font-weight: 600;
+  color: var(--tech-text);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Flex row layout */
+.tech-flex-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+/* Badges: tensor shapes, token counts, probabilities */
+.tech-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--tech-border-dark);
+  color: var(--tech-text-muted);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* Status labels with color coding */
+.tech-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.tech-status.high { background: #d1fae5; color: #065f46; }
+.tech-status.mid  { background: #fef3c7; color: #92400e; }
+.tech-status.low  { background: #fee2e2; color: #991b1b; }
+
+/* Canvas: container for architecture diagrams (SVG) */
+.tech-canvas {
+  background: #f1f5f9;
+  border: 1px solid var(--tech-border-dark);
+  border-radius: 6px;
+  position: relative;
+  padding: 2px 0;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+/* Channel: vertical pipeline stage */
+.tech-channel {
+  height: 36px;
+  border-bottom: 1px dashed var(--tech-border-dark);
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 15px;
+}
+.tech-channel:last-child { border-bottom: none; }
+.tech-channel-label {
+  position: absolute;
+  right: 12px;
+  font-size: 10px;
+  color: var(--tech-text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Node: positioned entity on canvas */
+.tech-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 8px;
+  position: absolute;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid transparent;
+}
+.tech-node.primary   { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+.tech-node.secondary { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.tech-node.accent    { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+
+/* SVG layer for lines */
+.tech-svg-layer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+.tech-svg-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 4, 3;
+}
+
+/* Sample circle (PPO multi-modal trajectories etc.) */
+.tech-sample-circle {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: 1.5px dashed var(--tech-border-dark);
+  border-radius: 50%;
+  margin: 12px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+.tech-sample-circle::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--tech-blue);
+  border-radius: 50%;
+}
+.tech-sample-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+}
+.tech-sample-dot.valid   { background: var(--tech-green); }
+.tech-sample-dot.invalid { background: var(--tech-red); }
+
+/* ==========================================================================
+   13. Defensive Typography Fixes
+   ========================================================================== */
+
+/* Force inline elements to stay inline — prevents flex/block contamination
+   from card/section containers affecting strong/b tags */
+strong,
+b,
+.card strong,
+.callout strong,
+ul li strong,
+ol li strong,
+p strong {
+  display: inline !important;
+  position: static !important;
+  flex: none !important;
+  float: none !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--text) !important;
+}
+
+/* Optional: light blue highlight for inline technical terms in lists/paragraphs */
+ul li strong,
+p strong {
+  background: rgba(59, 130, 246, 0.04);
+  padding: 1px 4px !important;
+  border-radius: 3px;
+  color: var(--tech-blue) !important;
+}

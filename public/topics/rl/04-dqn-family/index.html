@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 DQN 家族 / DQN Family — 强化学习</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>04 DQN 家族 / DQN Family</h1>
+    <p>从原始 DQN 到 Rainbow — 深度 Q 网络的完整演进脉络与关键技术详解</p>
+  </div>
+
+  <!-- 原始 DQN -->
+  <div class="section">
+    <h2>原始 DQN / Original DQN (Mnih et al., 2013, 2015)</h2>
+    <p>深度强化学习的里程碑——用卷积神经网络（CNN）近似最优 action-value 函数 $Q^*(s,a)$</p>
+  </div>
+
+  <div class="card">
+    <h3>为什么 DQN 是突破 / Why DQN Was a Breakthrough</h3>
+    <p style="font-size:12px;color:var(--text-2)">2013 年的 NIPS 论文和 2015 年的 Nature 论文之前，TD 学习被认为无法与非线性函数近似（如神经网络）结合——不稳定甚至 divergence。DQN 通过两个关键技术解决了这个问题：</p>
+    <div class="grid-3" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">1. Experience Replay</p>
+        <p style="font-size:12px;color:var(--text-2)">将交互数据存入 replay buffer $\mathcal{D}$，从 buffer 中均匀采样打乱数据的相关性（i.i.d.），实现 off-policy 稳定学习。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">2. Target Network</p>
+        <p style="font-size:12px;color:var(--text-2)">将 $Q$ 网络和 $Q$ 目标解耦，用一个延迟更新的目标网络 $\mathbf{w}^-$ 计算 TD target，打破 update 和 target 之间的相关性。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">DQN 成就</p>
+        <p style="font-size:12px;color:var(--text-2)">Atari 49游戏中超越人类水平，证明深度 RL 可以处理高维原始感知输入（像素）。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>两个核心技术 / Two Core Techniques</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Experience Replay / 经验回放</p>
+        <p style="font-size:12px;color:var(--text-2)">将 $(s_t, a_t, r_{t+1}, s_{t+1})$ 存入容量为 $N$ 的 replay buffer $\mathcal{D}$。每次更新从 $\mathcal{D}$ 中均匀采样 $m$ 条数据计算 TD error。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">优点：数据利用率高（每条数据可被多次使用），打乱时序相关性。缺点：均匀采样低效——重要转换被采样的概率和普通转换一样。</p>
+        <div class="callout blue" style="font-size:11px;margin-top:6px">
+          <strong>为什么需要 replay？</strong><br>
+          直接用连续交互数据做 SGD 会导致 update 之间的相关性极高（连续帧几乎一样）。这违反了 SGD 的 i.i.d. 假设。Replay buffer 打乱时序，让采样数据接近 i.i.d.。
+        </div>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Target Network / 目标网络</p>
+        <p style="font-size:12px;color:var(--text-2)">DQN 维护两个网络：在线网络 $\mathbf{w}$（每步更新）和目标网络 $\mathbf{w}^-$（延迟 $\tau$ 步复制）。</p>
+        <div class="formula" style="font-size:12px;margin-top:6px">$$y_t^{\text{DQN}} = r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a'; \mathbf{w}^-)$$</div>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">TD target 来自 $\mathbf{w}^-$，而 $\mathbf{w}$ 在每步通过梯度下降更新。由于 $\mathbf{w}^-$ 变化缓慢，target 在短期内是固定的，大幅提高了学习稳定性。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>DQN 算法完整流程 / Full DQN Algorithm</h3>
+    <pre><code><span class="cmt"># DQN 算法伪代码</span>
+<span class="kw">Initialize</span>:
+  Q(s,a; w)   <span class="cmt"># 在线 Q 网络，随机初始化</span>
+  Q(s,a; w⁻) <span class="cmt"># 目标网络，w⁻ ← w</span>
+  Replay Buffer D  <span class="cmt"># 容量 N</span>
+
+<span class="kw">for</span> episode = 1, M <span class="kw">do</span>
+  s ← env.reset()
+
+  <span class="kw">for</span> t = 1, T <span class="kw">do</span>
+    <span class="cmt"># ε-greedy 探索</span>
+    <span class="kw">if</span> random() <span class="num">ε</span> <span class="kw">then</span>
+      a ← random action
+    <span class="kw">else</span>
+      a ← argmax_a Q(s, a; w)    <span class="cmt"># 在线网络选择</span>
+    <span class="kw">end</span>
+
+    s', r ← env.step(a)
+    D.push((s, a, r, s'))
+
+    <span class="cmt"># 每 C 步从 replay buffer 采样更新</span>
+    <span class="kw">if</span> |D| ≥ B <span class="kw">then</span>
+      batch ← D.sample(B)         <span class="cmt"># 均匀采样 B 条</span>
+
+      <span class="cmt"># TD target（用目标网络）</span>
+      y ← r + γ · max_{a'} Q(s', a'; w⁻)
+
+      <span class="cmt"># 梯度下降更新在线网络</span>
+      w ← w − η · ∇_w (Q(s,a;w) − y)²
+
+      <span class="cmt"># 每 C 步同步目标网络</span>
+      <span class="kw">if</span> t mod C == 0 <span class="kw">then</span>
+        w⁻ ← w
+      <span class="kw">end</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></code></pre>
+  </div>
+
+  <div class="callout blue" style="margin-top:4px">
+    <strong>DQN 的收敛性 / Convergence with Function Approximation</strong>
+    <p style="margin-top:4px;font-size:12px">DQN 并不能保证收敛到最优策略——线性函数近似的 TD 算法在理论上已知可能 divergence，非线性神经网络更是没有理论保证。但实践中，replay + target network 的组合足以在大多数任务上稳定学习。</p>
+  </div>
+
+  <!-- Double DQN -->
+  <div class="section green" style="margin-top:16px">
+    <h2>Double DQN / 解决 Q 值过度估计问题 (Van Hasselt et al., 2016)</h2>
+    <p>过度估计（Overestimation）是 Q-Learning 的系统性偏差——Double DQN 将其减半</p>
+  </div>
+
+  <div class="card green">
+    <h3>过度估计问题 / Overestimation Problem</h3>
+    <p style="font-size:12px;color:var(--text-2)">DQN 用 $\max_{a'} Q(s', a'; \mathbf{w}^-)$ 估计未来价值。如果 $Q$ 有噪声（任何估计都有误差），max 操作会选择被高估的动作，导致过度乐观的价值估计。</p>
+    <div class="formula" style="margin-top:8px">$$Q(s', a') = Q^*(s', a') + \epsilon, \quad \epsilon \sim \mathcal{N}(0, \sigma^2)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">若误差 $\epsilon$ 有正有负，$\max_{a'} [Q^* + \epsilon]$ 会倾向于选到正的噪声，从而高估真实价值。在极端情况下，这种高估会逐步放大，导致策略崩溃。</p>
+    <div class="callout amber" style="font-size:12px;margin-top:6px">
+      <strong>高估的级联效应</strong>
+      $Q(s,a)$ 高估 → 选择高估的动作 → 在新状态 $s'$ 的 $Q$ 值也被高估 → TD target 偏高 → $Q(s,a)$ 更高……恶性循环。这在早期训练（$Q$ 不准确时）尤其严重。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Double DQN 的解决方案 / DDQN Solution</h3>
+    <p style="font-size:12px;color:var(--text-2)">Double DQN 的核心洞察是：不要用同一个网络同时"选择动作"和"评估动作"。用在线网络选择最优动作，用目标网络评估该动作的价值：</p>
+    <div class="formula" style="margin-top:8px">$$y_t^{\text{DDQN}} = r_t + \gamma Q\Bigl(s_{t+1},\; \underbrace{\arg\max_{a'} Q(s_{t+1}, a'; \mathbf{w})}_{\text{在线网络选动作}};\; \mathbf{w}^-\Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">这类似于 Double Q-Learning 的思想：将 max 操作解耦为"选"和"评"两步。由于目标网络的评估基于不同的权重，高估偏差被大幅削减。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div class="card" style="border-left-color:var(--green);margin-bottom:0">
+        <p style="font-size:12px;color:var(--text-2)">Van Hasselt 在实验中证明：标准 DQN 在 Atari 上的平均 Q 值显著高于真实值，而 Double DQN 将这种高估减少了约 50%，且策略质量更高。</p>
+      </div>
+      <div class="card" style="border-left-color:var(--blue);margin-bottom:0">
+        <p style="font-size:12px;color:var(--text-2)"><strong>实现注意：</strong>几乎不需要额外的计算量。只需把 `max_a' Q(s',a')` 替换为 `Q(s', argmax_a' Q(s',a'; w); w⁻)` 即可。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PER -->
+  <div class="section" style="margin-top:16px">
+    <h2>优先级经验回放 / Prioritized Experience Replay — PER (Schaul et al., 2016)</h2>
+    <p>均匀采样低效——优先回放 TD error 大的转换，让学习更高效</p>
+  </div>
+
+  <div class="card">
+    <h3>PER 核心思想 / Core Idea</h3>
+    <p style="font-size:12px;color:var(--text-2)">TD error $|\delta_i| = |r + \gamma Q(s',a') - Q(s,a)|$ 衡量了"这个转换有多意外"：TD error 越大，说明当前预测越不准确，这个转换对学习价值越高。</p>
+    <div class="formula" style="margin-top:8px">$$P(i) = \frac{|\delta_i|^\alpha}{\sum_j |\delta_j|^\alpha}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">$\alpha$ 控制优先级强度（$\alpha=0$ 时退化为均匀采样）。$\alpha=1$ 时完全按 TD error 采样。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>PER 的数学直觉</strong>
+      从信息论角度：大 TD error 的转换提供了更多"学习信号"，优先采样它们等同于优先学习更多信息量大的数据，样本效率自然提升。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>SumTree 实现 / SumTree Data Structure</h3>
+    <p style="font-size:12px;color:var(--text-2)">优先级采样需要快速按优先级加权采样——朴素方法 $O(N)$ 太慢。PER 用 SumTree（线段树）在 $O(\log N)$ 时间内完成采样和更新：</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">SumTree 结构</p>
+        <ul style="font-size:12px">
+          <li>叶子节点：每条转换的优先级 $P(i)$</li>
+          <li>内部节点：子树优先级之和</li>
+          <li>根节点：所有优先级之和 = $\sum_j |\delta_j|$</li>
+          <li>采样：从根开始，按累积和区间采样（$O(\log N)$）</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">更新操作</p>
+        <ul style="font-size:12px">
+          <li>当 TD error 更新时，从叶子向上更新到根</li>
+          <li>每次更新 $O(\log N)$</li>
+          <li>采样 $B$ 条：$O(B \log N)$</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>重要性采样修正 / Importance Sampling Correction</h3>
+    <p style="font-size:12px;color:var(--text-2)">优先采样会改变数据分布，导致 update 的期望与原始分布不同（偏差）。用重要性采样比（ISR）修正：</p>
+    <div class="formula" style="margin-top:6px">$$w_i = \left( \frac{1}{N \cdot P(i)} \right)^\beta$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">权重 $w_i$ 乘以 TD gradient，使无偏性得到部分恢复。$\beta$ 控制修正程度：$\beta=1$ 时完全修正（但初期学习困难），$\beta=0$ 时无修正（但有偏差）。实践中 $\beta$ 从 0.4 逐渐anneal到 1。</p>
+    <div class="formula" style="margin-top:6px">$$\mathcal{L}_{\text{PER}} = \frac{1}{B} \sum_{i=1}^{B} w_i \cdot \left( y_i - Q(s_i, a_i; \mathbf{w}) \right)^2$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">PER 的最终损失函数是加权的 MSE，配合 $w_i$ 的归一化（在实际实现中通常用 $\frac{w_i}{\max w_j}$ 避免梯度过大）。</p>
+  </div>
+
+  <!-- Dueling DQN -->
+  <div class="section green" style="margin-top:16px">
+    <h2>Dueling DQN / 分离状态价值与优势估计 (Wang et al., 2016)</h2>
+    <p>将 $Q(s,a)$ 分解为 $V(s) + A(s,a)$ — 特别适合评估不依赖具体动作的价值</p>
+  </div>
+
+  <div class="card green">
+    <h3>优势函数与价值函数的分解 / Advantage-State Decomposition</h3>
+    <p style="font-size:12px;color:var(--text-2)">Dueling DQN 的核心观察：很多状态下，$Q(s,a)$ 的差异来自 $V(s)$ 而非 $A(s,a)$。比如"走路上"和"走在悬崖边"的状态价值完全不同，但每个动作的相对优势（$A$）可能变化不大。</p>
+    <div class="formula" style="margin-top:8px">$$Q(s, a) = \underbrace{V(s)}_{\text{状态价值}} + \underbrace{A(s, a)}_{\text{优势函数}} - \underbrace{\mathbb{E}_{a'}[A(s, a')]}_{\text{减均值保证identifiability}}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">网络结构上，输出分为两条路：$V(s; \mathbf{w}_V)$（单个标量）和 $A(s,a; \mathbf{w}_A)$（每个动作的值）。两者相加后通过"均值减去"得到最终 $Q$。最后一项的减均值保证了 $V$ 和 $A$ 的可辨识性（identifiability）——否则 $V+const, A-const$ 会给出相同 $Q$。</p>
+  </div>
+
+  <div class="grid-2" style="margin-top:8px">
+    <div class="card">
+      <h3>Dueling Network 架构</h3>
+      <p style="font-size:12px;color:var(--text-2)">共享卷积特征提取器（conv layers），然后分开两条路：</p>
+      <ul style="font-size:12px">
+        <li><strong>Value stream</strong>：输出 $V(s)$ — 单神经元，估算"这个状态有多好"</li>
+        <li><strong>Advantage stream</strong>：输出 $A(s,a)$ — 每个动作一个值</li>
+        <li><strong>Aggregation</strong>：$Q = V + (A - \text{mean}(A))$</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>何时有效 / When It Helps</h3>
+      <p style="font-size:12px;color:var(--text-2)">Dueling 在"状态价值变化大，但动作间优势差异小"的任务上最有效。比如 Atari 的 Montezuma's Revenge（状态复杂但动作不多），Dueling 比普通 DQN 收敛更快。</p>
+    </div>
+  </div>
+
+  <!-- 分布式 DQN -->
+  <div class="section" style="margin-top:16px">
+    <h2>分布式强化学习 / Distributional RL (Bellemare et al., 2017)</h2>
+    <p>不预测 $Q$ 的均值，而是预测返回分布 $Z(s,a)$ — 信息量更大</p>
+  </div>
+
+  <div class="card">
+    <h3>为什么看分布比看均值更好 / Why Distributional Beats Mean</h3>
+    <p style="font-size:12px;color:var(--text-2)">标准 DQN 学习 $Q(s,a) = \mathbb{E}[R_t]$ — 只有一个数字，丢失了分布信息。但在某些状态下，$R$ 的分布可能是双峰的（比如"可能赢也可能输"），均值不能反映这种不确定性。</p>
+    <div class="formula" style="margin-top:8px">$$Z(s, a) \xrightarrow{\text{atom distribution}} \text{distribution of returns}$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">分布式 RL 不是估计 $Q$ 值，而是估计返回 $Z$ 的分布。在做决策时，可以考虑分布的完整信息——比如即使均值相同，选择方差更小的动作更稳妥。</p>
+    <div class="callout amber" style="font-size:12px;margin-top:6px">
+      <strong>分布式 vs 均值：信息量的差距</strong><br>
+      假设两个动作的均值回报都是 10，但A的分布是 [0, 20]（均匀），B的分布是 [9, 11]（集中）。均值无法区分它们，但分布式 RL 可以——B显然更可靠。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>C51 算法 / Categorical 51</h3>
+    <p style="font-size:12px;color:var(--text-2)">C51 将返回分布建模为 $N=51$ 个离散的"原子"（atoms），在 $[V_{\min}, V_{\max}]$ 范围内均匀分布：</p>
+    <div class="formula" style="margin-top:6px">$$z_i = V_{\min} + i \cdot \frac{V_{\max} - V_{\min}}{N-1}, \quad i = 0,1,\ldots,N-1$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">每个原子有一个概率 $p_i$（由网络输出）。贝尔曼操作在分布上执行：</p>
+    <div class="formula" style="margin-top:6px">$$\text{next atom } j = \frac{r + \gamma z_j - V_{\min}}{V_{\max} - V_{\min}} \cdot (N-1)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">然后通过"投影"操作（cross-entropy loss）将移动后的分布投影回原始 51 个原子。这让 C51 可以学习多模态的返回分布。</p>
+  </div>
+
+  <div class="card">
+    <h3>QRD / Quantile Regression DQN (Dabney et al., 2018)</h3>
+    <p style="font-size:12px;color:var(--text-2)">QRD 不假设固定的原子分布，而是学习 $N$ 个分位数 $\tau_1, \ldots, \tau_N$（均匀分布于 $[0,1]$）。每个分位数有自己的 quantile value $z_i$。TD loss 用 quantile huber loss：</p>
+    <div class="formula" style="margin-top:6px">$$\mathcal{L}_{\text{QRD}} = \frac{1}{N} \sum_{i=1}^{N} \sum_{j=1}^{N} \rho_{\tau_j}^{\kappa}(\delta_{ij})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\rho_{\tau}^{\kappa}(\delta) = |\tau - \mathbb{1}(\delta < 0)| \cdot \mathcal{L}_{\kappa}(\delta)$ 是 quantile Huber loss。QRD 比 C51 更灵活——分位数的位置可以学习（而 C51 是固定的原子位置）。</p>
+  </div>
+
+  <!-- No-DQN / IQN -->
+  <div class="section amber" style="margin-top:16px">
+    <h2>IQN / Implicit Q-Network (Dabney et al., 2018)</h2>
+    <p>结合分布式 RL 和 No-DQN：用神经网络直接生成完整的返回分布——不需要固定数量的原子</p>
+  </div>
+
+  <div class="card amber">
+    <h3>IQN 的核心思想 / Implicit Quantile Functions</h3>
+    <p style="font-size:12px;color:var(--text-2)">QRD 需要预先指定分位数数量 $N$（如 $N=200$），IQN 消除了这个限制——它用一个连续的 quantile function 表示任意分布：</p>
+    <div class="formula" style="margin-top:6px">$$Z_\theta(s, a, \tau) = \text{NN}(s, a, \tau; \theta)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">$\tau \in [0,1]$ 是输入到网络中的"分位数级别"（一个额外的输入），网络输出在该分位数下的值。通过在多个 $\tau$ 上采样，网络可以表示任意形状的分布——不需要预先指定原子数量。</p>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">IQN 的损失函数是采样 $N$ 个 $\tau$ 并使用类似于 QRD 的 quantile loss。这种"隐式"表示让 IQN 在稀疏 reward 任务上（返回分布可能非常偏斜）表现出色。</p>
+  </div>
+
+  <!-- Rainbow -->
+  <div class="section red" style="margin-top:16px">
+    <h2>Rainbow / 六种改进的融合 (Hessel et al., 2018)</h2>
+    <p>DeepMind 将六种 DQN 变体融合为一个模型，在 Atari 上实现了质的飞跃</p>
+  </div>
+
+  <div class="card red">
+    <h3>Rainbow 的六个组件 / Six Components</h3>
+    <div class="grid-3" style="margin-top:8px">
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--blue)">1. Double DQN</p>
+        <p style="font-size:11px;color:var(--text-2)">解决 Q 值过度估计。DDQN 的选择 + 评估分离降低高估偏差。</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--green)">2. PER</p>
+        <p style="font-size:11px;color:var(--text-2)">优先级采样，优先回放 TD error 大的转换。配合 SumTree 高效实现。</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--amber)">3. Dueling DQN</p>
+        <p style="font-size:11px;color:var(--text-2)">分离 $V(s)$ 和 $A(s,a)$，更好地估计不依赖动作的状态价值。</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--red)">4. A3C / N-step</p>
+        <p style="font-size:11px;color:var(--text-2)">多步 bootstrap（$n=3$）减少 bias，加速学习。</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--purple)">5. Distributional</p>
+        <p style="font-size:11px;color:var(--text-2)">C51 分布式 RL 头，预测返回分布而非均值。</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--blue)">6. Noisy DQN</p>
+        <p style="font-size:11px;color:var(--text-2)">在网络权重中加入噪声，替代 $\epsilon$-greedy 探索，训练更快。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout blue" style="margin-top:8px">
+    <strong>📊 Rainbow vs 单项改进 vs 原始 DQN（Atari 57 游戏）</strong>
+    <table style="font-size:11.5px;margin-top:8px">
+      <tr><th>方法</th><th>Human Normalized Score（中位数）</th><th>相对于 DQN 提升</th></tr>
+      <tr><td>原始 DQN</td><td>79%</td><td>baseline</td></tr>
+      <tr><td>DDQN</td><td>106%</td><td>+27%</td></tr>
+      <tr><td>PER</td><td>110%</td><td>+31%</td></tr>
+      <tr><td>Dueling</td><td>112%</td><td>+33%</td></tr>
+      <tr><td>A3C（n-step）</td><td>115%</td><td>+36%</td></tr>
+      <tr><td>Distributional</td><td>120%</td><td>+41%</td></tr>
+      <tr><td>NoisyNet</td><td>118%</td><td>+39%</td></tr>
+      <tr><td><strong>Rainbow（全部融合）</strong></td><td><strong>183%</strong></td><td><strong>+104%</strong></td></tr>
+    </table>
+    <p style="font-size:11px;color:var(--text-2);margin-top:4px">Rainbow 的中位数得分是原始 DQN 的两倍多，且每一项改进都对最终性能有正贡献（ ablation study 验证）。</p>
+  </div>
+
+  <!-- 训练建议 -->
+  <div class="section green" style="margin-top:16px">
+    <h2>DQN 训练实用指南 / DQN Training Cookbook</h2>
+    <p>来自 2015-2020 年工业实践的经验教训</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card green">
+      <h3>超参数敏感性 / Hyperparameter Sensitivity</h3>
+      <ul style="font-size:12px">
+        <li><strong>学习率</strong>：DQN 对学习率很敏感，通常 $10^{-4}$ 到 $10^{-3}$，需要配合 gradient clipping（max grad norm = 10）</li>
+        <li><strong>Replay buffer size</strong>：至少 $10^5$，大 buffer 减少 overwriting 带来的有价值数据丢失</li>
+        <li><strong>Target network 更新频率</strong>：$\tau=10000$（每 10000 步硬更新）或 $\tau=0.001$（软更新 $\mathbf{w}^- \leftarrow 0.001\mathbf{w} + 0.999\mathbf{w}^-$）</li>
+        <li><strong>探索衰减</strong>：$\epsilon$ 从 1.0 线性衰减到 0.01 或 0.05，约前 1M 步</li>
+        <li><strong>批量大小</strong>：32（早期 Atari）- 256（更大规模）</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>常见问题与解决 / Debugging Guide</h3>
+      <ul style="font-size:12px">
+        <li><strong>Q 值持续上升/崩溃</strong>：检查 target network 更新频率，降低学习率</li>
+        <li><strong>策略退化</strong>：加入 reward clipping（$[-1, 1]$），或检查是否存在 positive bias accumulation</li>
+        <li><strong>GPU 利用率低</strong>：增大 batch size，确保 replay buffer 在 GPU 能批处理的最大大小</li>
+        <li><strong>Atari 游戏"粘滞动作"（life loss）</strong>：使用noop resets + fire button resets 预处理</li>
+        <li><strong>过估计导致无法探索</strong>：切换到 Double DQN，几乎零额外成本</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>多步 bootstrap 与 PER 的协同 / Multi-step + PER</h3>
+    <p style="font-size:12px;color:var(--text-2)">n-step return 和 PER 有一个微妙的关系：n-step TD error 的量级通常比 1-step 大，这意味着优先采样的排序可能因 n 而改变。</p>
+    <div class="formula" style="margin-top:6px">$$\delta_t^{(n)} = \sum_{l=0}^{n-1} \gamma^l r_{t+l} + \gamma^n Q(s_{t+n}, a_{t+n}) - Q(s_t, a_t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">使用 n-step return 时，TD error 的绝对值会更大（因为多步 bootstrap 放大了价值误差），PER 的优先级排序会更偏向长视野的误差。Rainbow 使用 n-step=3 时，这种效应最为明显。</p>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 04 DQN 家族 · <a href="../index.html">← 总目录</a> · <a href="../03-value-function/index.html">← 03 价值函数近似</a> · <a href="../05-policy-gradient/index.html">下一篇：05 策略梯度 →</a>
+  </div>
+</div>
+</body>
+</html>

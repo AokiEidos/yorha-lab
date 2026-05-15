@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 VLA 基础：定义、演进与生态全景</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+  <div class="title-bar">
+    <h1>01 · VLA 基础：定义、演进与生态全景</h1>
+    <p>Vision-Language-Action Model · 基础概念 · 演进脉络 · 生态地图</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 1. VLA 的定义 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>1. 什么是 VLA？</h2>
+    <p>Vision-Language-Action Model，三模态联合建模的智能系统</p>
+  </div>
+
+  <div class="card">
+    <h3>1.1 What — 一句话定义</h3>
+    <p>VLA 是一种将<strong>视觉感知</strong>、<strong>语言理解</strong>与<strong>动作规划</strong>统一在单一神经网络中的多模态大模型。它以视觉帧和语言指令为输入，直接输出可执行的低层级动作序列（如方向盘转角、油门踏板开度），或者高层次的行为决策（如变道、汇入匝道）。</p>
+    <p>从形式上看，VLA 可以表示为一个条件生成模型：</p>
+    <div class="formula">$$p(\mathbf{a}_{t:t+T} \mid \mathbf{v}_{t}, \mathbf{l}_{t})$$</div>
+    <p>其中 $\mathbf{v}_{t}$ 是当前视觉输入，$\mathbf{l}_{t}$ 是可选的语言指令或任务描述，$\mathbf{a}_{t:t+T}$ 是在未来 $T$ 个时间步内要执行的动作序列。</p>
+  </div>
+
+  <div class="card">
+    <h3>1.2 Why — 为什么需要 VLA？</h3>
+    <p>传统自动驾驶系统采用<strong>模块化流水线</strong>：感知 → 定位 → 预测 → 规划 → 控制。各模块独立优化，接口定义清晰，但存在三个根本性问题：</p>
+    <ul>
+      <li><strong>误差级联：</strong>上游感知错误会在下游规划中被放大，单点失效导致整体失效。</li>
+      <li><strong>泛化瓶颈：</strong>规则驱动或数据驱动的独立模块难以处理长尾场景，尤其当语言指令介入时（如"在那个蓝色的交通标志旁停下"），规则系统无力应对。</li>
+      <li><strong>跨模态对齐困难：</strong>视觉特征和语言指令来自完全不同的表示空间，模块化系统只能通过手动设计的语义标签桥接，表达能力有限。</li>
+    </ul>
+    <p>VLA 通过端到端联合训练，让视觉和语言在同一表示空间内共同驱动动作生成，从根本上解决上述问题。</p>
+  </div>
+
+  <div class="card">
+    <h3>1.3 How — VLA 的技术架构</h3>
+    <p>典型的 VLA 架构由三个核心组件构成：视觉编码器、语言编码器和动作解码器。三者通过一个共享的表示空间进行交互。</p>
+
+    <div class="tech-canvas">
+      <div style="text-align:center;padding:10px 0;font-size:12px;color:var(--text-2);font-weight:600">图 1-1：VLA 典型架构示意图</div>
+      <div style="display:flex;align-items:center;justify-content:center;padding:8px 16px;gap:0;flex-wrap:wrap">
+        <!-- Vision branch -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="tech-data-block" style="width:90px;text-align:center;padding:8px">
+            <div style="font-size:10px;color:var(--text-2)">摄像头帧</div>
+            <div style="font-size:9px;color:var(--text-3)">Camera</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1px solid var(--blue);border-radius:4px">
+            <div style="font-size:10px;color:var(--blue);font-weight:600">视觉编码器</div>
+            <div style="font-size:9px;color:var(--text-3)">ViT / ConvNeXt</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="flow-arrow" style="font-size:22px;margin:0 6px">+</div>
+        </div>
+        <!-- Language branch -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="tech-data-block" style="width:90px;text-align:center;padding:8px">
+            <div style="font-size:10px;color:var(--text-2)">语言指令</div>
+            <div style="font-size:9px;color:var(--text-3)">Text / Voice</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="tech-data-block" style="width:90px;text-align:center;padding:8px;border:1px solid var(--green);border-radius:4px">
+            <div style="font-size:10px;color:var(--green);font-weight:600">语言编码器</div>
+            <div style="font-size:9px;color:var(--text-3)">LLM / Encoder</div>
+          </div>
+        </div>
+        <!-- Fused -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="flow-arrow" style="font-size:22px;margin:0 6px">→</div>
+        </div>
+        <!-- Fusion + Action -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="tech-data-block" style="width:110px;text-align:center;padding:8px;border:1.5px solid var(--purple);border-radius:4px">
+            <div style="font-size:10px;color:var(--purple);font-weight:600">多模态融合</div>
+            <div style="font-size:9px;color:var(--text-3)">Transformer</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="tech-data-block" style="width:110px;text-align:center;padding:8px;border:1.5px solid var(--amber);border-radius:4px">
+            <div style="font-size:10px;color:#b45309;font-weight:600">动作解码器</div>
+            <div style="font-size:9px;color:var(--text-3)">Diffusion / AR</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="tech-data-block" style="width:90px;text-align:center;padding:8px">
+            <div style="font-size:10px;color:var(--text-2)">执行动作</div>
+            <div style="font-size:9px;color:var(--text-3)">Action</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p>融合策略决定了 VLA 的计算图形态，主要分为三种范式：</p>
+    <ul>
+      <li><strong>LLM-Centric（以 LLM 为中心）：</strong>视觉编码器输出的特征被视为一种特殊的 token 序列，插入 LLM 的输入层。代表工作：GPT-4V、LLaVA、RT-2、PaLM-E。</li>
+      <li><strong>Dual-Encoder（双编码器）：</strong>视觉和语言各自独立编码，在某个中间层进行跨模态注意力融合。代表工作：Flamingo、IDE-3D。</li>
+      <li><strong>End-to-End Monolithic（端到端单体）：</strong>视觉、语言、动作共享同一个 Transformer 主干，从输入到输出全程无分离编码器。代表工作：WorldGPT、UniAD。</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 2. VLA vs 相关概念 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>2. VLA 与相关概念的边界</h2>
+    <p>VLA vs FSD / 机器人基础模型 / 端到端自动驾驶</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.1 VLA vs 端到端自动驾驶（E2E AD）</h3>
+    <p>端到端自动驾驶（End-to-End Autonomous Driving）强调的是从传感器输入到控制输出的<strong>单模型映射</strong>，不关心中间是否引入了语言模态。</p>
+    <p>典型的端到端系统如 Tesla FSD 的 HydraNet、Wayve 的 GAIA-1，都属于纯视觉输入的神经网络映射：</p>
+    <div class="formula">$$\mathbf{a}_{t} = f_{\theta}(\mathbf{v}_{t-H:t})$$</div>
+    <p>VLA 则明确要求<strong>语言模态的参与</strong>，这是本质区别。一个不带语言输入的系统可以是端到端自动驾驶系统，但不是 VLA。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.2 VLA vs 机器人基础模型（Robot Foundation Model）</h3>
+    <p>机器人基础模型（如 RT-2、RT-X、π0）同样是视觉-语言-动作的三模态模型，但应用场景存在关键差异：</p>
+    <table>
+      <tr><th>维度</th><th>VLA（自动驾驶）</th><th>机器人基础模型</th></tr>
+      <tr><td>时间尺度</td><td>毫秒级实时控制（10–100Hz）</td><td>任务级控制（0.1–10Hz）</td></tr>
+      <tr><td>动作空间</td><td>连续高维（方向盘 + 油门 + 刹车）</td><td>多类型（机械臂关节、夹爪、轮式移动）</td></tr>
+      <tr><td>安全约束</td><td>硬实时约束，失效代价极高</td><td>相对宽松，可人工接管</td></tr>
+      <tr><td>数据规模</td><td>数十亿帧真实驾驶数据</td><td>百万级机器人演示数据</td></tr>
+      <tr><td>泛化重点</td><td>长尾Corner Case</td><td>新物体、新任务指令</td></tr>
+    </table>
+    <p>二者在技术上高度重叠（如都是多模态大模型），但在部署约束、数据分布和评估指标上有本质差异。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.3 VLA vs 传统感知-规划流水线</h3>
+    <div class="flow">
+      <span class="flow-node">相机输入</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">目标检测</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">目标跟踪</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">轨迹预测</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">路径规划</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber">控制输出</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">图 2-1：传统模块化流水线（橙色）与 VLA 的对比</p>
+    <p>VLA 将上述所有环节替换为统一的神经网络，数据在模块间以<strong>稠密特征向量</strong>而非<strong>离散检测框</strong>的形式流动，保留更多信息。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. 演进时间线 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section amber">
+    <h2>3. VLA 的演进脉络</h2>
+    <p>从单模态感知到多模态动作生成的技术迭代</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.1 阶段划分</h3>
+    <div class="tech-canvas">
+      <div style="padding:12px 16px;font-size:11px">
+        <!-- 2019 -->
+        <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:14px">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2019</div>
+          <div>
+            <div style="display:inline-block;background:#dbeafe;border:1px solid #93c5fd;color:#1e40af;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">感知时代</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">BEVFormer、PETR 确立视觉优先感知范式；OccNet 探索三维表征</div>
+          </div>
+        </div>
+        <!-- 2021 -->
+        <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:14px">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2021</div>
+          <div>
+            <div style="display:inline-block;background:#ede9fe;border:1px solid #c4b5fd;color:#5b21b6;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">多模态萌芽</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">CLIP (OpenAI) 建立视觉-语言对比预训练；Flamingo 探索交错图文序列</div>
+          </div>
+        </div>
+        <!-- 2022 -->
+        <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:14px">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2022</div>
+          <div>
+            <div style="display:inline-block;background:#dcfce7;border:1px solid #86efac;color:#166534;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">VLM爆发</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">LLaVA (MIT) 开源首个指令跟随VLM；BLIP-2 (Salesforce) 高效对齐视觉与LLM</div>
+          </div>
+        </div>
+        <!-- 2023 -->
+        <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:14px">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2023</div>
+          <div>
+            <div style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">VLA探索</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">RT-2 (Google) 将VLM与机器人动作对齐；PaLM-E (Google) 具身多模态推理；Tesla FSD V11 端到端视觉网络</div>
+          </div>
+        </div>
+        <!-- 2024 -->
+        <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:14px">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2024</div>
+          <div>
+            <div style="display:inline-block;background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">量产VLA</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">Tesla FSD V12 蒸馏端到端MLP策略；Wayve LINGO-2 视觉-语言-动作实时控制；Figure 02 发布；UniAD 获CVPR最佳论文</div>
+          </div>
+        </div>
+        <!-- 2025 -->
+        <div style="display:flex;align-items:flex-start;gap:0">
+          <div style="width:52px;font-weight:700;color:var(--blue);font-size:11px;flex-shrink:0;padding-top:2px">2025+</div>
+          <div>
+            <div style="display:inline-block;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:1px 8px;border-radius:10px;font-size:10px;margin-bottom:3px">AGI融合</div>
+            <div style="color:var(--text);font-size:11.5px;margin-top:2px">VLA 与世界模型深度融合；Diffusion Action Generation 规模化；开源 VLA 框架（LLaVA-OneVision、RT-2X）普及</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>3.2 关键里程碑技术回顾</h3>
+
+    <p><strong>CLIP (2021) — 视觉-语言对齐的基石</strong></p>
+    <p>CLIP 使用对比学习在 4 亿图文对上进行预训练，学习了一个开放的视觉-语义表示空间。其核心损失函数为：</p>
+    <div class="formula">$$\mathcal{L}_{\text{CLIP}} = -\frac{1}{2N}\sum_{i=1}^{N}\left[\log\frac{e^{v_i \cdot l_i / \tau}}{\sum_{j=1}^{N} e^{v_i \cdot l_j / \tau}} + \log\frac{e^{l_i \cdot v_i / \tau}}{\sum_{j=1}^{N} e^{l_i \cdot v_j / \tau}}\right]$$</div>
+    <p>其中 $\tau$ 是可学习的温度参数，$v_i$ 和 $l_i$ 分别是第 $i$ 个图文对的视觉和语言嵌入归一化向量。CLIP 使后续 VLA 模型能够利用大规模预训练视觉特征，并为语言指令的开放词汇理解提供了坚实基础。</p>
+
+    <p><strong>RT-2 (2023) — 视觉-语言-动作桥接的首次演示</strong></p>
+    <p>RT-2 将 VLM（PaLM-E 或 FLAN-E）在互联网规模数据上预训练的视觉-语言能力，通过微调迁移到机器人动作空间。它将动作表示为文本 token（类似 "translate_x: 0.5"），从而将机器人控制问题框定为语言建模问题：</p>
+    <div class="formula">$$\theta^* = \arg\max_\theta \sum_{t} \log p_\theta(a_t^{token} \mid \mathbf{v}_t, \mathbf{l}_t, a_{&lt;t>}^{token})$$</div>
+    <p>RT-2 证明了 VLM 的预训练知识可以迁移到动作生成，且在新任务上的零样本泛化能力远超传统模仿学习方法。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. VLA 生态地图 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section purple">
+    <h2>4. VLA 生态地图</h2>
+    <p>自动驾驶、具身机器人、开源社区的主要玩家与产品</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.1 自动驾驶领域</h3>
+    <table>
+      <tr><th>公司 / 项目</th><th>产品 / 系统</th><th>技术路线</th><th>VLA 程度</th></tr>
+      <tr>
+        <td><strong>Tesla</strong></td>
+        <td>FSD V12 / V13</td>
+        <td>端到端神经网络（HydraNet → 蒸馏MLP策略），纯视觉，无高精地图</td>
+        <td><span class="tech-status high">高</span> 视觉+动作，无显式语言</td>
+      </tr>
+      <tr>
+        <td><strong>Wayve</strong></td>
+        <td>GAIA-1, LINGO-2</td>
+        <td>世界模型 + 视觉-语言-动作实时控制，支持自然语言指令</td>
+        <td><span class="tech-status high">高</span> 完整VLA</td>
+      </tr>
+      <tr>
+        <td><strong>Waymo</strong></td>
+        <td>Waymo Driver</td>
+        <td>多传感器融合（激光雷达+相机），模块化+部分端到端</td>
+        <td><span class="tech-status mid">中</span> 感知端到端</td>
+      </tr>
+      <tr>
+        <td><strong>Mobileye</strong></td>
+        <td>EyeQ Ultra, True Reality</td>
+        <td>视觉优先，RSS安全模型，REM地图众包</td>
+        <td><span class="tech-status mid">中</span> 强感知，VLA演进中</td>
+      </tr>
+      <tr>
+        <td><strong>华为 (Huawei)</strong></td>
+        <td>ADS 3.0</td>
+        <td>GOD + PDP 网络，端到端感知-规划，无图NOA</td>
+        <td><span class="tech-status high">高</span> 端到端VLA演进</td>
+      </tr>
+      <tr>
+        <td><strong>小鹏 (XNGP)</strong></td>
+        <td>XNet 2.0</td>
+        <td>BEV感知，Transformer规划，深度视觉优先</td>
+        <td><span class="tech-status high">高</span> 端到端感知-规划</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card purple">
+    <h3>4.2 具身机器人领域</h3>
+    <table>
+      <tr><th>公司 / 项目</th><th>产品</th><th>技术亮点</th><th>VLA 能力</th></tr>
+      <tr>
+        <td><strong>Figure AI</strong></td>
+        <td>Figure 01 / 02</td>
+        <td>端到端视觉-语言-动作，OpenAI模型加持</td>
+        <td><span class="tech-status high">高</span></td>
+      </tr>
+      <tr>
+        <td><strong>1X Technologies</strong></td>
+        <td>NEO Beta, EVE</td>
+        <td>人形机器人，VLM实时控制，低延迟</td>
+        <td><span class="tech-status high">高</span></td>
+      </tr>
+      <tr>
+        <td><strong>Agibot</strong></td>
+        <td>知域 / 远征</td>
+        <td>国产人形机器人，大模型+运控结合</td>
+        <td><span class="tech-status high">高</span></td>
+      </tr>
+      <tr>
+        <td><strong>Google DeepMind</strong></td>
+        <td>RT-2, RT-X, Aloha</td>
+        <td>VLA 开创性研究，扩散动作策略</td>
+        <td><span class="tech-status high">高</span></td>
+      </tr>
+      <tr>
+        <td><strong>Physical Intelligence</strong></td>
+        <td>π0, π0.5</td>
+        <td>扩散策略 + VLM，通用机器人策略</td>
+        <td><span class="tech-status high">高</span></td>
+      </tr>
+      <tr>
+        <td><strong>宇树科技 (Unitree)</strong></td>
+        <td>H1, G1</td>
+        <td>低成本人形机器人，开源SDK</td>
+        <td><span class="tech-status mid">中</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card purple">
+    <h3>4.3 开源生态</h3>
+    <div class="tech-grid-auto">
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>LLaVA / LLaVA-OneVision</span>
+          <span class="tech-badge">MIT</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">首个开源指令跟随VLM，2023-2024持续迭代，支持图像/视频/文档多模态输入</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>OpenGVLab (InternVL)</span>
+          <span class="tech-badge">商汤</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">大规模视觉基础模型，支持200M参数视觉Transformer，与LLM灵活对齐</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>RT-2X (DeepMind)</span>
+          <span class="tech-badge">Google</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">RT-2的规模化版本，将VLM知识迁移到机器人动作控制</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>Diffusion Policy (COLAB)</span>
+          <span class="tech-badge">学术</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">扩散模型生成动作序列，行为克隆 + 条件扩散，广泛用于机器人动作生成</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>EmbodiedGPT (Nvidia)</span>
+          <span class="tech-badge">Nvidia</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">生成式具身智能，视觉-语言-动作闭环，支持任务规划与精细控制</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title">
+          <span>OpenVLA (MIT)</span>
+          <span class="tech-badge">MIT</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-2)">开源VLA框架，97K机器人演示数据，支持视觉语言指令的通用操作</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 5. VLA 的挑战与未来 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section red">
+    <h2>5. VLA 的核心挑战与未来方向</h2>
+    <p>安全性、实时性、数据Scaling、法律合规</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.1 安全性（Safety）</h3>
+    <p>自动驾驶是容错率最低的 VLA 应用场景。任何一次模型误判都可能危及生命。VLA 的安全性挑战来自两个层面：</p>
+    <ul>
+      <li><strong>分布外泛化（OOD Generalization）：</strong>模型在训练分布外的长尾场景（如施工绕行、极端天气、非标准手势指挥）中表现急剧下降。</li>
+      <li><strong>可解释性缺失：</strong>端到端 VLA 是一个黑箱系统，当它做出错误决策时，难以追溯原因。Tesla FSD V12 在复杂路口的"幽灵刹车"问题就是典型。</li>
+      <li><strong>对抗鲁棒性：</strong>视觉输入的微小扰动即可导致检测失效（如对抗补丁），这对安全关键系统是不可接受的。</li>
+    </ul>
+    <p>解决方案方向：引入形式化验证与 VLA 的混合架构（如安全护盾层），或在 Transformer 中插入可解释的注意力可视化模块。</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.2 实时性（Latency）</h3>
+    <p>自动驾驶的控制频率要求达到 10–100Hz，而 LLM 推理在同等硬件上单次 forward 需要 50–500ms。这是 VLA 在车端部署的核心瓶颈。</p>
+    <p>常用优化手段：</p>
+    <ul>
+      <li><strong>模型蒸馏（Distillation）：</strong>将大模型教师（Teacher）蒸馏到小模型学生（Student），如 FSD V12 将大模型知识蒸馏到 8B 参数的 MLP 策略。</li>
+      <li><strong>量化（Quantization）：</strong>FP16 → INT8 → INT4 逐级量化，延迟降低 2–4 倍，精度损失可控制在 1% 以内。</li>
+      <li><strong>推测解码（Speculative Decoding）：</strong>用小模型 draft + 大模型 verify，并行生成降低延迟。</li>
+      <li><strong>Edge 部署优化：</strong>Nvidia Thor、Qualcomm Ride 等车规级 SoC 针对 Transformer 做了专门的算子优化。</li>
+    </ul>
+  </div>
+
+  <div class="card red">
+    <h3>5.3 数据 Scaling 与合成数据</h3>
+    <p>VLA 的性能随模型参数和数据规模呈现幂律（Scaling Law）增长，但高质量的视觉-语言-动作配对数据极度稀缺：</p>
+    <div class="formula">$$\text{Performance} \propto N_{\text{robot data}}^{\alpha}, \quad \alpha \approx 0.2\text{--}0.4$$</div>
+    <p>与互联网图文数据（4亿对）相比，机器人和驾驶的动作数据少 3–4 个数量级。主流解决方案：</p>
+    <ul>
+      <li><strong>仿真数据（Simulation）：</strong>在虚拟环境中自动生成大规模动作数据（NVIDIA Isaac Sim、DeepDrive）。</li>
+      <li><strong>视频预训练（Video Pretraining）：</strong>利用 YouTube 驾驶视频学习世界动态，再通过逆强化学习提取人类驾驶策略。</li>
+      <li><strong>合成标注（Synthetic Annotation）：</strong>用多模态大模型自动为真实驾驶视频标注语言描述，扩展数据多样性。</li>
+    </ul>
+  </div>
+
+  <div class="card red">
+    <h3>5.4 法律与责任框架</h3>
+    <p>当 VLA 系统导致事故时，责任归属在现行法律框架下是模糊的。中国《道路交通安全法》2025年修订版已明确"自动驾驶系统提供商承担相应责任"，但技术举证、模型可解释性标准尚未完善。欧盟 AI Act 将 L4+ 自动驾驶系统归类为"高风险AI系统"，要求全程可审计、可回溯。</p>
+    <div class="callout red">
+      <strong>⚠ 关键提示：</strong>VLA 在自动驾驶领域落地需要同时满足技术安全标准和目标市场的法律法规，这两者都在快速演进中，跨地区部署面临合规差异的显著挑战。
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 6. 小结 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>6. 本章小结</h2>
+    <p>第一章核心要点回顾</p>
+  </div>
+
+  <div class="card green">
+    <p><strong>VLA = Vision + Language + Action。</strong>它通过统一的神经网络将视觉感知、语言理解和动作规划融合在一起，是通往通用具身智能的关键技术路径。</p>
+    <p>本章我们定义了 VLA 的边界——它有别于纯端到端自动驾驶（需要语言模态）和传统机器人基础模型（部署约束不同）；梳理了从 CLIP 到 RT-2 的技术演进脉络；并绘制了以 Tesla、Wayve、Figure 为代表的产业生态地图。</p>
+    <p>VLA 的核心挑战是安全性和实时性，解决方案是模型蒸馏、量化和车规级硬件优化的协同推进。</p>
+    <p>接下来的章节将深入 VLA 的每个核心能力模块：从<strong>第二章的视觉感知</strong>（BEV、Occupancy、世界模型），到<strong>第三章的语言-视觉对齐</strong>（CLIP、SigLIP、LLaVA），再到<strong>第四章的动作生成</strong>（Diffusion Policy、Flow Matching）。</p>
+  </div>
+
+</div><!-- .container -->
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · 01 VLA 基础：定义、演进与生态全景 ·
+  <a href="../index.html">← 总目录</a> ·
+  ← (无前章)
+  · <a href="../02-perception/index.html">下一篇：02 视觉感知 →</a>
+</div>
+
+</body>
+</html>

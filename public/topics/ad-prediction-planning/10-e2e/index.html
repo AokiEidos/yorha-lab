@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 端到端自动驾驶：UniAD 与全栈联合学习 — AD Prediction & Planning</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+/* tech-* components for semantic layout */
+.tech-grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0}
+.tech-data-block{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px}
+.tech-data-block .block-title{font-weight:600;color:var(--text);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.tech-badge{font-family:var(--mono);font-size:10px;background:#f1f5f9;border:1px solid var(--code-border);color:var(--text-2);padding:1px 5px;border-radius:4px}
+.tech-status{font-family:var(--mono);font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px}
+.tech-status.high,.tech-status.mid,.tech-status.low{padding:2px 6px;border-radius:4px}
+.tech-canvas{background:#f1f5f9;border:1px solid var(--code-border);border-radius:6px;position:relative;padding:2px 0;overflow:hidden;margin:10px 0}
+.tech-channel{height:36px;border-bottom:1px dashed var(--code-border);display:flex;align-items:center;position:relative;padding:0 15px}
+.tech-channel:last-child{border-bottom:none}
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>10 端到端自动驾驶：UniAD 与全栈联合学习</h1>
+    <p>从模块化到统一感知-预测-规划架构</p>
+  </div>
+
+<!-- Part 1: E2E Evolution -->
+
+<div class="section">
+  <h2>从模块化到端到端：五个阶段</h2>
+  <p>端到端自动驾驶的演化不是一步到位的突变，而是五个渐进阶段的演化。每个阶段都在回答同一个问题：<strong>模块间的接口应该传递什么信息？</strong></p>
+</div>
+
+<div class="section amber" style="margin-bottom:12px">
+  <h2>从模块化到端到端：五个阶段</h2>
+  <p>每个阶段回答同一个问题：<strong>模块间的接口应该传递什么信息？</strong></p>
+</div>
+<div class="tech-canvas" style="margin:16px 0">
+  <div style="padding:12px 0">
+    <!-- Stage 1 -->
+    <div class="tech-channel" style="border:none;padding-bottom:4px">
+      <span style="font-size:11px;font-weight:700;color:#3b82f6">2015-2020</span>
+      <span style="font-size:11px;margin-left:8px">模块化流水线</span>
+    </div>
+    <div class="flow" style="margin:4px 0">
+      <span class="flow-node">感知</span><span class="flow-arrow">→</span><span class="flow-node green">预测</span><span class="flow-arrow">→</span><span class="flow-node amber">规划</span><span class="flow-arrow">→</span><span class="flow-node purple">控制</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;padding-left:12px">接口: 检测框、轨迹坐标 (结构化数据)</div>
+
+    <!-- Stage 2 -->
+    <div class="tech-channel" style="border:none;padding-bottom:4px;padding-top:8px">
+      <span style="font-size:11px;font-weight:700;color:#22c55e">2020-2022</span>
+      <span style="font-size:11px;margin-left:8px">感知-预测联合</span>
+    </div>
+    <div class="flow" style="margin:4px 0">
+      <span class="flow-node" style="border-color:#22c55e;color:#166534">感知+预测</span><span class="flow-arrow">→</span><span class="flow-node amber">规划</span><span class="flow-arrow">→</span><span class="flow-node purple">控制</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;padding-left:12px">接口: 共享 BEV 特征 + 结构化轨迹</div>
+
+    <!-- Stage 3 -->
+    <div class="tech-channel" style="border:none;padding-bottom:4px;padding-top:8px">
+      <span style="font-size:11px;font-weight:700;color:#f59e0b">2023</span>
+      <span style="font-size:11px;margin-left:8px">全栈联合 UniAD/VAD</span>
+    </div>
+    <div class="flow" style="margin:4px 0">
+      <span class="flow-node amber">感知→预测→规划</span><span class="flow-arrow">→</span><span class="flow-node purple">控制</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;padding-left:12px">接口: 统一 Query 特征空间, 端到端梯度流</div>
+
+    <!-- Stage 4 -->
+    <div class="tech-channel" style="border:none;padding-bottom:4px;padding-top:8px">
+      <span style="font-size:11px;font-weight:700;color:#7c3aed">2024</span>
+      <span style="font-size:11px;margin-left:8px">VLA 端到端</span>
+    </div>
+    <div class="flow" style="margin:4px 0">
+      <span class="flow-node purple">VLA 模型</span><span class="flow-arrow">→</span><span class="flow-node" style="border-color:#64748b;color:#475569">执行</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;padding-left:12px">接口: token 序列 (统一的语言/视觉/动作空间)</div>
+
+    <!-- Stage 5 -->
+    <div class="tech-channel" style="border:none;padding-top:8px">
+      <span style="font-size:11px;font-weight:700;color:#ef4444">2025+</span>
+      <span style="font-size:11px;margin-left:8px">世界模型端到端</span>
+    </div>
+    <div class="flow" style="margin:4px 0">
+      <span class="flow-node" style="border-color:#ef4444;color:#991b1b">世界模型</span><span class="flow-arrow">→</span><span class="flow-node" style="border-color:#64748b;color:#475569">执行</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;padding-left:12px">接口: 生成式模型的内部状态</div>
+  </div>
+</div>
+
+<h2>第一阶段：模块化流水线（2015-2020）</h2>
+
+<h3>架构</h3>
+
+<div class="card">
+  <h3>经典模块化架构</h3>
+  <div class="flow" style="margin:12px 0;justify-content:center">
+    <span class="flow-node">LiDAR/Camera</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node green">BEV 感知</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node amber">目标跟踪</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">轨迹预测</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node amber">行为规划</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node purple">运动规划</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">PID/MPC</span>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:12px">
+    <div class="tech-data-block">
+      <div class="block-title">输出</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b">
+        <li>BEV 感知 → 3D 检测框 + 语义分割</li>
+        <li>目标跟踪 → 跟踪 ID + 历史轨迹</li>
+        <li>轨迹预测 → K 条候选轨迹/概率</li>
+        <li>运动规划 → 轨迹点 (x,y,t,v)</li>
+      </ul>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">特点</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b">
+        <li>每模块独立开发、评估、迭代</li>
+        <li>总延迟: ~200ms (串行累加)</li>
+        <li>接口: 结构化数据</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>为什么模块化统治了 5 年</h3>
+<ol>
+  <li><strong>工程可行性</strong>：每个模块可以由不同团队独立开发</li>
+  <li><strong>可调试性</strong>：出问题可以定位到具体模块（是感知漏检还是预测偏差）</li>
+  <li><strong>安全验证</strong>：每个模块可以单独做单元测试</li>
+  <li><strong>数据效率</strong>：感知只需要 3D 标注，预测只需要轨迹标注，不需要端到端的驾驶标签</li>
+</ol>
+
+<h3>模块化的根本局限</h3>
+
+<p><strong>信息瓶颈（Information Bottleneck）</strong>：模块间接口只传递结构化数据（检测框、轨迹），丢失了大量信息：</p>
+
+<div class="card red">
+  <h3>感知 → 预测的信息损失</h3>
+  <div class="tech-grid-auto" style="margin-top:10px">
+    <div class="tech-data-block">
+      <div class="block-title">感知阶段拥有的信息</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#166534">
+        <li>每个像素的特征 (数百万维)</li>
+        <li>遮挡物体的部分线索</li>
+        <li>远处物体的不确定性分布</li>
+        <li>场景的全局上下文</li>
+      </ul>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">传递给预测的信息</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#991b1b">
+        <li>检测框 (位置+大小+类别, ~10 维/物体)</li>
+        <li>遮挡物体? 丢失 ✗</li>
+        <li>不确定性? 丢失 ✗</li>
+        <li>全局上下文? 丢失 ✗</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout red" style="margin-top:10px;text-align:center">
+    <strong>信息保留率: &lt;1%</strong>
+  </div>
+</div>
+
+<h2>第二阶段：感知-预测联合（2020-2022）</h2>
+
+<p>核心思想：让感知和预测共享 BEV 特征，减少信息瓶颈。</p>
+
+<h3>代表工作</h3>
+
+<p><strong>FaF（Fast and Furious, Luo et al., CVPR 2018）</strong>：首个联合检测+预测的模型，从 LiDAR BEV 同时输出 3D 检测框和未来运动。</p>
+
+<p><strong>MotionNet（Wu et al., CVPR 2020）</strong>：在 BEV 空间直接预测每个网格的未来占据和运动场（motion field），不需要显式的目标检测。</p>
+
+<div class="card green">
+  <h3>感知-预测联合</h3>
+  <div class="flow" style="margin:10px 0;justify-content:center">
+    <span class="flow-node">LiDAR</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node green">BEV 编码器</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">BEV 特征 F</span>
+  </div>
+  <div style="font-size:12px;color:#94a3b8;text-align:center;margin:6px 0">┌─────────┼─────────┼─────────┐</div>
+  <div class="flow" style="justify-content:center;margin:4px 0">
+    <span class="flow-node" style="border-color:#3b82f6;color:#1e40af">检测头</span>
+    <span class="flow-node green">预测头</span>
+    <span class="flow-node" style="border-color:#f59e0b;color:#92400e">分割头</span>
+  </div>
+  <div class="flow" style="justify-content:center;margin:4px 0;font-size:11px;color:#64748b">
+    <span>3D 框</span><span style="margin:0 8px">│</span><span>未来轨迹</span><span style="margin:0 8px">│</span><span>语义地图</span>
+  </div>
+  <div class="callout green" style="margin-top:10px;text-align:center">
+    共享 BEV 特征，不再有信息瓶颈
+  </div>
+</div>
+
+<p><strong>改进</strong>：预测模块可以直接访问感知的 BEV 特征，不再受限于检测框接口。</p>
+<p><strong>残留问题</strong>：规划模块仍然独立——它接收的还是结构化的轨迹，无法利用 BEV 特征。</p>
+
+<h2>第三阶段：全栈联合 UniAD/VAD（2023）</h2>
+
+<h3>UniAD：统一自动驾驶</h3>
+
+<p><strong>UniAD（Li et al., CVPR 2023, Best Paper）</strong> 是端到端自动驾驶的里程碑工作。它将感知→预测→规划统一在一个 Transformer 框架中，通过 <strong>Query 传递机制</strong> 实现模块间的信息流通，同时保留了每个模块的可解释性。</p>
+
+<div class="card">
+  <h3>UniAD 核心架构</h3>
+  <div style="text-align:center;margin:12px 0">
+    <div class="flow" style="justify-content:center">
+      <span class="flow-node">Camera</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node green">BEV 编码器</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">BEV 特征</span>
+    </div>
+    <div style="margin:4px 0;color:#94a3b8;font-size:14px">│</div>
+    <div style="font-size:14px;color:#94a3b8">┌───────────┼───────────┐</div>
+    <div class="flow" style="justify-content:center;margin:4px 0">
+      <span class="flow-node green">TrackFormer</span>
+      <span style="font-size:11px;color:#64748b">目标跟踪</span>
+      <span class="flow-arrow">│</span>
+      <span class="flow-node green">MapFormer</span>
+      <span style="font-size:11px;color:#64748b">地图分割</span>
+      <span class="flow-arrow">│</span>
+      <span class="flow-node green">MotionFormer</span>
+      <span style="font-size:11px;color:#64748b">运动预测</span>
+      <span class="flow-arrow">│</span>
+      <span class="flow-node green">OccFormer</span>
+      <span style="font-size:11px;color:#64748b">占据预测</span>
+    </div>
+    <div style="font-size:11px;color:#64748b;margin-top:4px">│ Query 传递 │</div>
+    <div class="flow" style="justify-content:center;margin:4px 0">
+      <span class="flow-node amber">PlanningFormer</span>
+      <span style="font-size:11px;color:#64748b">自车规划</span>
+    </div>
+    <div style="margin-top:4px;color:#94a3b8;font-size:14px">↓</div>
+    <div style="margin-top:4px">
+      <span class="tech-badge">输出: 规划轨迹 (L2 距离 + 碰撞率)</span>
+    </div>
+  </div>
+</div>
+
+<p><strong>关键创新</strong>：</p>
+<ol>
+  <li><strong>Query 传递</strong>：Track Query → Motion Query → Planning Query，信息在模块间通过 Query 流转</li>
+  <li><strong>端到端梯度</strong>：规划的 loss 可以反传到感知层</li>
+  <li><strong>保留模块结构</strong>：虽然端到端训练，但每个模块仍有独立的 loss 和评估指标</li>
+</ol>
+
+<h3>VAD（Vectorized Scene Representation for AD）</h3>
+
+<p><strong>VAD（Jiang et al., ICCV 2023）</strong> 与 UniAD 同期，采用<strong>向量化场景表示</strong>：</p>
+
+<div class="tech-grid-auto" style="margin-top:12px">
+  <div class="tech-data-block">
+    <div class="block-title">UniAD</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:6px">BEV 特征 → Query Transformer → 规划</div>
+    <div style="margin-top:8px">
+      <span class="tech-status mid" style="background:#d1fae5;color:#065f46">✓ 多任务联合训练</span>
+    </div>
+    <div style="font-size:10px;color:#64748b;margin-top:6px">优点: 信息丰富</div>
+    <div style="font-size:10px;color:#991b1b;margin-top:4px">缺点: 计算量大</div>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">VAD</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:6px">BEV → 向量化场景 → 规划</div>
+    <div style="margin-top:8px">
+      <span class="tech-status" style="background:#e0f2fe;color:#0369a1">✓ 向量化场景表示</span>
+    </div>
+    <div style="font-size:10px;color:#166534;margin-top:6px">优点: 更轻量紧凑</div>
+    <div style="font-size:10px;color:#991b1b;margin-top:4px">缺点: 压缩可能丢失细节</div>
+  </div>
+</div>
+
+<h3>为什么 UniAD 能成为 CVPR Best Paper</h3>
+<ol>
+  <li><strong>首次证明了全栈端到端的可行性</strong>：之前业界普遍认为端到端不可控、不可调试</li>
+  <li><strong>性能提升显著</strong>：在 nuScenes 规划 benchmark 上，UniAD 的碰撞率比模块化方案低 50%</li>
+  <li><strong>保留了可解释性</strong>：Query 传递机制让每个模块的输出仍可可视化和评估</li>
+  <li><strong>优雅的架构设计</strong>：统一的 Transformer Query 机制，简洁且有效</li>
+</ol>
+
+<h2>第四阶段：VLA 端到端（2024）</h2>
+
+<p><strong>视觉-语言-动作模型（VLA, Vision-Language-Action Model）</strong> 将自动驾驶视为一个"多模态理解+动作输出"的统一问题。</p>
+
+<h3>代表工作</h3>
+
+<p><strong>DriveVLM（Tian et al., 2024）</strong>：</p>
+<div class="card">
+  <h3>DriveVLM</h3>
+  <div class="flow" style="margin:10px 0;justify-content:center">
+    <span class="flow-node">多摄像头图像</span>
+    <span class="flow-arrow">+</span>
+    <span class="flow-node purple">语言指令</span>
+  </div>
+  <div class="flow" style="justify-content:center;margin:4px 0">
+    <span class="flow-arrow">↓</span>
+  </div>
+  <div class="flow" style="justify-content:center">
+    <span class="flow-node purple">VLM 骨干 (LLaVA/InternVL)</span>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:12px">
+    <div class="tech-data-block">
+      <div class="block-title">场景描述</div>
+      <p style="font-size:11px;color:#64748b;margin:0">"前方路口有行人过马路, 左侧有公交车出站"</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">决策推理</div>
+      <p style="font-size:11px;color:#64748b;margin:0">"需要减速让行人先过, 注意公交车可能变道"</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">轨迹输出</div>
+      <p style="font-size:11px;color:#64748b;margin:0">未来 3s 的 waypoints</p>
+    </div>
+  </div>
+</div>
+
+<p><strong>与前三阶段的本质区别</strong>：</p>
+<ul>
+  <li>不再有"感知→预测→规划"的显式流水线</li>
+  <li>场景理解和动作输出统一在同一个大模型中</li>
+  <li>可以利用语言进行推理和解释</li>
+</ul>
+
+<h2>第五阶段：世界模型端到端（2025+）</h2>
+
+<p><strong>世界模型（World Model）</strong> 是最新的范式——通过预测未来场景的视频/BEV，隐式完成预测和规划。</p>
+
+<h3>代表工作</h3>
+
+<p><strong>GAIA-1（Wayve, 2023）</strong>：</p>
+<ul>
+  <li>从驾驶视频学习世界模型</li>
+  <li>能生成多种可能的未来驾驶场景</li>
+  <li>通过"想象"不同动作的后果来辅助规划</li>
+</ul>
+
+<p><strong>GenAD（2024）</strong>：</p>
+<ul>
+  <li>生成式自动驾驶框架</li>
+  <li>统一场景生成、预测和规划</li>
+</ul>
+
+<div class="card purple">
+  <h3>世界模型范式</h3>
+  <div class="flow" style="margin:10px 0;justify-content:center">
+    <span class="flow-node">当前场景 + 候选动作</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node purple">世界模型</span>
+  </div>
+  <div style="text-align:center;font-size:12px;color:#64748b;margin:8px 0">预测动作后果</div>
+  <div class="tech-grid-auto" style="margin:8px 0">
+    <div class="tech-data-block">
+      <div class="block-title" style="color:#166534">未来场景 1 (直行)</div>
+      <div style="font-size:11px;color:#64748b">安全, 效率高</div>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title" style="color:#92400e">未来场景 2 (变道)</div>
+      <div style="font-size:11px;color:#64748b">安全, 但需减速</div>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title" style="color:#991b1b">未来场景 3 (急刹)</div>
+      <div style="font-size:11px;color:#64748b">不舒适</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px">
+    <span class="flow-node amber">选择最优动作</span>
+    <span style="font-size:10px;color:#94a3b8;margin-left:8px">(类似 Model-based RL)</span>
+  </div>
+</div>
+
+<h2>为什么花了 5 年：三重障碍</h2>
+
+<p>从 2018 年首次提出端到端自动驾驶概念，到 2023 年 UniAD 真正实现全栈联合训练，为什么花了 5 年？</p>
+
+<h3>障碍一：数据</h3>
+
+<table>
+  <tr><th>需求</th><th>模块化</th><th>端到端</th></tr>
+  <tr><td>感知标注</td><td>3D 框（已有数百万帧）</td><td>需要</td></tr>
+  <tr><td>轨迹标注</td><td>跟踪序列</td><td>需要</td></tr>
+  <tr><td><strong>规划标签</strong></td><td><strong>不需要</strong></td><td><strong>需要（专家驾驶记录）</strong></td></tr>
+  <tr><td>数据规模要求</td><td>中等</td><td>巨大（长尾场景覆盖）</td></tr>
+</table>
+
+<p>端到端模型需要"驾驶标签"——即人类专家在每个场景中的驾驶决策。这比画 3D 框困难得多，且长尾场景的覆盖需要海量数据。</p>
+
+<h3>障碍二：算力</h3>
+
+<table>
+  <tr><th>模块</th><th>独立训练</th><th>端到端训练</th></tr>
+  <tr><td>BEV 编码器</td><td>2 × A100, 2 天</td><td>8 × A100</td></tr>
+  <tr><td>跟踪</td><td>1 × A100, 1 天</td><td>(包含在端到端中)</td></tr>
+  <tr><td>预测</td><td>2 × A100, 2 天</td><td>(包含在端到端中)</td></tr>
+  <tr><td>规划</td><td>1 × A100, 0.5 天</td><td>(包含在端到端中)</td></tr>
+  <tr><td><strong>总计</strong></td><td><strong>~6 GPU·天</strong></td><td><strong>~56 GPU·天 (9×)</strong></td></tr>
+</table>
+
+<h3>障碍三：安全验证</h3>
+
+<div class="card red">
+  <h3>障碍三：安全验证</h3>
+  <div class="tech-grid-auto" style="margin-top:10px">
+    <div class="tech-data-block">
+      <div class="block-title">模块化的安全验证</div>
+      <div style="font-size:11px;color:#166534;margin-bottom:6px">感知: mAP &gt; 0.7 ✓</div>
+      <div style="font-size:11px;color:#166534;margin-bottom:6px">预测: minADE &lt; 2m ✓</div>
+      <div style="font-size:11px;color:#166534;margin-bottom:6px">规划: 碰撞率 &lt; 1% ✓</div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <div style="font-size:10px;color:#64748b">每模块独立验证，可逐个认证</div>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title" style="color:#991b1b">端到端的安全验证</div>
+      <div style="font-size:11px;color:#991b1b;margin-bottom:6px">整个系统: ... ← 如何验证一个黑箱?</div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+      <div style="font-size:10px;color:#64748b">
+        监管机构要求:<br>
+        "你能证明它在所有情况下都安全吗?"<br><br>
+        回答: "不能, 但统计上比人类安全 10 倍"<br><br>
+        监管: "这不够, 我们需要确定性保证"
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>这三重障碍在 2023 年前同时存在，是端到端方案迟迟无法落地的根本原因。UniAD 的突破在于：(1) nuScenes 提供了足够的数据和 benchmark，(2) A100 提供了足够的算力，(3) Query 传递机制在端到端和可解释性之间找到了平衡点。</p>
+
+<h2>各阶段对比</h2>
+
+<table>
+  <tr><th>维度</th><th>模块化</th><th>感知-预测联合</th><th>全栈联合</th><th>VLA</th><th>世界模型</th></tr>
+  <tr><td><strong>代表</strong></td><td>Waymo</td><td>FaF/MotionNet</td><td>UniAD/VAD</td><td>DriveVLM</td><td>GAIA-1</td></tr>
+  <tr><td><strong>信息保留</strong></td><td>低</td><td>中</td><td>高</td><td>高</td><td>最高</td></tr>
+  <tr><td><strong>可解释性</strong></td><td>高</td><td>中高</td><td>中</td><td>中（语言）</td><td>低</td></tr>
+  <tr><td><strong>数据需求</strong></td><td>中</td><td>中高</td><td>高</td><td>很高</td><td>最高</td></tr>
+  <tr><td><strong>算力需求</strong></td><td>低</td><td>中</td><td>高</td><td>很高</td><td>最高</td></tr>
+  <tr><td><strong>安全验证</strong></td><td>容易</td><td>中</td><td>困难</td><td>困难</td><td>最困难</td></tr>
+  <tr><td><strong>泛化能力</strong></td><td>低</td><td>低</td><td>中</td><td>高</td><td>高</td></tr>
+  <tr><td><strong>成熟度</strong></td><td>成熟（量产）</td><td>成熟</td><td>前沿</td><td>早期</td><td>研究阶段</td></tr>
+</table>
+
+<div class="section green">
+  <h2>小结</h2>
+</div>
+
+<table>
+  <tr><th>概念</th><th>要点</th></tr>
+  <tr><td>五个阶段</td><td>模块化 → 感知预测联合 → 全栈联合 → VLA → 世界模型</td></tr>
+  <tr><td>核心演化驱动力</td><td>减少信息瓶颈、端到端梯度优化、统一表示</td></tr>
+  <tr><td>UniAD 突破</td><td>Query 传递机制，保留可解释性的端到端训练</td></tr>
+  <tr><td>三重障碍</td><td>数据（驾驶标签）、算力（全栈训练）、安全验证（黑箱认证）</td></tr>
+  <tr><td>工业现状</td><td>全栈联合为前沿，VLA/世界模型仍在研究阶段</td></tr>
+  <tr><td>核心 trade-off</td><td>性能上限 vs 可解释性 vs 安全验证难度</td></tr>
+</table>
+
+<hr>
+
+<!-- Part 2: UniAD Deep Dive -->
+
+<div class="section purple">
+  <h2>UniAD 深度解析</h2>
+  <p>前置知识：端到端演化全景，Transformer 注意力机制，BEV 感知</p>
+</div>
+
+<div class="section">
+  <h2>UniAD 的核心设计哲学</h2>
+  <p><strong>UniAD（Unified Autonomous Driving, Li et al., CVPR 2023 Best Paper）</strong> 的核心思想是：<strong>用统一的 Query-based Transformer 架构将感知、跟踪、地图、运动预测和规划串联在一起，实现端到端训练的同时保留每个子模块的可解释性。</strong></p>
+
+  <p>关键洞察：模块化方案的问题不在于"有模块"，而在于"模块间只传递结构化数据"。UniAD 保留了模块结构，但将模块间的接口从"检测框/轨迹"升级为"Query 特征"——高维、可微分、信息丰富。</p>
+</div>
+
+<h2>完整架构</h2>
+<div class="card">
+  <h3>UniAD 完整架构</h3>
+  <div style="margin:10px 0">
+    <div style="text-align:center">
+      <span class="flow-node">多摄像头图像 (6 视角)</span>
+    </div>
+    <div style="text-align:center;margin:4px 0;font-size:14px;color:#94a3b8">↓</div>
+    <div style="text-align:center">
+      <div style="display:inline-block;border:1px solid var(--border);border-radius:6px;padding:8px 16px;background:#eff6ff;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:600;color:#1e40af">BEV 编码器 (BEVFormer-like)</div>
+        <div style="font-size:10px;color:#64748b">6×Camera → 2D 特征 → BEV 特征</div>
+        <div style="font-size:10px;color:#94a3b8">F_bev ∈ R^{200×200×256}</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin:4px 0;font-size:14px;color:#94a3b8">↓</div>
+    <div class="tech-grid-auto" style="margin:0">
+      <div class="tech-data-block" style="padding:6px">
+        <div class="block-title" style="color:#166534">TrackFormer</div>
+        <div style="font-size:10px;color:#64748b">Q_track ∈ R^{N×C}</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px">Deformable Attention</div>
+      </div>
+      <div class="tech-data-block" style="padding:6px">
+        <div class="block-title" style="color:#92400e">MapFormer</div>
+        <div style="font-size:10px;color:#64748b">Q_map ∈ R^{M×C}</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px">车道线 + 边界</div>
+      </div>
+      <div class="tech-data-block" style="padding:6px">
+        <div class="block-title" style="color:#7c3aed">MotionFormer</div>
+        <div style="font-size:10px;color:#64748b">Q_mot ∈ R^{N×K×C}</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px">K 条轨迹 + 概率</div>
+      </div>
+      <div class="tech-data-block" style="padding:6px">
+        <div class="block-title" style="color:#ef4444">OccFormer</div>
+        <div style="font-size:10px;color:#64748b">占据预测</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px">未来 BEV 占据栅格</div>
+      </div>
+      <div class="tech-data-block" style="padding:6px">
+        <div class="block-title" style="color:#ef4444">PlanningFormer</div>
+        <div style="font-size:10px;color:#64748b">Q_ego ∈ R^{1×C}</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px">自车未来轨迹 (3s, 6点)</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <div class="formula">$$\mathcal{Loss} = \mathcal{L}_{planning} + \lambda_1 \mathcal{L}_{track} + \lambda_2 \mathcal{L}_{motion} + \lambda_3 \mathcal{L}_{occ}$$</div>
+    </div>
+  </div>
+</div>
+
+<h2>BEV 编码器</h2>
+
+<p>UniAD 使用类似 BEVFormer 的架构将多摄像头 2D 图像转换为统一的 BEV 特征。</p>
+
+<div class="card">
+  <h3>BEV 编码器 (类似 BEVFormer)</h3>
+  <div class="flow" style="margin:8px 0;justify-content:center">
+    <span class="flow-node">6 摄像头</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node green">ResNet-101/Swin-T</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">多尺度 2D 特征</span>
+  </div>
+  <div style="text-align:center;color:#94a3b8;font-size:14px;margin:4px 0">↓</div>
+  <div class="flow" style="justify-content:center;margin:4px 0">
+    <span class="flow-node amber">BEV Query (200×200 网格)</span>
+  </div>
+  <div style="text-align:center;color:#94a3b8;font-size:14px;margin:4px 0">↓</div>
+  <div class="tech-grid-auto" style="margin:8px 0">
+    <div class="tech-data-block">
+      <div class="block-title">Spatial Cross-Attention</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b">
+        <li>BEV Query 反投影到 6 摄像头</li>
+        <li>在 2D 特征图上采样</li>
+        <li>融合为 BEV 特征</li>
+      </ul>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">Temporal Self-Attention</div>
+      <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b">
+        <li>当前帧 + 历史帧 BEV 特征</li>
+        <li>时间融合</li>
+        <li>参考 BEVFormer 时序设计</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout blue" style="text-align:center">
+    输出: <span class="tech-badge">F_bev ∈ R^{200×200×256}</span>
+    覆盖 100m×100m, 分辨率 0.5m, 特征维度 256
+  </div>
+</div>
+
+<h2>Query 传递机制</h2>
+
+<p>UniAD 的核心创新是 <strong>Query 传递（Query Propagation）</strong>——模块间不传递结构化数据，而是传递 Query 特征。</p>
+
+<div class="tech-grid-auto" style="margin:12px 0">
+  <div class="tech-data-block">
+    <div class="block-title">传统模块化</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:8px">感知 → 预测</div>
+    <div style="font-size:11px;color:#1e293b;font-family:var(--mono);margin-bottom:4px">检测框: (x,y,z,w,h,l,θ)</div>
+    <div style="font-size:10px;color:#94a3b8;margin-bottom:6px">7 个数值/物体</div>
+    <div style="font-size:10px;color:#991b1b">信息量: 极少 ✗</div>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title" style="color:#166534">UniAD Query 传递</div>
+    <div class="flow" style="margin:6px 0">
+      <span class="flow-node green">TrackFormer</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">MotionFormer</span>
+    </div>
+    <div style="font-size:11px;color:#1e293b;font-family:var(--mono);margin-bottom:4px">Q_track ∈ R^{N×256}</div>
+    <div style="margin-top:6px">
+      <span class="tech-badge">256 维特征/物体</span>
+    </div>
+    <div style="font-size:10px;color:#166534;margin-top:6px">信息量: 丰富 ✓</div>
+    <div style="font-size:10px;color:#64748b;margin-top:4px">外观特征、运动模式、类别概率、注意力权重...</div>
+    <div style="font-size:10px;color:#7c3aed;margin-top:4px">且可微分! → 端到端梯度</div>
+  </div>
+</div>
+
+<h3>Query 依赖关系图</h3>
+
+<div class="card">
+  <h3>Query 依赖关系图</h3>
+  <div style="text-align:center;padding:8px 0">
+    <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg" style="max-width:280px">
+      <!-- F_bev -->
+      <rect x="90" y="10" width="100" height="30" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="140" y="30" font-family="monospace" font-size="10" fill="#1e40af" text-anchor="middle">F_bev</text>
+      <!-- Arrows from F_bev -->
+      <line x1="140" y1="40" x2="70" y2="70" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="140" y1="40" x2="140" y2="70" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="140" y1="40" x2="210" y2="70" stroke="#94a3b8" stroke-width="1"/>
+      <!-- Q_track and Q_map -->
+      <rect x="20" y="70" width="80" height="30" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="60" y="90" font-family="monospace" font-size="10" fill="#166534" text-anchor="middle">Q_track</text>
+      <rect x="110" y="70" width="60" height="30" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="140" y="90" font-family="monospace" font-size="10" fill="#166534" text-anchor="middle">Q_map</text>
+      <rect x="180" y="70" width="80" height="30" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+      <text x="220" y="90" font-family="monospace" font-size="10" fill="#475569" text-anchor="middle">直接访问</text>
+      <!-- Arrows to Q_mot -->
+      <line x1="60" y1="100" x2="100" y2="130" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="140" y1="100" x2="120" y2="130" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="220" y1="100" x2="160" y2="130" stroke="#94a3b8" stroke-width="1"/>
+      <!-- Q_mot -->
+      <rect x="80" y="130" width="80" height="30" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="120" y="150" font-family="monospace" font-size="10" fill="#92400e" text-anchor="middle">Q_mot</text>
+      <!-- Arrow to Q_ego -->
+      <line x1="120" y1="160" x2="120" y2="180" stroke="#94a3b8" stroke-width="1"/>
+      <!-- Q_ego -->
+      <rect x="80" y="180" width="80" height="30" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="120" y="200" font-family="monospace" font-size="10" fill="#5b21b6" text-anchor="middle">Q_ego → 规划</text>
+    </svg>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:8px">
+    <div class="tech-data-block">
+      <div class="block-title">依赖关系</div>
+      <ul style="margin:0;padding-left:16px;font-size:10px;color:#64748b">
+        <li>Q_track: 依赖 F_bev</li>
+        <li>Q_map: 依赖 F_bev</li>
+        <li>Q_mot: 依赖 Q_track + Q_map + F_bev</li>
+        <li>Q_ego: 依赖 Q_mot + Q_map + F_bev</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<p>每个 Query 都"站在前人的肩膀上"——Motion Query 使用 Track Query 和 Map Query 的信息，Ego Query 使用所有前序 Query 的信息。这种设计让每个模块都能访问丰富的上下文，同时保持清晰的模块边界。</p>
+
+<h2>端到端梯度流分析</h2>
+
+<p>UniAD 的关键优势之一是端到端的梯度流——规划的 loss 可以一路反传到 BEV 编码器。</p>
+
+<div class="card">
+  <h3>端到端梯度流分析</h3>
+  <div style="text-align:center;margin:10px 0">
+    <div class="flow" style="justify-content:center;flex-wrap:nowrap">
+      <span class="flow-node" style="font-size:11px">Camera</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node green" style="font-size:11px">BEV</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node" style="font-size:11px">Track</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node" style="font-size:11px">Map</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node" style="font-size:11px">Motion</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node" style="font-size:11px">Occ</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node amber" style="font-size:11px">Planning</span>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;margin:4px 0">前向传播 (信息流)</div>
+    <div class="flow" style="justify-content:center;flex-wrap:nowrap;margin-top:4px">
+      <span class="flow-node" style="font-size:11px;background:#fef2f2;border-color:#ef4444;color:#991b1b">Camera</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node green" style="font-size:11px">BEV</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node" style="font-size:11px">Track</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node" style="font-size:11px">Map</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node" style="font-size:11px">Motion</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node" style="font-size:11px">Occ</span>
+      <span class="flow-arrow" style="color:#ef4444">←</span>
+      <span class="flow-node amber" style="font-size:11px">Planning</span>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;margin:4px 0">反向传播 (梯度流)</div>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:10px">
+    <div class="tech-data-block">
+      <div class="block-title">规划 loss 告诉 BEV 编码器:</div>
+      <p style="font-size:11px;color:#64748b;margin:0">"你应该更关注对规划有影响的物体"</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title">例如</div>
+      <p style="font-size:11px;color:#64748b;margin:0">远处慢速行人 vs 近处快速切入车辆</p>
+    </div>
+  </div>
+  <div class="tech-grid-auto" style="margin-top:8px">
+    <div class="tech-data-block">
+      <div class="block-title">模块化</div>
+      <p style="font-size:11px;color:#64748b;margin:0">感知对两者一视同仁 (都要检测)</p>
+    </div>
+    <div class="tech-data-block">
+      <div class="block-title" style="color:#7c3aed">UniAD</div>
+      <p style="font-size:11px;color:#7c3aed;margin:0">规划梯度告诉感知 "更关注切入车辆"</p>
+    </div>
+  </div>
+  <div class="callout purple" style="margin-top:8px;text-align:center">
+    任务驱动的特征学习 (task-driven representation)
+  </div>
+</div>
+
+<h3>多任务损失</h3>
+
+<div class="formula">$$\mathcal{L}_{\text{total}} = \lambda_1 \mathcal{L}_{\text{det}} + \lambda_2 \mathcal{L}_{\text{map}} + \lambda_3 \mathcal{L}_{\text{motion}} + \lambda_4 \mathcal{L}_{\text{occ}} + \lambda_5 \mathcal{L}_{\text{plan}}$$</div>
+
+<table>
+  <tr><th>损失项</th><th>公式</th><th>权重</th><th>作用</th></tr>
+  <tr><td>$\mathcal{L}_{\text{det}}$</td><td>Focal + L1</td><td>2.0</td><td>3D 检测精度</td></tr>
+  <tr><td>$\mathcal{L}_{\text{map}}$</td><td>Dice + CE</td><td>5.0</td><td>地图分割质量</td></tr>
+  <tr><td>$\mathcal{L}_{\text{motion}}$</td><td>L2 + CE</td><td>0.5</td><td>轨迹预测精度</td></tr>
+  <tr><td>$\mathcal{L}_{\text{occ}}$</td><td>BCE</td><td>1.0</td><td>占据预测</td></tr>
+  <tr><td>$\mathcal{L}_{\text{plan}}$</td><td>L2 + 碰撞</td><td>1.0</td><td>规划质量</td></tr>
+</table>
+
+<h3>联合训练 vs 分开训练</h3>
+
+<table>
+  <tr><th>训练方式</th><th>nuScenes L2 (1s) ↓</th><th>L2 (3s) ↓</th><th>碰撞率 ↓</th></tr>
+  <tr><td>分开训练（各模块独立）</td><td>0.56</td><td>1.60</td><td>0.71%</td></tr>
+  <tr><td>冻结感知, 微调规划</td><td>0.48</td><td>1.38</td><td>0.45%</td></tr>
+  <tr><td><strong>联合端到端训练</strong></td><td><strong>0.44</strong></td><td><strong>1.05</strong></td><td><strong>0.31%</strong></td></tr>
+</table>
+
+<p>联合训练使 3s L2 误差降低 34%，碰撞率降低 56%。这是端到端梯度流的直接收益。</p>
+
+<h2>nuScenes 规划结果</h2>
+
+<h3>主要结果对比</h3>
+
+<table>
+  <tr><th>方法</th><th>类型</th><th>L2 (1s) ↓</th><th>L2 (2s) ↓</th><th>L2 (3s) ↓</th><th>碰撞率 ↓</th></tr>
+  <tr><td>IL (Imitation)</td><td>端到端</td><td>0.44</td><td>1.15</td><td>2.47</td><td>0.85%</td></tr>
+  <tr><td>NMP</td><td>模块化</td><td>0.53</td><td>1.25</td><td>2.67</td><td>—</td></tr>
+  <tr><td>FF</td><td>感知预测联合</td><td>0.55</td><td>1.20</td><td>2.54</td><td>0.87%</td></tr>
+  <tr><td>ST-P3</td><td>端到端</td><td>1.33</td><td>2.11</td><td>2.90</td><td>0.23%</td></tr>
+  <tr><td><strong>UniAD</strong></td><td><strong>全栈联合</strong></td><td><strong>0.44</strong></td><td><strong>0.67</strong></td><td><strong>1.05</strong></td><td><strong>0.31%</strong></td></tr>
+</table>
+
+<p>UniAD 在 3s 规划 L2 距离上大幅领先（1.05m vs 2.47m），证明了全栈联合训练的优势。</p>
+
+<h2>vs VAD 架构差异</h2>
+
+<table>
+  <tr><th>维度</th><th>UniAD</th><th>VAD</th></tr>
+  <tr><td><strong>场景表示</strong></td><td>BEV 特征 + Query</td><td>向量化场景表示</td></tr>
+  <tr><td><strong>感知形式</strong></td><td>显式检测 (TrackFormer)</td><td>隐式 (向量化编码)</td></tr>
+  <tr><td><strong>地图表示</strong></td><td>分割掩码 (MapFormer)</td><td>向量化车道线</td></tr>
+  <tr><td><strong>预测模块</strong></td><td>MotionFormer (Query-based)</td><td>向量化运动预测</td></tr>
+  <tr><td><strong>规划输入</strong></td><td>多层 Query + BEV</td><td>向量化场景 + BEV</td></tr>
+  <tr><td><strong>计算量</strong></td><td>重 (多个 Transformer)</td><td>较轻</td></tr>
+  <tr><td><strong>L2 (3s)</strong></td><td>1.05m</td><td>0.98m</td></tr>
+  <tr><td><strong>碰撞率</strong></td><td>0.31%</td><td>0.25%</td></tr>
+</table>
+
+<p>VAD 通过更紧凑的向量化表示实现了略优的性能和更低的计算量。但两者的核心设计思路一致：<strong>保留模块结构，通过共享特征实现端到端梯度流</strong>。</p>
+
+<h2>UniAD 的局限与后续发展</h2>
+
+<ol>
+  <li><strong>仅限摄像头输入</strong>：原始 UniAD 不支持 LiDAR 融合。后续 UniAD++ 加入了 LiDAR</li>
+  <li><strong>规划能力有限</strong>：规划头是简单的 MLP，不支持多模态规划</li>
+  <li><strong>推理速度</strong>：~300ms/帧，远不满足实时要求</li>
+  <li><strong>闭环评估缺失</strong>：nuScenes 的规划评估是离线的，不反映真实驾驶</li>
+</ol>
+
+<div class="card">
+  <h3>UniAD 后续发展</h3>
+  <div style="text-align:center;padding:8px 0">
+    <div style="display:inline-block;border-left:2px solid #3b82f6;padding-left:16px;text-align:left">
+      <div style="font-size:12px;font-weight:600;color:#3b82f6;margin-bottom:8px">UniAD (2023)</div>
+      <div style="margin-left:20px;border-left:2px solid #e2e8f0;padding-left:12px">
+        <div style="font-size:11px;color:#166534;margin-bottom:6px">UniAD++ (2023): LiDAR 融合</div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:6px">VAD (2023): 向量化版本, 更轻量</div>
+        <div style="font-size:11px;color:#92400e;margin-bottom:6px">SparseDrive (2024): 稀疏表示, 更快</div>
+        <div style="font-size:11px;color:#7c3aed;margin-bottom:6px">DriveVLM (2024): VLA 端到端</div>
+        <div style="font-size:11px;color:#94a3b8">... 更多变体</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section green">
+  <h2>小结</h2>
+</div>
+
+<table>
+  <tr><th>概念</th><th>要点</th></tr>
+  <tr><td>核心创新</td><td>Query 传递机制: 模块间传递高维可微特征而非结构化数据</td></tr>
+  <tr><td>架构</td><td>BEV → Track → Map → Motion → Occ → Planning</td></tr>
+  <tr><td>端到端梯度</td><td>规划 loss 反传到感知层, 实现任务驱动的特征学习</td></tr>
+  <tr><td>联合训练收益</td><td>3s L2 降低 34%, 碰撞率降低 56%</td></tr>
+  <tr><td>vs VAD</td><td>向量化表示更紧凑, 计算量更低, 性能略优</td></tr>
+  <tr><td>意义</td><td>首次证明全栈端到端的可行性, CVPR 2023 Best Paper</td></tr>
+</table>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    AD Prediction &amp; Planning · 10 端到端自动驾驶：UniAD 与全栈联合学习 ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../09-learning-planning/index.html">← 09 Learning-Based 规划：RL、IL 与扩散规划器</a>
+    · <a href="../11-vla/index.html">下一篇：11 VLA 与世界模型：下一代端到端自动驾驶 →</a>
+  </div>
+</div>
+</body>
+</html>

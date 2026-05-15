@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11 ControlNet与可控生成 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>11 ControlNet与可控生成</h1>
+    <p>ControlNet与可控生成</p>
+  </div>
+
+  <div class="section">
+    <h2>什么是 ControlNet / What is ControlNet</h2>
+    <p>ControlNet 通过复制并锁定 UNet 编码器，实现精确的空间条件控制——不需要重新训练整个扩散模型</p>
+  </div>
+  <div class="card">
+    <h3>问题：扩散模型缺乏可控性</h3>
+    <p style="font-size:12px;color:var(--text-2)">扩散模型（如 SD）是"盲生成器"——输入 prompt，输出随机结果。无法精确控制空间布局、边缘形状、姿态结构：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">❌ prompt 的局限</p>
+        <p style="font-size:12px;color:var(--text-2)">"在图像左侧画一个人"——这种空间描述几乎不可能通过文本精确控制</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">✅ 空间条件的价值</p>
+        <p style="font-size:12px;color:var(--text-2)">Canny 边缘、深度图、姿态骨架——这些视觉特征比文字更容易精确指定空间关系</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">理想情况：有一个模型能同时接收图像条件（边缘、深度、姿态）和文本条件，然后生成符合两者的结果。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>ControlNet 的核心思路</strong><br>
+      不重新训练扩散模型，而是复制一份 UNet 编码器（trainable copy），将原编码器冻结（locked copy）。额外条件通过 trainable copy 注入，两路信号在每个残差块处汇合。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>ControlNet 的设计细节</h3>
+    <p style="font-size:12px;color:var(--text-2)">ControlNet 的关键设计：</p>
+    <div class="formula">$$\epsilon_\theta(x_t, t, c_{\text{img}}) = \text{UNet}_\text{locked}(x_t, t) + \text{UNet}_\text{trained}(x_t, t, c_{\text{img}})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $c_{\text{img}}$ 是额外条件（边缘、深度等）编码后的特征图。UNet_locked 保持预训练能力，UNet_trained 学习条件适配。两者在每个残差块通过零卷积（zero convolution）连接，防止初始训练时破坏原模型。</p>
+    <div class="callout amber" style="font-size:12px">
+      <strong>为什么零卷积（Zero Convolution）很重要？</strong><br>
+      训练初期，如果直接让额外条件影响原模型输出，会导致生成质量急剧下降（distribution shift）。零卷积让训练从"无影响"开始，逐步解锁条件注入能力，保证训练稳定。
+    </div>
+  </div>
+  <div class="section">
+    <h2>Zero Convolution 零卷积 / Pre-trained Model Finetuning</h2>
+    <p>ControlNet 使用零卷积（权重初始化为零的 1×1 卷积）实现条件可控扩散模型，无需从头训练</p>
+  </div>
+  <div class="card">
+    <h3>Zero Convolution 原理</h3>
+    <p style="font-size:12px;color:var(--text-2)">ControlNet 的核心设计：复制 UNet 的 Encoder 权重（包含条件信息），同时冻结原始 UNet：</p>
+    <div class="formula">$$y = ZConv(x) + \text{UNet}(x), \quad ZConv_{\text{init}} = 0$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">训练初期，Zero Convolution 的输出为 0，UNet 的输出不受影响，模型等价于原始预训练模型。随着训练进行，Zero Convolution 逐渐学习到如何将条件信息注入 UNet。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>为什么 Zero Convolution 有效？</strong><br>
+      零初始化确保训练初期不会出现梯度爆炸或训练不稳定。同时，由于 UNet 权重被冻结，预训练模型的知识不会被破坏——ControlNet 只学习"如何根据新的条件调整预训练模型的输出"。
+    </div>
+  </div>
+  <div class="section green">
+    <h2>条件注入：Canny/Pose/Depth / Conditional Injection</h2>
+    <p>ControlNet 支持多种条件类型：Canny 边缘检测、OpenPose 姿态、Depth 深度图等</p>
+  </div>
+  <div class="card green">
+    <h3>三种条件注入方式</h3>
+    <div class="grid-3">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">Canny Edge</p>
+        <p style="font-size:12px;color:var(--text-2)">边缘检测 → 二值图 → 与原图 concat → UNet 输入。适合建筑、室内等结构化场景。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">OpenPose</p>
+        <p style="font-size:12px;color:var(--text-2)">人体骨骼关键点 → 2D 骨骼图 → 与原图 concat → UNet 输入。适合人物生成。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Depth Map</p>
+        <p style="font-size:12px;color:var(--text-2)">深度估计 → 深度图 → 与原图 concat → UNet 输入。适合建筑、场景几何控制。</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">所有条件注入都遵循相同的 pattern：条件图 $c$ 通过独立编码器映射为与 $x_t$ 同维度的特征，然后通过 Zero Convolution 加到 UNet 的对应层。</p>
+  </div>
+  <div class="card">
+    <h3>ControlNet 伪代码</h3>
+    <pre><code><span class="cmt"># ControlNet 条件注入（伪代码）</span>
+<span class="kw">class</span> <span class="fn">ControlNet</span>:
+    <span class="kw">def</span> <span class="fn">forward</span>(<span class="nm">xt</span>, <span class="nm">t</span>, <span class="nm">hint</span>):
+        <span class="cmt"># hint: 条件图（如 canny edge, pose, depth）</span>
+        <span class="cmt"># encode hint with a separate encoder</span>
+        hint_enc = <span class="fn">self</span>.hint_encoder(hint)   <span class="cmt"># (B, C, H, W)</span>
+        
+        <span class="cmt"># get UNet intermediate features</span>
+        <span class="nm">features</span> = <span class="fn">self</span>.unet.encoder(<span class="nm">xt</span>)
+        
+        <span class="cmt"># inject condition via zero convolutions</span>
+        <span class="kw">for</span> <span class="nm">i</span>, (<span class="nm">feat</span>, <span class="nm">zero_conv</span>) <span class="kw">in</span> <span class="fn">zip</span>(<span class="nm">features</span>, <span class="fn">self</span>.zero_convs):
+            hint_feat = <span class="fn">zero_conv</span>(hint_enc)    <span class="cmt"># 零初始化，逐渐学习</span>
+            feat = feat + hint_feat               <span class="cmt"># 条件注入</span>
+            hint_enc = <span class="fn">self</span>.downsample(hint_enc)  <span class="cmt"># 下采样，匹配特征图尺寸</span>
+        
+        <span class="kw">return</span> <span class="fn">self</span>.unet.decoder(features)</code></pre>
+  </div>
+  <div class="section amber">
+    <h2>T2I-Adapter 轻量方案 / T2I-Adapter</h2>
+    <p>T2I-Adapter 提供比 ControlNet 更轻量的条件注入方案（70MB vs 1.4GB）</p>
+  </div>
+  <div class="card amber">
+    <h3>T2I-Adapter vs ControlNet 对比</h3>
+    <table style="font-size:12px">
+      <tr><th>特性</th><th>ControlNet</th><th>T2I-Adapter</th></tr>
+      <tr><td>参数量</td><td>~1.4B（整个 UNet 复制）</td><td>~70MB（轻量 adapter）</td></tr>
+      <tr><td>条件编码器</td><td>独立完整 UNet</td><td>轻量卷积网络（4层）</td></tr>
+      <tr><td>训练方式</td><td>端到端，微调整个条件 UNet</td><td>冻结 UNet，只训练 adapter</td></tr>
+      <tr><td>条件质量</td><td>高质量</td><td>略低于 ControlNet</td></tr>
+      <tr><td>部署成本</td><td>高（需要加载两个 UNet）</td><td>低（单 UNet + 轻量 adapter）</td></tr>
+      <tr><td>适用场景</td><td>高质量需求、服务器部署</td><td>边缘部署、实时应用</td></tr>
+    </table>
+    <div class="callout green" style="font-size:12px;margin-top:8px">
+      <strong>实践建议</strong><br>
+      对于车载实时应用，T2I-Adapter 是更好的选择——70MB 的 adapter 可以在不增加 UNet 负担的情况下提供条件可控生成。对于服务器端的高质量生成，ControlNet 仍然是最佳选择。
+    </div>
+  </div>
+  <div class="section purple">
+    <h2>HD 地图 → 渲染图 / HD Map to Rendered Image</h2>
+    <p>自动驾驶中，HD 地图到渲染图像的条件生成是场景仿真的核心</p>
+  </div>
+  <div class="card purple">
+    <h3>地图到图像的条件生成</h3>
+    <p style="font-size:12px;color:var(--text-2)">HD 地图（矢量化的车道线、边界、标志）通过 ControlNet 注入，生成对应的前视相机图像：</p>
+    <div class="flow" style="margin-top:8px">
+      <div class="flow-node amber">HD Map<br><small>（矢量地图）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Map Encoder<br><small>（T2I-Adapter）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Condition Embedding<br><small>（70MB adapter）</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">SD / DiT<br><small>生成渲染图像</small></div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">这个 pipeline 用于闭环仿真：给定地图和车辆轨迹，生成对应的驾驶场景视频或图像。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>多条件组合</strong><br>
+      实际应用中通常需要组合多个条件：HD 地图（结构） + 车辆姿态（运动） + 天气描述（光照）。ControlNet 支持多个条件图同时输入，每个条件通过独立的 Zero Convolution 注入。
+    </div>
+  </div>
+  <div class="section">
+    <h2>多条件组合注入 / Multi-Condition Composition</h2>
+    <p>多个条件通过独立的条件编码器独立注入，最后在 UNet 中融合</p>
+  </div>
+  <div class="card">
+    <h3>多条件注入策略</h3>
+    <p style="font-size:12px;color:var(--text-2)">多条件组合的核心设计：</p>
+    <div class="formula">$$y = \sum_{i=1}^{K} ZConv_i(c_i) + \text{UNet}(x_t, t)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $c_i$ 是第 $i$ 个条件图（如 Map、Pose、Depth），$ZConv_i$ 是对应的 Zero Convolution。每个条件独立注入，最终在 UNet 中融合。</p>
+    <div class="callout amber" style="font-size:12px">
+      <strong>训练策略</strong><br>
+      多条件 ControlNet 训练时，通常使用"随机丢弃部分条件"的策略：每批样本中，随机将某个条件置零（类似 CFG）。这确保模型学会处理不同条件组合，而不是过度依赖某个单一条件。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 11 ControlNet与可控生成 · <a href="../index.html">← 总目录</a> · <a href="../10-sdxl/index.html">← 10 SDXL与高速生图（LCM/DiT）</a>  · <a href="../12-frontier/index.html">下一篇：12 前沿与开放问题 →</a>
+  </div>
+</div>
+</body>
+</html>

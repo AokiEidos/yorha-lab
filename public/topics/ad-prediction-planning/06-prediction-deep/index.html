@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 Transformer 与扩散模型预测 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+<style>
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>06 Transformer 与扩散模型预测</h1>
+    <p>Transformer 与扩散模型预测 / MTR、QCNet、MID、CTG 与多模态轨迹生成</p>
+  </div>
+
+<!-- ================================================================
+  PART 1: TRANSFORMER METHODS
+================================================================ -->
+
+<div class="section purple">
+  <h2>第一部分：Transformer 时代的轨迹预测 / Transformer-Era Prediction</h2>
+  <p>从 GNN 的消息传递到 Transformer 的全局注意力，轨迹预测进入了一个新范式</p>
+</div>
+
+<!-- ---- MTR ---- -->
+<div class="section">
+  <h2>MTR：意图锚点查询 / Motion Transformer (Shi et al., NeurIPS 2022)</h2>
+  <p>What — Why — How 框架</p>
+</div>
+
+<div class="card purple">
+  <h3>What is MTR?</h3>
+  <p><strong>MTR（Motion TRansformer）</strong> 是将 Transformer 应用于轨迹预测的标志性工作，首次将<strong>意图锚点查询（Intent Query）</strong>机制引入多模态轨迹预测。其核心思想是预定义一组代表不同运动意图的锚点（如直行、左转、右转），通过 Transformer 的交叉注意力将场景信息聚合到每个锚点上，输出多模态预测结果。</p>
+  <p>锚点从训练集中通过 K-Means 聚类得到典型终点位置，每个锚点初始化为可学习的 embedding + 位置编码。在 Waymo Open Motion 数据集上，MTR 以 minADE$_6$ = 0.60 显著超越前辈方法。</p>
+</div>
+
+<div class="callout amber">
+  <strong>Why MTR 优于 GNN 消息传递？</strong>
+  GNN 需要多轮传播才能获得全局视野（3-hop = 3 层 GNN），且所有智能体共享同一编码器，无法区分不同意图。MTR 的每个意图 query 通过 Cross-Attention 直接关注全场景，一层 Attention 即可获得全局信息，不同意图 query 自动分工关注场景的不同区域。
+</div>
+
+<div class="card purple">
+  <h3>How does MTR work? — 架构详解</h3>
+
+  <p><strong>1. 场景编码器（Scene Encoder）</strong></p>
+  <p>智能体历史轨迹通过 PointNet-like 编码得到 agent tokens；HD Map 车道线向量化后通过 MLP 得到 map tokens。两者拼接后通过 L 层 Transformer 编码器（Self-Attention）得到场景特征 $F_{\text{scene}}$。</p>
+
+  <p><strong>2. 意图锚点查询（Intent Query）</strong></p>
+  <p>预定义 $K = 64$ 个意图锚点，锚点 = 从训练集 K-Means 聚类得到的典型终点位置。每个锚点初始化为可学习 embedding + 位置编码。</p>
+
+  <p><strong>3. Motion Transformer 解码器</strong></p>
+  <p>每个意图 query $k$ 与场景特征 $F_{\text{scene}}$ 通过 Cross-Attention 交互，关注与该意图最相关的场景区域；Query 间通过 Self-Attention 实现互斥约束；FFN 输出轨迹 $\tau_k \in \mathbb{R}^{T_f \times 2}$ 和概率 $\pi_k \in [0,1]$。</p>
+
+  <p><strong>4. 两轮解码策略</strong></p>
+  <p>第一轮：64 个锚点 → 64 条粗轨迹；选择 $\arg\max(\pi_k)$ 取 top-K（$K=6$）；第二轮：top-K 锚点 → 细化轨迹（加 refinement 头）。</p>
+</div>
+
+<div class="formula">
+$$\mathcal{L} = \sum_{i=1}^{N} \left[ \min_{k} \| \tau_k^{(i)} - \tau_{\text{gt}}^{(i)} \|_2 + \mathcal{L}_{\text{cls}}(\pi_k, y_k) \right]$$
+</div>
+
+<p><strong>WTA（Winner-Takes-All）策略：</strong> $K$ 条候选轨迹中，只惩罚与真实轨迹最接近的那条（winner），其余不惩罚。分类损失 $\mathcal{L}_{\text{cls}}$ 让 winner 的概率高、其余概率低。</p>
+
+<div class="card green">
+  <h3>模型对比：MTR vs LaneGCN vs HiVT（Waymo Open Motion）</h3>
+  <table>
+    <tr><th>方法</th><th>minADE$_6$ ↓</th><th>MR$_6$ ↓</th><th>Soft-mAP ↑</th></tr>
+    <tr><td>LaneGCN</td><td>0.71</td><td>0.14</td><td>0.32</td></tr>
+    <tr><td>HiVT</td><td>0.66</td><td>0.12</td><td>0.35</td></tr>
+    <tr><td><strong>MTR</strong></td><td><strong>0.60</strong></td><td><strong>0.10</strong></td><td><strong>0.41</strong></td></tr>
+  </table>
+</div>
+
+<!-- ---- MotionFormer ---- -->
+<div class="section">
+  <h2>MotionFormer：自回归轨迹生成 / Autoregressive Trajectory Generation</h2>
+  <p>受视频生成方法启发，将轨迹预测视为"时间序列生成"问题</p>
+</div>
+
+<div class="card purple">
+  <h3>What is MotionFormer?</h3>
+  <p><strong>MotionFormer</strong> 受视频生成方法启发，将轨迹预测从"一次性并行预测"转变为<strong>自回归逐步生成</strong>（顺序解码）。每个时间步 $t$，模型基于已生成的 $p_{\lt t}$ 和场景条件生成下一个位置 $p_t$，保持时序一致性。类比视频生成：逐帧生成时前帧约束后帧，MotionFormer 逐时间步生成时前段轨迹约束后段。</p>
+</div>
+
+<div class="callout blue">
+  <strong>优势与局限</strong>
+  <ul>
+    <li><strong>优势：</strong>时序一致性好、长程依赖建模能力强、灵活的条件注入</li>
+    <li><strong>局限：</strong>推理速度慢（$T_f$ 步串行）、误差累积（自回归的通病）、不适合实时应用</li>
+  </ul>
+</div>
+
+<div class="formula">
+$$p(\tau_f \mid \tau_o) = \prod_{t=1}^{T_f} p(p_t \mid p_{\lt t}, \tau_o, \mathcal{M})$$
+</div>
+
+<p>使用 Transformer 解码器的<strong>因果注意力掩码（Causal Attention Mask）</strong>确保模型只能看到过去和当前的信息。</p>
+
+<!-- ---- QCNet ---- -->
+<div class="section">
+  <h2>QCNet：两阶段查询式架构 / Query-Centric Network (Zhou et al., CVPR 2023)</h2>
+  <p>场景编码与轨迹解码分离，编码可缓存复用</p>
+</div>
+
+<div class="card purple">
+  <h3>What is QCNet?</h3>
+  <p><strong>QCNet（Query-Centric Network）</strong> 的核心设计是<strong>两阶段架构</strong>：先做场景编码（与预测目标无关），再做查询式轨迹解码。这种分离使得场景编码可以缓存复用，大幅提升推理效率。在 Waymo Open Motion Challenge 2023 中获得冠军。</p>
+</div>
+
+<div class="callout amber">
+  <strong>Why 两阶段优于一体式？</strong>
+  对 $N$ 个目标智能体，一体式方法（如 AgentFormer）每次都重新编码整个场景，计算量 $N \times (\text{场景编码} + \text{轨迹解码})$。QCNet 两阶段：场景编码（做 1 次）$+ N \times$ 轨迹解码，场景越复杂节省越多。实测 Waymo 场景（$N \approx 50$）加速 3-5 倍。
+</div>
+
+<div class="card purple">
+  <h3>How does QCNet work?</h3>
+  <p><strong>第一阶段：场景编码（Scene Encoding）</strong> — 与目标智能体无关。所有智能体历史 + 所有车道线 → 统一 Transformer 编码器 → 场景级特征 $F_{\text{scene}}$。这一阶段对所有目标智能体共享，100 个需要预测的智能体，场景编码只做一次。</p>
+
+  <p><strong>第二阶段：查询式轨迹解码（Query-Centric Decoding）</strong> — 对每个目标智能体 $i$：以智能体 $i$ 为中心构造局部坐标系，生成 $K$ 个 mode query（意图查询），Mode Query $\times F_{\text{scene}}$ → Cross-Attention → 输出 $K$ 条轨迹 + 概率。</p>
+
+  <p>总计计算量：$O(M^2) + O(N \cdot K \cdot M)$，vs 一体式 $O(N \cdot M^2)$，当 $N$ 大时加速显著。</p>
+</div>
+
+<div class="card green">
+  <h3>QCNet 定量结果（Waymo Open Motion, marginal prediction）</h3>
+  <table>
+    <tr><th>方法</th><th>minADE$_6$ ↓</th><th>MR$_6$ ↓</th><th>Soft-mAP ↑</th></tr>
+    <tr><td>HiVT</td><td>0.66</td><td>0.12</td><td>0.35</td></tr>
+    <tr><td>MTR</td><td>0.60</td><td>0.10</td><td>0.41</td></tr>
+    <tr><td><strong>QCNet</strong></td><td><strong>0.55</strong></td><td><strong>0.09</strong></td><td><strong>0.44</strong></td></tr>
+  </table>
+</div>
+
+<!-- ---- GameFormer ---- -->
+<div class="section">
+  <h2>GameFormer：博弈论建模 / Game-Theoretic Modeling (Huang et al., ICCV 2023)</h2>
+  <p>Level-K 博弈迭代，逼近 Nash 均衡</p>
+</div>
+
+<div class="card purple">
+  <h3>What is GameFormer?</h3>
+  <p><strong>GameFormer</strong> 将<strong>博弈论（Game Theory）</strong>引入 Transformer 轨迹预测。核心观点：多智能体交互不是简单的"观察→预测"，而是一个<strong>动态博弈</strong>——每个智能体都在预测其他智能体的行为，并据此调整自己的策略。通过 Level-K 博弈迭代解码，逼近 Nash 均衡。</p>
+</div>
+
+<div class="callout blue">
+  <strong>Level-K 博弈直观解释</strong>
+  <ul>
+    <li><strong>Level-0：</strong>不考虑他人，只按自己意图行动 → 可能碰撞</li>
+    <li><strong>Level-1：</strong>预测他人的 Level-0 行为，据此调整 → 仍可能冲突</li>
+    <li><strong>Level-2：</strong>预测他人的 Level-1 行为，进一步调整 → 接近 Nash 均衡</li>
+  </ul>
+  通常 $K=3$ 轮迭代即可获得良好效果。
+</div>
+
+<div class="formula">
+$$\tau_i^* = \arg\max_{\tau_i} U_i(\tau_i, \tau_{-i}^*)$$
+</div>
+
+<p>其中 $U_i$ 是智能体 $i$ 的效用函数，$\tau_{-i}^*$ 是其他所有智能体的均衡策略。Nash 均衡意味着：每个智能体的预测轨迹在给定其他智能体预测的条件下是最优的，没有任何一方有动机单方面改变。</p>
+
+<div class="card green">
+  <h3>GameFormer 定量结果（Waymo Open Motion, joint prediction）</h3>
+  <table>
+    <tr><th>方法</th><th>minSADE$_6$ ↓</th><th>minSFDE$_6$ ↓</th><th>Overlap Rate ↓</th></tr>
+    <tr><td>MTR</td><td>1.12</td><td>2.34</td><td>0.08</td></tr>
+    <tr><td>QCNet</td><td>1.05</td><td>2.18</td><td>0.07</td></tr>
+    <tr><td><strong>GameFormer</strong></td><td><strong>0.98</strong></td><td><strong>2.01</strong></td><td><strong>0.04</strong></td></tr>
+  </table>
+  <p>GameFormer 在 Overlap Rate（轨迹重叠率，衡量预测物理一致性）上显著优于非博弈方法。</p>
+</div>
+
+<!-- ---- Transformer 方法对比 ---- -->
+<div class="section green">
+  <h2>四种 Transformer 方法核心对比 / Comparison Summary</h2>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>维度</th><th>MTR</th><th>MotionFormer</th><th>QCNet</th><th>GameFormer</th></tr>
+    <tr><td><strong>核心创新</strong></td><td>意图锚点查询</td><td>自回归生成</td><td>两阶段分离</td><td>博弈论建模</td></tr>
+    <tr><td><strong>解码方式</strong></td><td>并行（K 个 query）</td><td>自回归（逐步）</td><td>并行（query-centric）</td><td>迭代均衡</td></tr>
+    <tr><td><strong>多模态机制</strong></td><td>锚点 + WTA</td><td>自回归采样</td><td>Mode query</td><td>博弈迭代</td></tr>
+    <tr><td><strong>交互建模</strong></td><td>全局注意力</td><td>因果注意力</td><td>全局注意力</td><td>Level-K 博弈</td></tr>
+    <tr><td><strong>推理效率</strong></td><td>中</td><td>低（串行）</td><td>高（编码共享）</td><td>中低（多轮迭代）</td></tr>
+    <tr><td><strong>最强 benchmark</strong></td><td>Waymo marginal</td><td>—</td><td>Waymo marginal</td><td>Waymo joint</td></tr>
+    <tr><td><strong>适用场景</strong></td><td>通用</td><td>长程预测</td><td>大量智能体</td><td>密集交互</td></tr>
+  </table>
+</div>
+
+<div class="callout blue">
+  <strong>Transformer 时代总结</strong>
+  Transformer 凭借全局注意力机制、灵活的条件注入和高 GPU 利用率，成为轨迹预测的主流框架。然而，Transformer 的多模态性仍受限于预定义锚点数量或自回归采样策略，Diffusion 模型从另一个角度解决了这个问题。
+</div>
+
+<!-- ================================================================
+  PART 2: DIFFUSION METHODS
+================================================================ -->
+
+<div class="section purple" style="margin-top:32px">
+  <h2>第二部分：概率方法与 Diffusion 轨迹预测 / Diffusion-Based Trajectory Prediction</h2>
+  <p>从 CVAE 到 Diffusion，轨迹预测的概率建模能力实现质的飞跃</p>
+</div>
+
+<!-- ---- 从 CVAE 到 Diffusion ---- -->
+<div class="section">
+  <h2>从 CVAE 到 Diffusion：概率方法的演化 / From CVAE to Diffusion</h2>
+  <p>理解 Diffusion 为何能超越 CVAE</p>
+</div>
+
+<div class="card purple">
+  <h3>What is CVAE? — 条件变分自编码器范式（2018-2021）</h3>
+  <p><strong>条件变分自编码器（CVAE）</strong>是 Diffusion 之前最主流的概率轨迹预测方法。核心思路：引入一个低维潜变量 $z$ 来建模轨迹的不确定性。训练时 $z \sim q(z \mid \tau_o, \tau_f)$（后验采样），推理时 $z \sim p(z \mid \tau_o)$（先验采样），多次采样 $z$ 生成多条轨迹实现多模态。</p>
+
+  <p><strong>代表工作：</strong></p>
+  <table>
+    <tr><th>方法</th><th>年份</th><th>潜变量设计</th><th>特点</th></tr>
+    <tr><td>DESIRE</td><td>2017</td><td>全局 $z$</td><td>首个 CVAE 轨迹预测</td></tr>
+    <tr><td>Trajectron++</td><td>2020</td><td>层次 $z$（模式+噪声）</td><td>GNN 编码器 + CVAE</td></tr>
+    <tr><td>AgentFormer</td><td>2021</td><td>联合 $z$（多智能体共享）</td><td>Transformer + CVAE</td></tr>
+  </table>
+</div>
+
+<div class="callout red">
+  <strong>CVAE 的三大系统性问题</strong>
+  <ul>
+    <li><strong>后验坍缩（Posterior Collapse）：</strong>当解码器足够强大时（如 Transformer），它可以无视潜变量 $z$ 直接从条件 $\tau_o$ 预测 $\tau_f$，导致 $z$ 不携带信息，模型退化为确定性预测。缓解方案：KL annealing、Free bits、潜变量瓶颈——但都是 patch，不能根本解决。</li>
+    <li><strong>模式数量受限：</strong>CVAE 的潜空间通常是低维的（$z \in \mathbb{R}^{16 \sim 64}$），容量有限。对于复杂路口（可能有 5-6 种行为模式），CVAE 的覆盖性不如直接在轨迹空间建模的方法。</li>
+    <li><strong>先验-后验 gap：</strong>推理时使用先验 $p(z \mid \tau_o)$，训练时使用后验 $q(z \mid \tau_f, \tau_o)$。两者差异不能完全消除，导致推理时采样质量低于训练时。</li>
+  </ul>
+</div>
+
+<div class="card green">
+  <h3>Why Diffusion 能解决这些问题？</h3>
+  <table>
+    <tr><th>CVAE 问题</th><th>Diffusion 解法</th></tr>
+    <tr><td>后验坍缩</td><td>不存在——没有 encoder/decoder 的信息竞争</td></tr>
+    <tr><td>模式数量受限</td><td>直接在轨迹空间建模，理论上无限模式</td></tr>
+    <tr><td>先验-后验 gap</td><td>不存在——训练和推理使用同一个去噪过程</td></tr>
+    <tr><td>训练不稳定</td><td>训练目标是简单的 MSE 去噪损失</td></tr>
+  </table>
+  <p>Diffusion 的核心优势：<strong>直接在轨迹空间 $\mathbb{R}^{T_f \times 2}$ 上建模概率分布</strong>，不经过低维潜变量的信息瓶颈。</p>
+</div>
+
+<!-- ---- MID ---- -->
+<div class="section">
+  <h2>MID：首个 Diffusion 轨迹预测 / Motion Indeterminacy Diffusion (Gu et al., CVPR 2022)</h2>
+  <p>Diffusion 引入轨迹预测的里程碑工作</p>
+</div>
+
+<div class="card purple">
+  <h3>What is MID?</h3>
+  <p><strong>MID（Motion Indeterminacy Diffusion）</strong> 是首个将 Diffusion 引入轨迹预测的工作。轨迹只有 24 维（12 个时间步 $\times$ 2D 坐标），远小于图像的百万维度，因此 MID 使用简单的 MLP（而非图像领域的 U-Net）作为去噪网络。设计动机：轨迹空间的低维度使得层次结构没有必要，简单 MLP 即可高效去噪。</p>
+</div>
+
+<div class="callout blue">
+  <strong>条件编码器设计</strong>
+  <p>输入 token 序列：<code>[CLS] [h₁] [h₂] ... [h_{T_o}] [s₁] [s₂] ... [s_N]</code>，其中 $h_t$ 是历史轨迹的时间步嵌入（MLP + PE），$s_j$ 是邻域智能体的状态嵌入（MLP + PE）。Transformer 编码器（4 层，8-head Self-Attention）输出 $c = h_{\text{[CLS]}}$（256 维条件特征）。</p>
+</div>
+
+<div class="card purple">
+  <h3>去噪网络详解</h3>
+  <p>去噪网络 $\epsilon_\theta$ 的输入为拼接向量 $[\tau_t \in \mathbb{R}^{24}; c \in \mathbb{R}^{256}; t_{\text{emb}} \in \mathbb{R}^{128}]$，总维度 408 维，经过 MLP（408 → 512 → 512 → 24）输出预测噪声 $\hat{\epsilon} \in \mathbb{R}^{24}$。时间步 $t$ 用正弦位置编码 $t_{\text{emb}} = [\sin(\omega_1 t), \cos(\omega_1 t), \sin(\omega_2 t), \cos(\omega_2 t), ...]$。</p>
+</div>
+
+<div class="formula">
+$$\mu_\theta(\tau_t, t, c) = \frac{1}{\sqrt{\alpha_t}} \left( \tau_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon_\theta(\tau_t, t, c) \right)$$
+</div>
+
+<div class="callout amber">
+  <strong>推理伪代码（MID）</strong>
+</div>
+<pre><code><span class="cmt"># 1. 编码条件信息</span>
+c = transformer_encoder([history, neighbors])
+
+trajectories = []
+<span class="kw">for</span> <span class="fn">_</span> <span class="kw">in</span> <span class="fn">range</span>(num_samples=20):
+    <span class="cmt"># 2. 从标准高斯采样初始噪声</span>
+    tau_T = torch.randn(12, 2)  <span class="cmt"># T_f=12 步, 2D 坐标</span>
+
+    <span class="cmt"># 3. DDPM 去噪循环</span>
+    tau_t = tau_T
+    <span class="kw">for</span> t <span class="kw">in</span> <span class="fn">reversed</span>(<span class="fn">range</span>(1, T+1)):  <span class="cmt"># T=100</span>
+        eps_pred = denoise_net(tau_t, c, t)
+
+        alpha_t = alpha_schedule[t]
+        alpha_bar_t = alpha_bar_schedule[t]
+
+        mu = (1/<span class="fn">sqrt</span>(alpha_t)) * (
+            tau_t - (1-alpha_t)/<span class="fn">sqrt</span>(1-alpha_bar_t) * eps_pred
+        )
+
+        <span class="kw">if</span> t > 1:
+            sigma_t = <span class="fn">sqrt</span>((1-alpha_bar_t-1)/(1-alpha_bar_t) * (1-alpha_t))
+            tau_t = mu + sigma_t * torch.randn_like(tau_t)
+        <span class="kw">else</span>:
+            tau_t = mu
+
+    trajectories.append(tau_t)  <span class="cmt"># tau_0: 去噪后的轨迹</span>
+
+<span class="kw">return</span> trajectories</code></pre>
+
+<!-- ---- CTG ---- -->
+<div class="section">
+  <h2>CTG：联合多智能体 Diffusion / Conditional Traffic Generation (Zhong et al., CVPR 2023)</h2>
+  <p>将 Diffusion 从单智能体扩展到联合多智能体生成，引入 Classifier Guidance 实现交通规则约束</p>
+</div>
+
+<div class="card purple">
+  <h3>What is CTG?</h3>
+  <p><strong>CTG（Conditional Traffic Generation）</strong> 将 Diffusion 从单智能体扩展到<strong>联合多智能体生成</strong>，同时引入 Classifier Guidance 在推理时注入交通规则约束。联合轨迹 $\tau_{\text{joint}} \in \mathbb{R}^{N \times 12 \times 2}$ 展平为 $\mathbb{R}^{24N}$（$N$ 个智能体 $\times$ 12 步 $\times$ 2D），去噪网络同时预测所有智能体的噪声。</p>
+</div>
+
+<div class="callout blue">
+  <strong>约束引导完整公式</strong>
+  步骤 1：标准去噪得到均值 $\mu_\theta(\tau_t, t, c)$<br>
+  步骤 2：从噪声轨迹估计去噪轨迹 $\hat{\tau}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}} (\tau_t - \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon_\theta(\tau_t, t, c))$<br>
+  步骤 3：计算约束梯度 $g = \nabla_{\tau_t} \mathcal{J}(\hat{\tau}_0(\tau_t))$<br>
+  步骤 4：引导更新 $\tau_{t-1} = \mu_\theta + \lambda \cdot \Sigma_t \cdot g + \sigma_t \cdot z, \quad z \sim \mathcal{N}(0, I)$
+</div>
+
+<div class="card amber">
+  <h3>CTG 约束函数设计</h3>
+  <pre><code><span class="cmt"># 碰撞避免</span>
+J_collision(τ) = -Σ_i Σ_j≠i Σ_h max(0, d_safe - ||p_h^i - p_h^j||_2)
+
+<span class="cmt"># 地图约束 (保持在道路内)</span>
+J_road(τ) = -Σ_i Σ_h max(0, dist(p_h^i, Road_boundary))
+
+<span class="cmt"># 速度约束</span>
+J_speed(τ) = -Σ_i Σ_h max(0, ||v_h^i||_2 - v_max)
+
+<span class="cmt"># 总约束</span>
+J(τ) = w_1·J_collision + w_2·J_road + w_3·J_speed</code></pre>
+</div>
+
+<!-- ---- Diffusion-ES ---- -->
+<div class="section">
+  <h2>Diffusion-ES：进化搜索框架 / Evolution Strategy in Noise Space (Zhong et al., 2024)</h2>
+  <p>将 Diffusion 的分布采样与进化策略结合，解决纯 Classifier Guidance 的约束满足率上限问题</p>
+</div>
+
+<div class="card purple">
+  <h3>What is Diffusion-ES?</h3>
+  <p><strong>Diffusion-ES</strong> 的创新在于将 Diffusion 的分布采样与进化策略（ES）的优化搜索结合。<strong>核心洞察：</strong>在轨迹空间做交叉/变异会产生物理上不可能的轨迹（如前半段直行 + 后半段左转的拼接），但在 Diffusion 的<strong>噪声空间</strong>做交叉/变异，然后通过部分去噪"修复"轨迹合理性，可以兼顾搜索的多样性和输出的物理一致性。</p>
+</div>
+
+<div class="callout blue">
+  <strong>Diffusion-ES 完整流程</strong>
+  <p><strong>阶段 1：Diffusion 生成初始种群。</strong>对 $m = 1, ..., M$（$M=100$），采样 $z_m \sim \mathcal{N}(0, I)$，DDIM 去噪（10 步）得到 $\tau_m = \text{DDIM\_denoise}(z_m, c, 10)$，得到初始种群 $P_0 = \{\tau_1, ..., \tau_M\}$。</p>
+  <p><strong>阶段 2：进化搜索。</strong>对每代 gen = 1, ..., G（$G=10$）：(a) 适应度评估 $F_m = \mathcal{J}(\tau_m)$；(b) 精英选择 $\text{elite} = \text{top-}K(P_{\text{gen}}, F)$（$K=20$）；(c) 在噪声空间中交叉/变异：$z_{\text{new}} = \alpha \cdot z_{\text{elite}_a} + (1-\alpha) \cdot z_{\text{elite}_b}$，再加噪声变异；(d) 部分去噪修复：$\tau_{\text{new}} = \text{partial\_denoise}(z_{\text{new}}, c, 5 \text{ 步})$。</p>
+</div>
+
+<div class="callout amber">
+  <strong>为什么在噪声空间做进化而不是轨迹空间？</strong>
+  在轨迹空间做交叉：$\tau_A = \text{直行轨迹}$，$\tau_B = \text{左转轨迹}$，交叉得到 $\tau_{\text{new}} = \text{前半直行 + 后半左转}$ —— 轨迹不连续，物理上不可能。在噪声空间做交叉：$z_{\text{new}} = \alpha \cdot z_A + (1-\alpha) \cdot z_B$，去噪后的 $\tau_{\text{new}}$ 是一条新的、合理的中间轨迹。Diffusion 的去噪过程保证了输出轨迹的合理性。
+</div>
+
+<!-- ---- 多模态性对比 ---- -->
+<div class="section green">
+  <h2>多模态性对比：CVAE vs GAN vs Diffusion / Multimodality Comparison</h2>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>维度</th><th>CVAE</th><th>GAN</th><th>Diffusion</th></tr>
+    <tr><td><strong>模式数量</strong></td><td>受限于潜空间维度（通常 &lt;10 个显式模式）</td><td>理论无限，实际 1-3 个（mode collapse）</td><td>理论无限，实际 10-20+ 个</td></tr>
+    <tr><td><strong>分布连续性</strong></td><td>离散模式间有 gap</td><td>连续但稀疏</td><td>连续且密集</td></tr>
+    <tr><td><strong>模式覆盖</strong></td><td>中等（后验坍缩→覆盖减少）</td><td>差（模式坍缩→忽略次要模式）</td><td>好（每次采样独立，无坍缩）</td></tr>
+    <tr><td><strong>训练稳定性</strong></td><td>中（需要 KL annealing）</td><td>差（对抗训练不稳定）</td><td>好（简单 MSE 目标）</td></tr>
+    <tr><td><strong>概率校准</strong></td><td>差（先验-后验 gap）</td><td>无概率输出</td><td>中（去噪过程隐含分布）</td></tr>
+    <tr><td><strong>推理速度</strong></td><td>快（单次前传）</td><td>快（单次前传）</td><td>慢（多步去噪）</td></tr>
+    <tr><td><strong>条件控制</strong></td><td>弱（只能在训练时注入）</td><td>弱（需重训练）</td><td>强（推理时 Guidance）</td></tr>
+  </table>
+</div>
+
+<div class="callout blue">
+  <strong>可视化：5 模式场景下的采样对比</strong>
+  <p>真实分布有 5 个模式（直行、左转、右转、缓左、缓右）。CVAE 采样约覆盖 3 个模式（后验坍缩导致缓左/缓右丢失）；GAN 几乎全是直行（模式坍缩）；Diffusion 每次采样独立，5 个模式都被覆盖，采样数大致与概率成正比。</p>
+</div>
+
+<!-- ---- 基准对比汇总 ---- -->
+<div class="section">
+  <h2>基准对比汇总 / Benchmark Summary</h2>
+</div>
+
+<div class="grid-2">
+  <div class="card green">
+    <h3>ETH/UCY（行人, ADE/FDE @K=20）</h3>
+    <table>
+      <tr><th>方法</th><th>类型</th><th>ADE ↓</th><th>FDE ↓</th></tr>
+      <tr><td>Social-GAN</td><td>GAN</td><td>0.58</td><td>1.18</td></tr>
+      <tr><td>Trajectron++</td><td>CVAE</td><td>0.43</td><td>0.86</td></tr>
+      <tr><td>AgentFormer</td><td>CVAE+Trans</td><td>0.39</td><td>0.73</td></tr>
+      <tr><td><strong>MID</strong></td><td><strong>Diffusion</strong></td><td><strong>0.39</strong></td><td><strong>0.66</strong></td></tr>
+      <tr><td><strong>LED</strong></td><td><strong>Diffusion</strong></td><td><strong>0.36</strong></td><td><strong>0.62</strong></td></tr>
+    </table>
+  </div>
+  <div class="card purple">
+    <h3>nuScenes（车辆, minADE$_5$）</h3>
+    <table>
+      <tr><th>方法</th><th>类型</th><th>minADE$_5$ ↓</th><th>MR$_5$ ↓</th><th>约束满足 ↑</th></tr>
+      <tr><td>HiVT</td><td>Transformer</td><td>1.61</td><td>0.54</td><td>—</td></tr>
+      <tr><td>MTR</td><td>Transformer</td><td>1.44</td><td>0.46</td><td>—</td></tr>
+      <tr><td>QCNet</td><td>Transformer</td><td>1.32</td><td>0.41</td><td>—</td></tr>
+      <tr><td><strong>CTG</strong></td><td><strong>Diffusion</strong></td><td><strong>1.18</strong></td><td><strong>0.38</strong></td><td><strong>92%</strong></td></tr>
+      <tr><td><strong>Diffusion-ES</strong></td><td><strong>Diff+ES</strong></td><td><strong>1.15</strong></td><td><strong>0.36</strong></td><td><strong>97%</strong></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="callout amber">
+  <strong>关键观察</strong>
+  <ul>
+    <li>在纯精度指标（minADE/minFDE）上，Diffusion 方法与最强 Transformer 方法接近</li>
+    <li>在<strong>多模态覆盖</strong>（MR 降低 12%）和<strong>约束满足</strong>（92%→97%）上，Diffusion 方法显著领先</li>
+    <li>Transformer 方法在推理速度上占优（~10ms vs ~100ms），工业界目前偏好 Transformer</li>
+  </ul>
+</div>
+
+<!-- ---- 推理加速 ---- -->
+<div class="section amber">
+  <h2>Diffusion 推理加速方向 / Inference Acceleration</h2>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>加速方法</th><th>去噪步数</th><th>延迟</th><th>minADE 变化</th><th>原理</th></tr>
+    <tr><td>DDPM（基线）</td><td>100</td><td>~200ms</td><td>基线</td><td>逐步去噪</td></tr>
+    <tr><td>DDIM</td><td>10</td><td>~20ms</td><td>+2%</td><td>确定性采样跳步</td></tr>
+    <tr><td>DPM-Solver</td><td>5</td><td>~10ms</td><td>+3%</td><td>高阶 ODE 求解</td></tr>
+    <tr><td>一致性蒸馏</td><td>1</td><td>~2ms</td><td>+8%</td><td>单步生成</td></tr>
+    <tr><td>LED（潜空间）</td><td>10</td><td>~15ms</td><td>-1%</td><td>压缩到低维潜空间</td></tr>
+  </table>
+  <p><strong>LED（Latent Ensemble Diffusion）</strong>的潜空间策略值得关注：先用编码器将轨迹压缩到低维潜空间（如 $z \in \mathbb{R}^8$），在潜空间做 Diffusion 去噪，再解码回轨迹空间。潜空间维度远低于轨迹空间（8 vs 24），去噪速度更快且质量更好。</p>
+</div>
+
+<!-- ---- 小结 ---- -->
+<div class="section green">
+  <h2>小结 / Summary</h2>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Transformer 方法</h3>
+    <table>
+      <tr><th>概念</th><th>要点</th></tr>
+      <tr><td>MTR</td><td>意图锚点 + Transformer 交叉注意力，Waymo SOTA</td></tr>
+      <tr><td>MotionFormer</td><td>自回归生成轨迹，时序一致性好但推理慢</td></tr>
+      <tr><td>QCNet</td><td>场景编码与轨迹解码分离，编码可缓存复用</td></tr>
+      <tr><td>GameFormer</td><td>Level-K 博弈迭代解码，逼近 Nash 均衡</td></tr>
+    </table>
+    <p>Transformer 优势：全局注意力、灵活条件注入、高 GPU 利用率。遗留问题：锚点/回归方法的多模态性仍有限 → Diffusion 补充。</p>
+  </div>
+  <div class="card purple">
+    <h3>Diffusion 方法</h3>
+    <table>
+      <tr><th>概念</th><th>要点</th></tr>
+      <tr><td>CVAE 局限</td><td>后验坍缩、模式数受限、先验-后验 gap</td></tr>
+      <tr><td>Diffusion 优势</td><td>无坍缩、无限模式、训练稳定、灵活约束注入</td></tr>
+      <tr><td>MID</td><td>首个 Diffusion 轨迹预测，Transformer 编码器 + MLP 解码器</td></tr>
+      <tr><td>CTG</td><td>联合多智能体，Classifier Guidance 注入交通约束</td></tr>
+      <tr><td>Diffusion-ES</td><td>噪声空间进化搜索，约束满足率 97%</td></tr>
+    </table>
+    <p>多模态对比：Diffusion > CVAE >> GAN 在模式覆盖上。推理加速：DDIM/DPM-Solver 可将延迟降至 ~10ms。</p>
+  </div>
+</div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 06 Transformer 与扩散模型预测 ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../05-prediction-gnn/index.html">← 05 图神经网络预测方法</a>
+    · <a href="../07-planning-foundation/index.html">下一篇：07 规划方法演进：从搜索到优化 →</a>
+  </div>
+</div>
+</body>
+</html>

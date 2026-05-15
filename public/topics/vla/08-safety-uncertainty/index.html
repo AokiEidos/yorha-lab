@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 08 · 安全与不确定性：PGD、Conformal Prediction、Fallback</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+<!-- ── Title ── -->
+<div class="title-bar">
+  <h1>Chapter 08 · 安全与不确定性：PGD、Conformal Prediction、Fallback</h1>
+  <p>VLA 技术文档系列 · Vision-Language-Action Model Series</p>
+</div>
+
+<!-- ── 1. 章节导览 ── -->
+<div class="section">
+  <h2>1 · 为什么 VLA 系统需要安全机制？</h2>
+  <p>VLA 系统在实际部署中面临两类核心风险：<strong>分布内失效</strong>（训练分布内的罕见情境导致的错误决策）和<strong>分布外失效</strong>（完全超出训练分布的新情境导致的不可预测行为）。与传统规则系统不同，深度学习模型的失效模式难以穷举，且往往是脆性的——模型可能对微小的对抗扰动或分布偏移产生剧烈的行为变化。</p>
+</div>
+
+<div class="callout red">
+<strong>安全关键系统的要求：</strong>对于自动驾驶、手术机器人等安全关键应用，系统必须保证在 Failure Mode 下也不会导致灾难性后果。VLA 系统需要在不确定性升高时主动降级，而不是盲目输出动作。
+</div>
+
+<!-- ── 2. 对抗鲁棒性 ── -->
+<div class="section green">
+  <h2>2 · 对抗鲁棒性：PGD 与对抗训练</h2>
+  <p>对抗鲁棒性研究最早源于计算机视觉，指的是模型对微小对抗扰动的抵抗能力。在机器人领域，传感器输入可能被攻击者故意干扰（物理对抗样本，如在路面上贴黑白条纹使感知系统失效）。</p>
+</div>
+
+<h3>2.1 对抗扰动形式</h3>
+<p>给定输入图像 $x$，对抗扰动 $\delta$ 被设计为使模型输出错误分类：</p>
+
+<div class="formula">
+$$x' = x + \delta, \quad \|\delta\|_p \leq \epsilon, \quad \arg\max f(x') \neq \arg\max f(x)$$
+</div>
+
+<p>其中 $\epsilon$ 是扰动范数上界。$L_\infty$ 范数约束的扰动最为常见，因为其对应实际中通过贴纸或打印图案实现的物理对抗样本。</p>
+
+<h3>2.2 PGD（Projected Gradient Descent）攻击</h3>
+<p>PGD 是最强的 $L_\infty$ 白盒攻击方法。它在扰动空间中做多步梯度上升，并在每步后将扰动投影回 $\epsilon$-ball：</p>
+
+<div class="formula">
+$$\delta_{t+1} = \Pi_{\epsilon}\left( \delta_t + \alpha \cdot \text{sign}(\nabla_\delta L(f(x+\delta_t), y)) \right)$$
+</div>
+
+<p>其中 $\Pi_\epsilon$ 是 $\epsilon$-ball 投影操作，$\alpha$ 是步长，sign 是符号函数（确保在 $L_\infty$ 方向上更新）。PGD 通过随机初始化多次执行来提高攻击成功率，是评估模型鲁棒性的标准工具。</p>
+
+<h3>2.3 对抗训练</h3>
+<p>对抗训练（Adversarial Training）通过在对抗扰动上最小化损失来提升模型鲁棒性：</p>
+
+<div class="formula">
+$$\min_\theta \mathbb{E}_{(x,y) \sim \mathcal{D}} \left[ \max_{\|\delta\|_\infty \leq \epsilon} L(f_\theta(x+\delta), y) \right]$$
+</div>
+
+<p>这是一个典型的 minimax 问题：外层最小化在参数空间，内层最大化在扰动空间。PGD-AT（PGD-based Adversarial Training）将内层最大化替换为 PGD 攻击，是当前最有效的对抗训练变体之一。</p>
+
+<div class="card green">
+  <h3>TRADES：正则化方法</h3>
+  <p>TRADES（TRADE-OFF）将对抗训练表述为在干净样本的交叉熵损失与对抗样本的 KL 散度之间的权衡：</p>
+  <div class="formula">
+$$\min_\theta \mathbb{E}\left[ L(f_\theta(x), y) + \lambda \cdot \text{KL}(f_\theta(x) \| f_\theta(x+\delta)) \right]$$
+  </div>
+  <p>TRADES 在某些任务上比 PGD-AT 达到更高的干净样本准确率，同时保持对抗鲁棒性。</p>
+</div>
+
+<!-- ── 3. 不确定性量化 ── -->
+<div class="section amber">
+  <h2>3 · 不确定性量化：让模型知道自己不知道</h2>
+  <p>VLA 系统的决策必须附带对其自身可靠性的评估。不确定性量化（Uncertainty Quantification, UQ）通过标定模型的预测置信度，使得系统在高不确定性时触发降级策略。</p>
+</div>
+
+<h3>3.1 不确定性的来源</h3>
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">认知不确定性（Epistemic）</div>
+    <p>源于模型对训练数据覆盖不足产生的知识空白。理论上可通过更多数据消除。</p>
+    <ul>
+      <li>训练数据外的情境（如新型障碍物）</li>
+      <li>模型结构导致的表示瓶颈</li>
+      <li>多解性（多个合理解但模型只学到其中一个）</li>
+    </ul>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">偶然不确定性（Aleatoric）</div>
+    <p>源于数据本身的随机性，无法通过更多数据消除。</p>
+    <ul>
+      <li>传感器噪声</li>
+      <li>遮罩导致的局部观测缺失</li>
+      <li>本质随机性的物理过程</li>
+    </ul>
+  </div>
+</div>
+
+<h3>3.2 Bayesian 方法</h3>
+<p>Bayesian 深度学习通过在权重上引入后验分布来建模认知不确定性：</p>
+
+<div class="formula">
+$$p(y \mid x, \mathcal{D}) = \int p(y \mid x, w) p(w \mid \mathcal{D}) dw$$
+</div>
+
+<p>实际中，直接计算 $p(w|\mathcal{D})$ 不可行。MC Dropout 通过在推理时随机 dropout 近似贝叶斯推断：</p>
+
+<div class="formula">
+$$p(y \approx \frac{1}{T} \sum_{t=1}^T \text{Softmax}(f_{\hat{w}_t}(x)))$$
+</div>
+
+<p>多次采样的预测方差即认知不确定性估计。方差越大，模型对其预测越不确定。</p>
+
+<h3>3.3 Deep Ensembles</h3>
+<p>Deep Ensembles 通过训练多个独立模型并集成其预测来估计不确定性：</p>
+
+<div class="formula">
+$$\mu(x) = \frac{1}{M} \sum_{m=1}^M f_{\theta_m}(x), \quad \sigma^2(x) = \frac{1}{M} \sum_{m=1}^M \|f_{\theta_m}(x) - \mu(x)\|^2$$
+</div>
+
+<p>Ensembles 的预测均值通常比单模型更准确，方差直接作为不确定性估计。实现简单，效果好，是工程中常用的方法。主要代价是 $M$ 倍的推理成本。</p>
+
+<h3>3.4 信息论方法：直觉与公式</h3>
+<p>互信息（Mutual Information）提供了另一种量化认知不确定性的方式：</p>
+
+<div class="formula">
+$$\text{MI}(y, w \mid x, \mathcal{D}) = \mathbb{E}_{p(w|\mathcal{D})}\left[ D_\text{KL}(p(y|x,w) \| p(y|x,\mathcal{D})) \right]$$
+</div>
+
+<p>这个量衡量的是「如果看到完整模型权重，预测会改变多少」。信息论方法在理论上更优雅，但实际计算复杂度高。</p>
+
+<!-- ── 4. 共形预测 ── -->
+<div class="section purple">
+  <h2>4 · 共形预测：有限样本覆盖率保证</h2>
+  <p>共形预测（Conformal Prediction, CP）是一种模型无关的分布无关预测集构建方法，可在有限样本上提供有限样本覆盖率保证。形式上，给定置信水平 $1-\alpha$，共形预测集 $\mathcal{C}(x_{n+1})$ 满足：</p>
+
+<div class="formula">
+$$\mathbb{P}(Y_{n+1} \in \mathcal{C}(X_{n+1})) \geq 1 - \alpha$$
+</div>
+
+<p>这个保证不依赖模型假设或数据分布假设，在 VLA 系统中为轨迹预测提供了可证明的安全上界。</p>
+
+<h3>4.1 Adaptive Conformal Prediction（ACI）</h3>
+<p>标准 CP 假设数据是 exchangeable 的（即 IID 或可交换），这对时序数据不成立。ACI 通过在每个时间步根据即时覆盖误差调整置信区间来适应分布偏移：</p>
+
+<div class="formula">
+$$\hat{q}_{t+1} = \hat{q}_t + \eta \cdot (\mathbb{1}[y_t \notin \mathcal{C}_t(x_t)] - \alpha)$$
+</div>
+
+<p>其中 $\eta$ 是学习率，$\alpha$ 是目标误差率。ACI 在非平稳环境中（如自动驾驶的天气变化、城市迁移）效果优于标准 CP。</p>
+
+<div class="card">
+  <h3>Coverage Guarantee 在轨迹预测中的应用</h3>
+  <p>设 $\mathcal{C}_t(x_t)$ 为自车在时刻 $t$ 的预测轨迹集，目标是保证未来 $H$ 步内自车真实轨迹以 $1-\alpha$ 概率落在预测集中：</p>
+  <div class="formula">
+$$\mathbb{P}\left( \forall h \in [1,H]: \|p_t^{ego} - p_{t+h}^{ego*}\| \leq \epsilon_h \right) \geq 1 - \alpha$$
+  </div>
+  <p>若违反（真实轨迹超出预测集），系统应触发安全降级（如减速、停车）。这种保证对安全关键系统的认证至关重要。</p>
+</div>
+
+<!-- ── 5. Fallback 策略 ── -->
+<div class="section">
+  <h2>5 · Graceful Degradation：VLA 的Fallback架构</h2>
+  <p>即使感知和预测存在不确定性，安全关键系统也必须保证最小功能。Graceful Degradation（优雅降级）要求 VLA 系统在感知或决策模块失效时切换到安全的降级策略，而不是直接崩溃或输出危险动作。</p>
+</div>
+
+<h3>5.1 分层 Fallback 架构</h3>
+<div class="tech-canvas">
+  <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    <rect width="640" height="150" fill="#f8fafc"/>
+
+    <!-- VLA Primary -->
+    <rect x="80" y="20" width="130" height="50" rx="8" fill="#3b82f6" opacity="0.9"/>
+    <text x="145" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">VLA Primary</text>
+    <text x="145" y="58" text-anchor="middle" fill="white" font-size="10">Full Action Output</text>
+
+    <!-- OOD Detector -->
+    <rect x="260" y="20" width="120" height="50" rx="8" fill="#f59e0b" opacity="0.9"/>
+    <text x="320" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">OOD Detector</text>
+    <text x="320" y="58" text-anchor="middle" fill="white" font-size="10">Uncertainty Check</text>
+
+    <!-- Fallback -->
+    <rect x="430" y="20" width="130" height="50" rx="8" fill="#ef4444" opacity="0.9"/>
+    <text x="495" y="42" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Safety Fallback</text>
+    <text x="495" y="58" text-anchor="middle" fill="white" font-size="10">Rule-based Controller</text>
+
+    <!-- Arrows -->
+    <line x1="210" y1="45" x2="258" y2="45" stroke="#64748b" stroke-width="2"/>
+    <polygon points="255,40 262,45 255,50" fill="#64748b"/>
+    <line x1="380" y1="45" x2="428" y2="45" stroke="#64748b" stroke-width="2"/>
+    <polygon points="425,40 432,45 425,50" fill="#64748b"/>
+
+    <!-- Uncertainty threshold line -->
+    <rect x="80" y="90" width="480" height="35" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="320" y="108" text-anchor="middle" fill="#1e293b" font-size="11">Uncertainty &gt; threshold → Fallback</text>
+    <text x="320" y="122" text-anchor="middle" fill="#64748b" font-size="10">MPC Safe Controller | Emergency Stop | LQR Stabilizer</text>
+
+    <!-- Safety guarantee badge -->
+    <rect x="540" y="90" width="80" height="35" rx="6" fill="#22c55e" opacity="0.8"/>
+    <text x="580" y="110" text-anchor="middle" fill="white" font-size="10" font-weight="bold">✓ Safe</text>
+    <text x="580" y="122" text-anchor="middle" fill="white" font-size="9">Guaranteed</text>
+  </svg>
+  <div style="font-size:11px;color:#64748b;text-align:center;padding:4px 0">图 5-1：分层 Fallback 架构。VLA Primary 输出动作的同时输出不确定性估计；若 OOD Detector 检测到高不确定性，切换至 Rule-based Safety Fallback。</div>
+</div>
+
+<h3>5.2 Safety SGP（Sampling-Based GP）</h3>
+<p>SGP 通过在状态空间采样来验证 VLA 规划动作的安全性：对于每个候选动作 $a$，评估该动作在多个采样未来状态下的碰撞风险：</p>
+
+<div class="formula">
+$$J_\text{safety}(a, s) = \max_{s' \sim p(\cdot|s,a)} \mathbb{1}[\text{collision}(s')]$$
+</div>
+
+<p>若 $J_\text{safety} > 0$（存在碰撞可能），则拒绝该动作并触发 fallback。这种方法将 VLA 的学习能力与规则系统的安全保证结合，是当前工业界的主流方案。</p>
+
+<h3>5.3 MPC Fallback</h3>
+<p>MPC（Model Predictive Control）Fallback 使用简化的物理模型（如自行车模型）在短时域内规划安全轨迹：</p>
+
+<div class="formula">
+$$\min_{u_{t:t+H}} \sum_{k=0}^{H} \|x_{t+k} - x_\text{ref}\|_Q^2 + \|u_{t+k}\|_R^2 \quad \text{s.t.} \quad x_{k+1} = f(x_k, u_k)$$
+</div>
+
+<p>MPC 在每个时间步求解优化问题，保证即使 VLA 输出异常，底层控制器也能输出安全的局部轨迹。这种双层架构在 Tesla FSD 和 Waymo 中均有应用。</p>
+
+<!-- ── 6. 风险感知规划 ── -->
+<div class="section green">
+  <h2>6 · 风险感知规划：RAPL 与 Conditional CVaR</h2>
+  <p>标准 RL 优化的是期望累积奖励，但在安全关键场景中，期望最优解可能是高风险（高方差）的。风险感知规划通过优化风险度量来约束尾部风险。</p>
+</div>
+
+<h3>6.1 CVaR（Conditional Value at Risk）</h3>
+<p>CVaR 衡量在最坏 $\alpha$ 情况下的平均损失：</p>
+
+<div class="formula">
+$$\text{CVaR}_\alpha(\theta) = \frac{1}{\alpha} \int_0^\alpha \text{VaR}_z(\theta) \, dz$$
+</div>
+
+<p>其中 $\text{VaR}_z$ 是在置信度 $z$ 下的损失上界。相比均值-方差目标，CVaR 直接惩罚尾部风险，使策略在长尾场景中更保守。</p>
+
+<h3>6.2 RAPL（Risk-Aware Policy Learning）</h3>
+<p>RAPL 将风险约束引入策略优化：</p>
+
+<div class="formula">
+$$\max_\theta J(\pi_\theta) \quad \text{s.t.} \quad \text{CVaR}_\alpha(\pi_\theta) \leq \epsilon_\text{risk}$$
+</div>
+
+<p>通过拉格朗日对偶将该约束问题转化为无约束优化：</p>
+
+<div class="formula">
+$$\max_\theta \min_\lambda \mathbb{E}[r] - \lambda(\text{CVaR}_\alpha - \epsilon_\text{risk})$$
+</div>
+
+<p>RAPL 在自动驾驶和手术机器人等需要明确安全保证的应用中逐渐成为标准。</p>
+
+<div class="callout amber">
+<strong>实际部署注意点：</strong>CVaR 优化倾向于产生保守策略，在实际中可能表现为过于谨慎的驾驶行为。需要在风险控制和效率/用户体验之间找到平衡点——这通常通过调整 $\alpha$ 和 $\epsilon_\text{risk}$ 参数来实现。
+</div>
+
+<!-- ── 7. OOD 检测 ── -->
+<div class="section purple">
+  <h2>7 · Out-of-Distribution 检测：部署前的安全阀</h2>
+  <p>OOD 检测是让 VLA 系统在遇到超出训练分布的输入时主动报告的能力。与不确定性量化相关但不等价：OOD 强调的是「分布」概念，而非「不确定性」概念。</p>
+</div>
+
+<h3>7.1 能量模型（Energy-Based Model）</h3>
+<p>EBM 使用能量函数 $E(x)$ 来度量输入与训练分布的匹配程度：</p>
+
+<div class="formula">
+$$p(y \mid x) \propto \exp(-E(x,y)) / Z(x), \quad Z(x) = \sum_{y'} \exp(-E(x,y'))$$
+</div>
+
+<p>训练时，ID 样本的能量被拉低，OOD 样本的能量被推高。部署时，能量值 $E(x)$ 本身即可作为 OOD 分数，无需标签。</p>
+
+<h3>7.2 马氏距离检测</h3>
+<p>基于特征空间的马氏距离检测通过计算输入特征与类别中心的协方差距离来判断是否为 OOD：</p>
+
+<div class="formula">
+$$d_M(x) = \sqrt{(x - \mu)^\top \Sigma^{-1} (x - \mu)}$$
+</div>
+
+<p>其中 $\mu$ 和 $\Sigma$ 是 ID 数据的特征均值和协方差。Mahalanobis 距离越大，输入越偏离训练分布。这种方法计算简单，在实践中对视觉 OOD 有不错的检测效果。</p>
+
+<div class="tech-data-block">
+  <div class="block-title">OOD 检测方法对比</div>
+  <table>
+    <thead><tr><th>方法</th><th>原理</th><th>优点</th><th>缺点</th></tr></thead>
+    <tbody>
+      <tr><td>MSP（Max Softmax Probability）</td><td>取最大 softmax 概率作为置信度</td><td>实现简单，无额外训练</td><td>对 OOD 过度自信的模型无效</td></tr>
+      <tr><td>Energy Score</td><td>能量函数值作为 OOD 分数</td><td>无需类别标签，可泛化</td><td>能量函数设计依赖模型结构</td></tr>
+      <tr><td>Mahalanobis Distance</td><td>特征空间的马氏距离</td><td>利用特征分布信息</td><td>需要估计协方差，计算成本 O(d^2)</td></tr>
+      <tr><td>Gram Matrix</td><td>网络中间层特征的 Gram 矩阵差异</td><td>无需训练，事后可用</td><td>对某些对抗样本失效</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 8. 本章小结 ── -->
+<div class="section">
+  <h2>8 · 本章小结</h2>
+  <p>VLA 系统的安全性需要从多个维度同时保证。对抗训练（PGD-AT、TRADES）提升了模型对物理对抗扰动的鲁棒性；不确定性量化（Bayesian、Ensembles、CP）为每个预测提供了可靠的置信度估计；共形预测进一步将覆盖率保证从理论带入实际部署；分层 Fallback 架构确保了在任何单一模块失效时系统仍能安全运行；风险感知规划则将安全约束显式引入策略优化目标。</p>
+  <p>这些机制共同构成了 VLA 系统的安全护盾。在实际产品中，它们的权衡（如对抗训练带来的准确率损失、CVaR 带来的保守性）需要根据具体应用场景进行调优。下一章我们将转向 VLA 在机器人操作任务中的具体应用，包括操控、导航和交互。</p>
+</div>
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · Chapter 08 · 安全与不确定性 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../07-simulation-data/index.html">← 第七章：仿真与数据引擎</a> ·
+  <a href="../09-robot-manipulation/index.html">第九章：机器人操作 →</a>
+</div>
+
+</div>
+</body>
+</html>

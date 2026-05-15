@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 评估指标体系 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-2: #64748b;
+      --text-3: #94a3b8;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #7c3aed;
+      --code-bg: #f1f5f9;
+      --code-border: #cbd5e1;
+      --font: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      padding: 24px 16px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .title-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 28px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .title-bar h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .title-bar .subtitle { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+    .section {
+      border-left: 4px solid var(--blue);
+      background: linear-gradient(to right, #eff6ff, transparent);
+      padding: 12px 16px;
+      margin: 20px 0 12px;
+      border-radius: 0 6px 6px 0;
+    }
+    .section h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+    .section.green { border-color: var(--green); background: linear-gradient(to right, #f0fdf4, transparent); }
+    .section.amber { border-color: var(--amber); background: linear-gradient(to right, #fffbeb, transparent); }
+    .section.red { border-color: var(--red); background: linear-gradient(to right, #fef2f2, transparent); }
+    .section.purple { border-color: var(--purple); background: linear-gradient(to right, #ede9fe, transparent); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 3px solid var(--blue);
+    }
+    .card.green { border-left-color: var(--green); }
+    .card.amber { border-left-color: var(--amber); }
+    .card.red { border-left-color: var(--red); }
+    .card.purple { border-left-color: var(--purple); }
+    .card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .card p { margin-bottom: 8px; color: var(--text); }
+    .card p:last-child { margin-bottom: 0; }
+    .callout {
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 12px;
+    }
+    .callout.amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .callout.purple { background: #ede9fe; border: 1px solid #c4b5fd; color: #5b21b6; }
+    .formula {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+      font-family: 'Times New Roman', serif;
+      font-size: 14px;
+      color: #1e40af;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-left: 3px solid var(--code-border);
+      border-radius: 4px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+    code { font-family: var(--mono); font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+    pre code { background: none; padding: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+    th { background: #f1f5f9; color: var(--text-2); font-weight: 600; padding: 7px 10px; text-align: left; border: 1px solid var(--border); }
+    td { padding: 7px 10px; border: 1px solid var(--border); }
+    tr:nth-child(even) td { background: var(--bg); }
+    .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+    .flow-node { background: var(--card); border: 1.5px solid var(--blue); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--blue); }
+    .flow-node.green { border-color: var(--green); color: var(--green); }
+    .flow-node.amber { border-color: var(--amber); color: var(--amber); }
+    .flow-node.purple { border-color: var(--purple); color: var(--purple); }
+    .flow-arrow { color: var(--text-3); font-size: 16px; font-weight: 700; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media(max-width:700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .nav-footer { text-align: center; color: var(--text-3); font-size: 11px; padding: 16px 0; }
+    .nav-footer a { color: var(--blue); text-decoration: none; }
+    .nav-footer a:hover { text-decoration: underline; }
+    .badge { display: inline-block; background: var(--blue); color: white; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; margin-left: 6px; }
+    .text-2 { color: var(--text-2); font-size: 12px; }
+    .mt { margin-top: 12px; }
+    .mb { margin-bottom: 8px; }
+  
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="title-bar">
+      <h1>03 评估指标体系</h1>
+      <div class="subtitle">ADE、FDE、minADE、Miss Rate 与离线/闭环评估</div>
+    </div>
+
+    <!-- 前置知识 -->
+    <div class="callout blue">
+      <strong>⚙️ 基础</strong> · 前置知识：<a href="../02-prediction-problem/index.html">02 轨迹预测问题定义与数学形式化</a>
+    </div>
+
+    <!-- 第一章：核心指标 -->
+    <div class="section">
+      <h2>核心指标：数学定义与直觉解释</h2>
+    </div>
+
+    <div class="card">
+      <h3>ADE（Average Displacement Error，平均位移误差）</h3>
+      <div class="formula">$$\text{ADE} = \frac{1}{T_f} \sum_{t=1}^{T_f} \| \hat{p}_t - p_t \|_2$$</div>
+      <p><strong>直觉</strong>：预测轨迹和真实轨迹在所有时间步上的平均欧氏距离。衡量轨迹的"整体贴合度"。</p>
+    </div>
+
+    <div class="card green">
+      <h3>FDE（Final Displacement Error，终点位移误差）</h3>
+      <div class="formula">$$\text{FDE} = \| \hat{p}_{T_f} - p_{T_f} \|_2$$</div>
+      <p><strong>直觉</strong>：只看预测轨迹终点和真实终点的距离。终点误差通常比中间点大（误差随时间累积），是衡量长程预测质量的关键指标。</p>
+    </div>
+
+    <div class="card amber">
+      <h3>minADE / minFDE（最小 ADE / 最小 FDE）</h3>
+      <p>由于轨迹预测的<strong>多模态性</strong>，模型输出 $K$ 条候选轨迹。<strong>minADE$_K$</strong> 和 <strong>minFDE$_K$</strong> 是取 $K$ 条候选中与真实轨迹最接近的一条来计算：</p>
+      <div class="formula">$$\text{minADE}_K = \min_{k \in \{1, \ldots, K\}} \frac{1}{T_f} \sum_{t=1}^{T_f} \| \hat{p}_t^{(k)} - p_t \|_2$$</div>
+      <div class="formula">$$\text{minFDE}_K = \min_{k \in \{1, \ldots, K\}} \| \hat{p}_{T_f}^{(k)} - p_{T_f} \|_2$$</div>
+      <p><strong>直觉</strong>：在 $K$ 条预测中选最好的一条来算误差。$K$ 越大，指标越好（因为有更多"机会"覆盖真实轨迹），所以对比不同方法时 $K$ 必须一致。</p>
+    </div>
+
+    <!-- minADE 计算过程图示 -->
+    <div class="card green">
+      <h3>minADE 计算过程图示</h3>
+      <div class="tech-grid-auto">
+        <div class="tech-data-block">
+          <div class="block-title">真实轨迹 vs 候选轨迹</div>
+          <svg viewBox="0 0 420 110" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;overflow:visible">
+            <line x1="20" y1="25" x2="400" y2="25" stroke="#22c55e" stroke-width="2" stroke-dasharray="6 4"/>
+            <circle cx="20" cy="25" r="4" fill="#22c55e"/><circle cx="400" cy="25" r="4" fill="#22c55e"/>
+            <text x="140" y="16" font-size="9" fill="#94a3b8">ground truth</text>
+            <line x1="20" y1="50" x2="380" y2="50" stroke="#3b82f6" stroke-width="1.5"/>
+            <circle cx="20" cy="50" r="3" fill="#3b82f6"/><circle cx="380" cy="50" r="3" fill="#3b82f6"/>
+            <text x="385" y="54" font-size="9" fill="#3b82f6">ADE₁=2.3m</text>
+            <line x1="20" y1="75" x2="400" y2="75" stroke="#22c55e" stroke-width="1.5"/>
+            <circle cx="20" cy="75" r="3" fill="#22c55e"/><circle cx="400" cy="75" r="3" fill="#22c55e"/>
+            <text x="385" y="79" font-size="9" fill="#22c55e">ADE₂=1.1m ← 最小</text>
+            <line x1="20" y1="100" x2="360" y2="100" stroke="#ef4444" stroke-width="1.5"/>
+            <circle cx="20" cy="100" r="3" fill="#ef4444"/><circle cx="360" cy="100" r="3" fill="#ef4444"/>
+            <text x="385" y="104" font-size="9" fill="#ef4444">ADE₃=3.5m</text>
+          </svg>
+        </div>
+        <div class="tech-data-block">
+          <div class="block-title">minADE₃ 结果</div>
+          <div class="formula" style="margin:8px 0;font-size:13px">$$\min\text{ADE}_K = \min_{k} \; \text{ADE}_k$$</div>
+          <p style="font-size:12px;color:#64748b;margin:6px 0 4px">其中每条轨迹的 ADE 为：</p>
+          <div style="font-size:11px;font-family:var(--mono);color:#1e293b;margin-bottom:6px">ADE₁=2.3m &nbsp; ADE₂=1.1m &nbsp; ADE₃=3.5m</div>
+          <div class="callout blue" style="margin:6px 0;padding:8px 10px;font-size:11px"><strong>结果：minADE = 1.1m</strong>（取 K 条中最小的 ADE）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout red">
+      <strong>⚠️ 注意</strong>：minADE 会"高估"模型质量——因为它只看最好的那条。一个生成 20 条随机轨迹的模型，只要其中一条恰好接近真实值就能获得低 minADE，但其余 19 条可能毫无意义。这是离线指标的一个根本局限。
+    </div>
+
+    <div class="card red">
+      <h3>Miss Rate（MR，错过率）</h3>
+      <div class="formula">$$\text{MR}_K = \frac{1}{N} \sum_{i=1}^{N} \mathbb{1}\left[\min_{k} \| \hat{p}_{T_f}^{(k)} - p_{T_f} \|_2 > d_{\text{thresh}}\right]$$</div>
+      <p><strong>直觉</strong>：在所有测试样本中，$K$ 条候选轨迹的终点没有一条落在真实终点 $d_{\text{thresh}}$ 范围内的比例。$d_{\text{thresh}}$ 通常取 2m（nuScenes）。</p>
+    </div>
+
+    <style>
+      .mr-diagram { display: flex; justify-content: space-around; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+      .mr-case { flex: 1; min-width: 160px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; text-align: center; }
+      .mr-case-title { font-size: 12px; font-weight: 700; margin-bottom: 14px; }
+      .mr-hit { color: #166534; }
+      .mr-miss { color: #991b1b; }
+      .mr-circle { position: relative; width: 72px; height: 72px; border: 2px dashed #94a3b8; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+      .mr-circle::after { content: ''; width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 6px #3b82f6; }
+      .mr-label { position: absolute; top: -20px; width: 100%; text-align: center; font-size: 10px; color: #94a3b8; }
+      .mr-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; }
+      .mr-hit-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; top: 22px; left: 26px; }
+      .mr-miss-dot1 { background: #ef4444; box-shadow: 0 0 8px #ef4444; top: -12px; right: -18px; }
+      .mr-miss-dot2 { background: #ef4444; box-shadow: 0 0 8px #ef4444; bottom: 8px; right: -24px; }
+      .mr-miss-dot3 { background: #ef4444; box-shadow: 0 0 8px #ef4444; bottom: -16px; left: 36px; }
+      .mr-note { font-size: 11px; color: #64748b; margin-top: 10px; line-height: 1.4; }
+      .mr-footer { font-size: 11px; color: #64748b; line-height: 1.5; background: #fef2f2; border-left: 3px solid #ef4444; padding: 8px 12px; border-radius: 0 4px 4px 0; margin-top: 12px; }
+    </style>
+
+    <div class="card red">
+      <h3>Miss Rate 示意</h3>
+      <div class="mr-diagram">
+        <div class="mr-case">
+          <div class="mr-case-title mr-hit">Case 1: Hit（命中）<span class="tech-status high">MR=0</span></div>
+          <div class="mr-circle">
+            <span class="mr-label">r = 2m</span>
+            <div class="mr-dot mr-hit-dot"></div>
+          </div>
+          <div class="mr-note">有候选落在 2m 圈内<br>→ <strong style="color:#166534">Hit</strong></div>
+        </div>
+        <div class="mr-case">
+          <div class="mr-case-title mr-miss">Case 2: Miss（错过）<span class="tech-status low">MR=1</span></div>
+          <div class="mr-circle">
+            <span class="mr-label">r = 2m</span>
+            <div class="mr-dot mr-miss-dot1"></div>
+            <div class="mr-dot mr-miss-dot2"></div>
+            <div class="mr-dot mr-miss-dot3"></div>
+          </div>
+          <div class="mr-note">所有候选都在圈外<br>→ <strong style="color:#991b1b">Miss</strong></div>
+        </div>
+      </div>
+      <div class="mr-footer">
+        <strong>指标定义：</strong> 以真实轨迹终点（中心蓝点）为圆心，2 米为半径划定判定圈。若 $K$ 条候选轨迹中<strong>没有任何一个</strong>落入圈内，则计为一次 <strong style="color:#991b1b">Miss</strong>。
+      </div>
+    </div>
+
+    <div class="callout blue">
+      <strong>💡 关键洞察</strong>：Miss Rate 比 minFDE 更接近实际需求——规划器需要知道"是否有一条预测接近真实"，而不在乎误差是 0.5m 还是 1.5m（只要在安全距离内）。
+    </div>
+
+    <div class="card purple">
+      <h3>Soft Miss Rate（软错过率）</h3>
+      <div class="formula">$$\text{Soft-MR} = \frac{1}{N} \sum_{i=1}^{N} \left[1 - \max_k \exp\left(-\frac{\|\hat{p}_{T_f}^{(k)} - p_{T_f}\|_2^2}{2\sigma^2}\right)\right]$$</div>
+      <p><strong>直觉</strong>：Miss Rate 的平滑版本。用高斯核替代硬阈值，避免 2.01m 和 1.99m 被划分为完全不同的类别。</p>
+    </div>
+
+    <div class="card green">
+      <h3>多智能体版本：minSADE / minSFDE</h3>
+      <p>用于评估<strong>联合多智能体预测</strong>的质量——不只看单个智能体，而是看<strong>场景级（Scene-level）</strong>的预测质量：</p>
+      <div class="formula">$$\text{minSADE}_K = \min_{k} \frac{1}{N \cdot T_f} \sum_{i=1}^{N} \ \sum_{t=1}^{T_f} \| \hat{p}_t^{(i,k)} - p_t^{(i)} \|_2$$</div>
+      <p><strong>直觉</strong>：对场景中所有 $N$ 个智能体的 ADE 取平均后，再在 $K$ 条联合轨迹中取最小值。衡量的是"所有智能体同时预测准确"的能力。</p>
+    </div>
+
+    <hr>
+
+    <!-- 第二章：指标一览表 -->
+    <div class="section green">
+      <h2>指标一览表</h2>
+    </div>
+
+    <div class="card green">
+      <table>
+        <thead>
+          <tr>
+            <th>指标</th>
+            <th>数学定义（简写）</th>
+            <th>含义</th>
+            <th>越小越好</th>
+            <th>典型值（nuScenes）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ADE</td>
+            <td>全时间步平均 L2</td>
+            <td>整体贴合度</td>
+            <td>是</td>
+            <td>3–5m</td>
+          </tr>
+          <tr>
+            <td>FDE</td>
+            <td>终点 L2</td>
+            <td>终点精度</td>
+            <td>是</td>
+            <td>6–10m</td>
+          </tr>
+          <tr>
+            <td>minADE$_5$</td>
+            <td>K=5 中最小 ADE</td>
+            <td>多模态覆盖</td>
+            <td>是</td>
+            <td>1.5–2.5m</td>
+          </tr>
+          <tr>
+            <td>minFDE$_5$</td>
+            <td>K=5 中最小 FDE</td>
+            <td>多模态终点覆盖</td>
+            <td>是</td>
+            <td>3–5m</td>
+          </tr>
+          <tr>
+            <td>MR$_5$</td>
+            <td>K=5 全 miss 比例</td>
+            <td>模式遗漏率</td>
+            <td>是</td>
+            <td>0.3–0.6</td>
+          </tr>
+          <tr>
+            <td>Soft-MR</td>
+            <td>高斯核 miss</td>
+            <td>平滑遗漏率</td>
+            <td>是</td>
+            <td>0.2–0.5</td>
+          </tr>
+          <tr>
+            <td>minSADE</td>
+            <td>场景级 minADE</td>
+            <td>联合预测质量</td>
+            <td>是</td>
+            <td>2–4m</td>
+          </tr>
+          <tr>
+            <td>EPA</td>
+            <td>端点精度</td>
+            <td>终点是否可达</td>
+            <td>否（越大越好）</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- 第三章：离线 vs 闭环 -->
+    <div class="section amber">
+      <h2>离线评估 vs 闭环评估</h2>
+    </div>
+
+    <div class="card amber">
+      <h3>离线评估（Open-loop Evaluation）</h3>
+      <div class="tech-grid-auto">
+        <div class="tech-data-block">
+          <div class="block-title">评估流程</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="flow-node" style="font-size:11px;padding:4px 10px">历史轨迹<br><span style="color:#94a3b8;font-size:10px">t=-3s~0</span></span>
+              <span style="color:#94a3b8">→</span>
+              <span class="flow-node amber" style="font-size:11px;padding:4px 10px">K 条候选轨迹</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="flow-node" style="font-size:11px;padding:4px 10px">计算 minADE/minFDE/MR</span>
+            </div>
+          </div>
+        </div>
+        <div class="tech-data-block">
+          <div class="block-title">特点</div>
+          <ul style="margin:6px 0 6px 18px;font-size:12px;padding-left:0">
+            <li>从数据集每个时间步独立取出历史观测，让模型预测未来，与真实轨迹比较</li>
+            <li><strong>优点：</strong>简单、快速、可复现、benchmark 统一</li>
+            <li><strong>缺点：</strong>不考虑预测对下游规划的影响；每帧独立评估，不考虑时序一致性</li>
+          </ul>
+          <div class="callout blue" style="margin:8px 0;padding:8px 10px;font-size:11px"><strong>单帧评估</strong>，与上下游无关</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card green">
+      <h3>闭环评估（Closed-loop Evaluation）</h3>
+      <div class="tech-grid-auto">
+        <div class="tech-data-block">
+          <div class="block-title">执行循环</div>
+          <div style="font-size:12px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+            <div style="background:#f0fdf4;padding:8px 12px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center">
+              <span class="tech-badge">t=0</span>
+              <span style="font-size:11px">预测 → 规划 → 仿真执行 → 新状态</span>
+            </div>
+            <div style="background:#f8fafc;padding:8px 12px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center">
+              <span class="tech-badge">t=1</span>
+              <span style="font-size:11px">预测 → 规划 → 仿真执行 → 新状态</span>
+            </div>
+            <div style="background:#f0fdf4;padding:8px 12px;display:flex;gap:8px;align-items:center">
+              <span class="tech-badge">t=2</span>
+              <span style="font-size:11px">... 循环直到结束</span>
+            </div>
+          </div>
+        </div>
+        <div class="tech-data-block">
+          <div class="block-title">评估指标</div>
+          <div class="tech-grid-auto" style="margin:0">
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#991b1b">碰撞率</div>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#92400e">舒适性</div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#1e40af">效率</div>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#166534">进度</div>
+            </div>
+          </div>
+          <ul style="margin:8px 0 0 18px;font-size:12px;padding-left:0">
+            <li><strong>优点：</strong>反映真实驾驶性能；暴露误差累积和分布偏移问题</li>
+            <li><strong>缺点：</strong>需要完整仿真环境；结果受规划器质量影响；评估成本高</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section red">
+      <h2>为什么离线好不代表闭环好</h2>
+    </div>
+
+    <div class="card red">
+      <h3>级联误差分析</h3>
+      <div class="tech-grid-auto">
+        <div class="tech-data-block">
+          <div class="block-title" style="color:#166534">离线评估：误差不累积<span class="tech-status high" style="background:#d1fae5;color:#065f46">✓</span></div>
+          <table style="font-size:11px;margin:0">
+            <tbody>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 1</td><td style="padding:4px 8px">minADE=1.5m</td><td style="padding:4px 8px"><span style="color:#22c55e">✓</span></td></tr>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 2</td><td style="padding:4px 8px">minADE=1.4m</td><td style="padding:4px 8px"><span style="color:#22c55e">✓</span></td></tr>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 3</td><td style="padding:4px 8px">minADE=1.6m</td><td style="padding:4px 8px"><span style="color:#22c55e">✓</span></td></tr>
+              <tr><td colspan="3" style="padding:6px 8px;background:#f0fdf4;border-top:1px solid #bbf7d0;font-weight:600;color:#166534">平均 minADE=1.5m "看起来很好"</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:11px;color:#64748b;margin:8px 0 0">每帧独立评估，误差不传递到下一帧。</p>
+        </div>
+        <div class="tech-data-block">
+          <div class="block-title" style="color:#991b1b">闭环评估：误差累积<span class="tech-status low">⚠</span></div>
+          <table style="font-size:11px;margin:0">
+            <tbody>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 1</td><td style="padding:4px 8px">偏差 1.5m → 偏移 0.3m</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 2</td><td style="padding:4px 8px">偏差 2.1m → 偏移 0.8m（累积）</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:600;color:#64748b;white-space:nowrap">帧 3</td><td style="padding:4px 8px">偏差 3.5m → 偏移 1.5m → <strong style="color:#ef4444">碰撞！</strong></td></tr>
+              <tr><td colspan="2" style="padding:6px 8px;background:#fee2e2;border-top:1px solid #fecaca;font-weight:600;color:#991b1b">结论：minADE=1.5m 的模型，闭环碰撞率可达 10%</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:11px;color:#64748b;margin:8px 0 0">上一帧的误差通过规划-执行链影响下一帧的输入分布。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout purple">
+      <strong>根因分析</strong>：<br><br>
+      <strong>1. 误差累积（Error Accumulation）</strong>：离线评估中每帧的预测误差是独立的，但闭环中上一帧的预测误差通过规划-执行链影响下一帧的输入分布<br><br>
+      <strong>2. 分布偏移（Distribution Shift）</strong>：模型训练在"人类驾驶"的数据分布上，但闭环中自车的行为偏离人类驾驶后，周围智能体的反应也不同，模型遇到的输入分布与训练分布不同<br><br>
+      <strong>3. 模式选择错误的放大</strong>：离线中预测了错误的模式（如预测直行但实际左转），只影响 minADE 一个时间步的值；闭环中错误的模式选择可能导致规划器做出完全错误的决策（如加速通过路口，结果前车实际左转）
+    </div>
+
+    <hr>
+
+    <!-- 第四章：主流 Benchmark -->
+    <div class="section purple">
+      <h2>主流 Benchmark</h2>
+    </div>
+
+    <div class="card purple">
+      <h3>nuScenes（Motional/Aptiv, 2019）</h3>
+      <table>
+        <tbody>
+          <tr><td style="width:120px;font-weight:600;color:var(--text-2)">场景数</td><td>1,000</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">标注帧</td><td>~40K（关键帧 2Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">预测时长</td><td>6s（12 帧 @2Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">观测时长</td><td>2s（4 帧 @2Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估指标</td><td>minADE$_5$, minFDE$_5$, MR$_5$</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">候选数 K</td><td>5</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">特点</td><td>学术界最常用、数据量适中、评估简单</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card green">
+      <h3>Waymo Open Motion Dataset（Waymo, 2021）</h3>
+      <table>
+        <tbody>
+          <tr><td style="width:120px;font-weight:600;color:var(--text-2)">场景数</td><td>~100K</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">轨迹数</td><td>~10M</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">预测时长</td><td>8s（80 帧 @10Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">观测时长</td><td>1.1s（11 帧 @10Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估指标</td><td>Soft-mAP, minADE, minFDE, MR</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">候选数 K</td><td>6</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">特点</td><td>规模最大、评估最全面、有交互预测 challenge</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card amber">
+      <h3>Argoverse 2（Argo AI, 2022）</h3>
+      <table>
+        <tbody>
+          <tr><td style="width:120px;font-weight:600;color:var(--text-2)">场景数</td><td>~250K</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">预测时长</td><td>6s（60 帧 @10Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">观测时长</td><td>5s（50 帧 @10Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估指标</td><td>minADE$_6$, minFDE$_6$, MR$_6$, b-minFDE$_6$</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">候选数 K</td><td>6</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">特点</td><td>高精度地图质量最好、丰富的多城市场景</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card red">
+      <h3>nuPlan（Motional, 2023）</h3>
+      <table>
+        <tbody>
+          <tr><td style="width:120px;font-weight:600;color:var(--text-2)">小时数</td><td>~1,500 小时</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估方式</td><td><strong>闭环仿真</strong></td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估指标</td><td>碰撞率、舒适性、进度、L2 距离</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">特点</td><td><strong>第一个大规模闭环 benchmark</strong>、规划导向</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>ETH/UCY（ETH Zürich, 2007/2014）</h3>
+      <table>
+        <tbody>
+          <tr><td style="width:120px;font-weight:600;color:var(--text-2)">场景数</td><td>5 个行人场景</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">预测时长</td><td>4.8s（12 帧 @2.5Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">观测时长</td><td>3.2s（8 帧 @2.5Hz）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">评估指标</td><td>ADE/FDE（Best-of-20）</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">候选数 K</td><td>20</td></tr>
+          <tr><td style="font-weight:600;color:var(--text-2)">特点</td><td>行人轨迹、经典基线、数据量小、仅限行人</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card purple">
+      <h3>各 Benchmark 评估体系对比</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Benchmark</th>
+            <th>离线/闭环</th>
+            <th>核心指标</th>
+            <th>K 值</th>
+            <th>多智能体</th>
+            <th>地图</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ETH/UCY</td>
+            <td>离线</td>
+            <td>ADE/FDE</td>
+            <td>20</td>
+            <td>否</td>
+            <td>无</td>
+          </tr>
+          <tr>
+            <td>nuScenes</td>
+            <td>离线</td>
+            <td>minADE/minFDE/MR</td>
+            <td>5</td>
+            <td>否</td>
+            <td>有</td>
+          </tr>
+          <tr>
+            <td>Waymo Open</td>
+            <td>离线</td>
+            <td>Soft-mAP/minADE/MR</td>
+            <td>6</td>
+            <td>有</td>
+            <td>有</td>
+          </tr>
+          <tr>
+            <td>Argoverse 2</td>
+            <td>离线</td>
+            <td>minADE/minFDE/MR</td>
+            <td>6</td>
+            <td>否</td>
+            <td>有</td>
+          </tr>
+          <tr>
+            <td>nuPlan</td>
+            <td><strong>闭环</strong></td>
+            <td>碰撞率/舒适性</td>
+            <td>—</td>
+            <td>—</td>
+            <td>有</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- 第五章：指标的局限与实际意义 -->
+    <div class="section red">
+      <h2>指标的局限与实际意义</h2>
+    </div>
+
+    <div class="card red">
+      <h3>离线指标的系统性偏差</h3>
+      <ol style="margin:8px 0 8px 20px">
+        <li style="margin-bottom:8px"><strong>minADE 高估多模态覆盖</strong>：K=20 时几乎总能有一条轨迹"碰巧"接近真实值，但这不意味着模型真正理解了场景</li>
+        <li style="margin-bottom:8px"><strong>MR 对阈值敏感</strong>：$d_{\text{thresh}} = 2\text{m}$ 和 $d_{\text{thresh}} = 3\text{m}$ 的结论可能完全不同</li>
+        <li><strong>不衡量概率校准</strong>：一个把所有概率平均分配给 K 条轨迹的模型和一个准确估计每条概率的模型，minADE 可以完全一样</li>
+      </ol>
+    </div>
+
+    <div class="card amber">
+      <h3>学术 Benchmark vs 工业指标</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>关注点</th>
+            <th>学术界</th>
+            <th>工业界</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>核心指标</td>
+            <td>minADE/minFDE/MR</td>
+            <td>碰撞率、接管率、舒适性</td>
+          </tr>
+          <tr>
+            <td>评估方式</td>
+            <td>离线 benchmark</td>
+            <td>闭环仿真 + 路测</td>
+          </tr>
+          <tr>
+            <td>数据场景</td>
+            <td>公开数据集（分布有限）</td>
+            <td>自有车队数据（长尾丰富）</td>
+          </tr>
+          <tr>
+            <td>延迟要求</td>
+            <td>不考虑</td>
+            <td><strong>&lt;50ms 硬约束</strong></td>
+          </tr>
+          <tr>
+            <td>安全性</td>
+            <td>不直接评估</td>
+            <td>首要指标</td>
+          </tr>
+          <tr>
+            <td>可解释性</td>
+            <td>不要求</td>
+            <td>监管需要</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout blue">
+      详见后续<strong>评估方法论</strong>和<strong>学术 vs 工业视角</strong>的深入分析。
+    </div>
+
+    <hr>
+
+    <!-- 小结 -->
+    <div class="section green">
+      <h2>小结</h2>
+    </div>
+
+    <div class="card green">
+      <table>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2);width:180px">minADE/minFDE</td>
+            <td>K 条候选中最好一条的平均/终点误差，核心离线指标</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">Miss Rate</td>
+            <td>所有候选都未命中的比例，更接近实际需求</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">minSADE</td>
+            <td>场景级联合预测质量</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">离线评估</td>
+            <td>简单快速但不反映真实驾驶性能</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">闭环评估</td>
+            <td>反映真实性能但需要仿真器</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">离线→闭环 gap</td>
+            <td>误差累积 + 分布偏移导致离线好 ≠ 闭环好</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">nuScenes/Waymo/Argoverse</td>
+            <td>三大离线 benchmark，各有特点</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--text-2)">nuPlan</td>
+            <td>第一个大规模闭环 benchmark</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+    <div class="nav-footer">
+      自动驾驶预测与规划 · 评估指标体系 ·
+      <a href="../index.html">← 总目录</a> ·
+      <a href="../02-prediction-problem/index.html">← 02 轨迹预测问题定义与数学形式化</a> ·
+      <a href="../04-prediction-evolution/index.html">04 预测方法演进：从规则到深度学习 →</a>
+    </div>
+
+  </div>
+</body>
+</html>

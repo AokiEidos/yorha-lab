@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>04 动作生成：Diffusion、Flow Matching 与 Transformer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+  <div class="title-bar">
+    <h1>04 · 动作生成：Diffusion、Flow Matching 与 Transformer</h1>
+    <p>Diffusion Policy · Flow Matching · ACT · π0 · 动作空间表征</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 1. 动作生成的问题定义 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>1. 动作生成的问题定义</h2>
+    <p>What: 从感知-语言表示到低层级控制信号；Why: AR 的局限；How: Diffusion + Flow Matching</p>
+  </div>
+
+  <div class="card">
+    <h3>1.1 What — 什么是动作生成？</h3>
+    <p>动作生成（Action Generation）是 VLA 系统的最终输出环节：给定当前视觉感知 $\mathbf{v}_t$ 和语言指令 $\mathbf{l}_t$，生成未来 $T$ 个时间步的低层级控制信号序列 $\mathbf{a}_{t:t+T}$。</p>
+    <p>在自动驾驶场景下，动作空间通常是高维连续向量：</p>
+    <div class="formula">$$\mathbf{a}_t = [\delta_{\text{steer}}, \alpha_{\text{throttle}}, \alpha_{\text{brake}}, \Delta T_{\text{gear}}]$$</div>
+    <p>在机械臂/人形机器人场景下，动作空间可能包含 7–52 个关节角度。VLA 动作生成的核心挑战在于：</p>
+    <ul>
+      <li><strong>时序一致性：</strong>动作序列必须物理平滑，相邻时间步之间不能有突变。</li>
+      <li><strong>多模态性：</strong>给定同一场景，可能存在多个合理动作（如变道 vs 减速），最优动作具有分布特性而非单一确定性输出。</li>
+      <li><strong>低延迟：</strong>自动驾驶要求 10–100ms 端到端延迟，动作生成本身必须在 5ms 以内完成。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>1.2 Why — 自回归 softmax 的局限</h3>
+    <p>以 RT-2 为代表的早期 VLA 方法，将动作离散化为 token，用语言模型的下一个 token 预测来生成动作。这种自回归（Autoregressive, AR）方法存在根本性缺陷：</p>
+    <ul>
+      <li><strong>高延迟：</strong>自回归生成需要 $T$ 次串行 forward pass（$T$ 为动作序列长度），无法并行。设每次推理 $L$ ms，则总延迟为 $T \times L$。对于 $T=16$ 步动作序列，LLM 推理延迟迅速累积。</li>
+      <li><strong>动作空间膨胀：</strong>自动驾驶的连续动作（方向盘转角精度 0.1°）若离散化为 token，需要数百个离散类别，导致 softmax 分布极度扁平。</li>
+      <li><strong>误差累积：</strong>AR 生成中每步的采样误差会传递到下一步，长期动作序列的误差会放大，导致轨迹漂移。</li>
+    </ul>
+    <p>Diffusion 和 Flow Matching 提供了一种全新的范式：<strong>并行去噪</strong>——在单个 forward pass 内完成整个动作序列的生成，从根本上解决了 AR 的延迟和误差累积问题。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 2. Diffusion Model 基础 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>2. 去噪扩散概率模型（DDPM）基础</h2>
+    <p>前向扩散 · 反向去噪 · DDPM 训练目标</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.1 前向扩散过程（Forward Process）</h3>
+    <p>前向过程是一个固定的马尔可夫链，逐步向数据中添加高斯噪声，最终将真实数据分布 $q(\mathbf{a}_0)$ 转化为各向同性高斯分布 $\mathcal{N}(\mathbf{0}, \mathbf{I})$：</p>
+    <div class="formula">$$q(\mathbf{a}_{1:T} \mid \mathbf{a}_0) = \prod_{t=1}^{T} q(\mathbf{a}_t \mid \mathbf{a}_{t-1}), \quad q(\mathbf{a}_t \mid \mathbf{a}_{t-1}) = \mathcal{N}(\mathbf{a}_t; \sqrt{1-\beta_t}\mathbf{a}_{t-1}, \beta_t\mathbf{I})$$</div>
+    <p>其中 $\{\beta_t\}_{t=1}^{T}$ 是噪声调度（noise schedule）超参数，通常设置为线性或余弦衰减。通过重参数化技巧，可以直接采样任意时间步 $t$ 的噪声数据：</p>
+    <div class="formula">$$\mathbf{a}_t = \sqrt{\bar{\alpha}_t}\mathbf{a}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$</div>
+    <p>其中 $\alpha_t = 1 - \beta_t$，$\bar{\alpha}_t = \prod_{s=1}^{t}\alpha_s$。</p>
+  </div>
+
+  <div class="card green">
+    <h3>2.2 反向去噪过程（Reverse Process）</h3>
+    <p>反向过程是学习的核心：训练一个神经网络 $\epsilon_\theta(\mathbf{a}_t, t, \mathbf{c})$ 来预测注入的噪声 $\boldsymbol{\epsilon}$，其中 $\mathbf{c} = [\mathbf{v}_t; \mathbf{l}_t]$ 是条件信息（视觉和语言输入）。</p>
+    <p>DDPM 的训练目标是简单的均方误差（MSE）：</p>
+    <div class="formula">$$\mathcal{L}_{\text{DDPM}} = \mathbb{E}_{t, \mathbf{a}_0, \boldsymbol{\epsilon}}\left[\|\boldsymbol{\epsilon} - \epsilon_\theta(\mathbf{a}_t, t, \mathbf{c})\|^2\right]$$</div>
+    <p>反向去噪过程从纯噪声 $\mathbf{a}_T \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ 开始，逐步去噪直到得到 $\mathbf{a}_0$（即生成的动作序列）：</p>
+    <div class="formula">$$\mathbf{a}_{t-1} = \frac{1}{\sqrt{\alpha_t}}\left(\mathbf{a}_t - \frac{1-\alpha_t}{\sqrt{1-\bar{\alpha}_t}}\epsilon_\theta(\mathbf{a}_t, t, \mathbf{c})\right) + \sigma_t \mathbf{z}$$</div>
+    <p>其中 $\mathbf{z} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ 用于保持随机性，$\sigma_t$ 是与 $\beta_t$ 相关的噪声尺度。</p>
+
+    <div class="callout blue">
+      <strong>💡 为什么扩散模型适合动作生成？</strong>扩散模型在每步去噪中同时考虑所有时间步的动作（$\mathbf{a}_{t:t+T}$ 整体作为一张"图像"），因此生成的时序动作序列具有天然的平滑性和一致性，不像 AR 那样逐帧独立采样导致动作抖动。
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. Diffusion Policy -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section amber">
+    <h2>3. Diffusion Policy：扩散模型用于机器人控制</h2>
+    <p>动作 Chunking · 条件引导 · 温度采样 · Columbia ACT</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.1 Diffusion Policy 核心设计</h3>
+    <p>Diffusion Policy（CHAMP / Diffusion Policy 论文，2023）将 DDPM 直接应用于机器人动作序列生成，核心改进是<strong>动作 Chunking</strong>（动作块化）：</p>
+    <p>不是生成单步动作 $\mathbf{a}_t$，而是生成一个长度为 $H$ 的动作块 $\mathbf{A}_t = [\mathbf{a}_t, \mathbf{a}_{t+1}, \ldots, \mathbf{a}_{t+H-1}]$：</p>
+    <div class="formula">$$\mathbf{A}_t \in \mathbb{R}^{H \times D_a}$$</div>
+    <p>其中 $D_a$ 是动作维度（关节数或车辆控制维数），$H$ 通常取 8–16 步。动作块直接作为扩散模型的"图像"进行去噪处理——每步的 $\mathbf{a}_k$ 是 $H$ 个时间步的 concat，向量维度是 $H \cdot D_a$。</p>
+    <p>视觉-语言条件通过 FiLM（Feature-wise Linear Modulation）层注入去噪网络：</p>
+    <div class="formula">$$\epsilon_\theta'(\mathbf{a}_t, t, \mathbf{v}, \mathbf{l}) = \gamma \cdot \epsilon_\theta(\mathbf{a}_t, t) + \beta$$</div>
+    <p>其中 $\gamma, \beta$ 是从视觉-语言特征预测的仿射参数。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.2 条件引导（Classifier-Free Guidance）</h3>
+    <p>Diffusion Policy 使用无分类器引导（Classifier-Free Guidance, CFG）来增强条件生成质量。在训练时，以一定概率（通常 10–20%）将条件 $\mathbf{c}$ 置为空，模型同时学习条件生成和无条件生成：</p>
+    <div class="formula">$$\hat{\epsilon}_\theta(\mathbf{a}_t, t, \mathbf{c}) = (1 + w)\cdot\epsilon_\theta(\mathbf{a}_t, t, \mathbf{c}) - w\cdot\epsilon_\theta(\mathbf{a}_t, t, \emptyset)$$</div>
+    <p>其中 $w \geq 0$ 是引导权重（guidance scale），$w=0$ 时退化为无条件生成，$w$ 越大生成越严格遵循条件，但可能牺牲多样性。</p>
+    <p>对于 VLA 中的语言指令-following 任务，CFG 权重 $w$ 越大，模型对语言指令的遵循程度越高，但动作序列的探索性（可能发现更优路径）会下降。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>3.3 温度采样与动作选择</h3>
+    <p>Diffusion 模型每步去噪可以采样多条轨迹 $\{\mathbf{A}^{(1)}, \mathbf{A}^{(2)}, \ldots, \mathbf{A}^{(K)}\}$，需要从中选择一个执行。</p>
+    <p>温度采样通过在去噪每步的随机噪声上使用不同的随机种子实现轨迹多样性：</p>
+    <div class="formula">$$\mathbf{z}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{I}) \quad \Rightarrow \quad \mathbf{A}_0^{(k)} = \text{Denoise}(\mathbf{z}_k, \mathbf{c})$$</div>
+    <p>然后通过价值函数（Value Function）$V(\mathbf{A}_0^{(k)})$ 或奖励模型（Reward Model）选择最优轨迹。价值函数可以由世界模型预测或人类偏好的离线数据集学习得到。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. Flow Matching -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section purple">
+    <h2>4. Flow Matching：更高效的生成范式</h2>
+    <p>常微分方程 · 最优传输 · I2P / InstaFlow / FlowDC</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.1 从 Diffusion 到 Flow Matching 的动机</h3>
+    <p>DDPM 的核心问题是<strong>推理速度慢</strong>：需要 $T$ 次迭代（通常 $T=50$–$1000$ 步）才能从噪声恢复清晰信号。每次迭代都必须完整执行一次神经网络 forward，延迟随步数线性增长。</p>
+    <p>Flow Matching 是一种替代框架，在保持生成质量的同时大幅减少推理步数。其核心思想是：将扩散过程重新表述为一个<strong>确定性常微分方程（ODE）</strong>。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.2 Flow Matching 的数学框架</h3>
+    <p>Flow Matching 建模一个从噪声分布 $p_0 = \mathcal{N}(\mathbf{0}, \mathbf{I})$ 到数据分布 $p_1$ 的确定性变换，通过 ODE 描述：</p>
+    <div class="formula">$$\frac{d\mathbf{a}(t)}{dt} = v_\theta(\mathbf{a}(t), t, \mathbf{c}), \quad \mathbf{a}(0) \sim \mathcal{N}(\mathbf{0}, \mathbf{I}), \quad \mathbf{a}(1) \sim p_{\text{data}}$$</div>
+    <p>其中 $v_\theta$ 是神经网络的向量场（velocity field）预测，$t \in [0,1]$ 是连续时间变量。生成过程就是从这个 ODE 的 $t=0$（噪声）积分到 $t=1$（数据）。</p>
+    <p>给定任意噪声样本 $\mathbf{a}_0$，通过数值 ODE 积分（如 Euler 法）可以一步到 $t=1$ 得到生成结果：</p>
+    <div class="formula">$$\mathbf{a}_1 = \mathbf{a}_0 + v_\theta(\mathbf{a}_0, t=0, \mathbf{c}) \cdot \Delta t$$</div>
+    <p>更精确地，使用高阶积分器（Heun 方法等）可以在 5–20 步内达到高质量生成，相比 DDPM 的 50–1000 步有数量级优势。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.3 最优传输 Flow Matching（OT-FM）</h3>
+    <p>普通的 Flow Matching 训练目标需要边缘分布 $p_t(\mathbf{a}_t \mid \mathbf{a}_0)$ 的监督数据，而 OT-FM（Optimal Transport Flow Matching）通过最优传输（Optimal Transport, OT）理论绕过了这个需求。</p>
+    <p>OT-FM 的核心是将条件路径 $p_t(\mathbf{a}_t \mid \mathbf{a}_0^{\text{OT}})$ 设计为一条直线（线性插值）：</p>
+    <div class="formula">$$\mathbf{a}_t = (1-t)\mathbf{a}_0^{\text{OT}} + t \mathbf{a}_1, \quad t \in [0,1]$$</div>
+    <p>其中 $\mathbf{a}_0^{\text{OT}}$ 是通过 Sinkhorn 算法计算的最优传输映射后的噪声样本。OT-FM 的训练损失为：</p>
+    <div class="formula">$$\mathcal{L}_{\text{OT-FM}} = \mathbb{E}_{t, \mathbf{a}_0, \mathbf{a}_1}\left[\|v_t - v_\theta((1-t)\mathbf{a}_0 + t\mathbf{a}_1, t, \mathbf{c})\|^2\right]$$</div>
+    <p>InstaFlow 和 FlowDC 等工作证明，OT-FM 可以在 1–8 步内完成高质量动作生成，真正实现 VLA 的实时控制要求。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>4.4 Flow Matching vs DDPM 对比</h3>
+    <table>
+      <tr><th>维度</th><th>DDPM</th><th>Flow Matching (OT-FM)</th></tr>
+      <tr><td>推理步数</td><td>50–1000 步（必须）</td><td>1–20 步（高质量）</td></tr>
+      <tr><td>采样过程</td><td>随机（马尔可夫链）</td><td>确定性（ODE 积分）</td></tr>
+      <tr><td>训练目标</td><td>噪声预测 MSE</td><td>向量场预测 MSE</td></tr>
+      <tr><td>轨迹多样性</td><td>内在随机性</td><td>需要额外噪声注入</td></tr>
+      <tr><td>代表性工作</td><td>Diffusion Policy、π0</td><td>InstaFlow、FlowDC、I2P</td></tr>
+    </table>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 5. Transformer Action Generation -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section red">
+    <h2>5. Transformer 在动作生成中的应用</h2>
+    <p>DiT · ACT · ACT-2 · π0 · 动作自编码器</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.1 DiT：Diffusion Transformer</h3>
+    <p>DiT（Diffusion Transformer，Peebles & Xie, 2023）将扩散模型的噪声预测网络从 U-Net 替换为 Vision Transformer（ViT），是当前扩散生成模型的主流架构选择。</p>
+    <p>DiT 将噪声图像分割为 $N$ 个 patches（$N = (H/ p) \times (W/p)$），每个 patch 通过线性投影展平为 token，混入时间步嵌入 $t$ 和条件嵌入 $\mathbf{c}$：</p>
+    <div class="formula">$$\mathbf{h}_0 = [\text{Linear}(\text{patch}_1); \ldots; \text{Linear}(\text{patch}_N)] + \text{MLP}(t) + \text{MLP}(\mathbf{c})$$</div>
+    <p>然后通过 $L$ 层标准 Transformer Block：</p>
+    <div class="formula">$$\mathbf{h}'_l = \text{MSA}(\text{LN}(\mathbf{h}_{l-1})) + \text{MLP}(\text{LN}(\text{MSA}(\text{LN}(\mathbf{h}_{l-1}))))$$</div>
+    <p>DiT 用于动作生成时，将动作序列 $\mathbf{A}_t \in \mathbb{R}^{H \times D_a}$ 视为 $(H, D_a)$ 的"图像"，每个时间步-动作维度对作为一个 patch 输入 DiT。这种方式充分利用了 Transformer 的 Scaling Law——DiT 的生成质量随参数量和训练数据量呈幂律提升。</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.2 ACT：Action Chunking Transformer</h3>
+    <p>ACT（Action Chunking Transformer，Google DeepMind, 2023）是专门为人形机器人控制设计的 Transformer 动作生成架构，是 π0 的前身。</p>
+    <p>ACT 的核心设计：</p>
+    <ul>
+      <li><strong>输入：</strong>当前 proprioception（机器人本体感知，关节位置+速度）和视觉观察（来自相机），通过 MLP 编码后与文本指令 embedding 拼接。</li>
+      <li><strong>架构：</strong>因果性 Transformer（CAusal Transformer），确保动作输出在时间上严格顺序生成，不泄露未来信息。</li>
+      <li><strong>输出：</strong>$H$ 步动作块 $\mathbf{A}_t$，执行后滚动窗口更新。</li>
+    </ul>
+    <p>ACT 的训练使用行为克隆（Behavior Cloning）损失：</p>
+    <div class="formula">$$\mathcal{L}_{\text{ACT}} = \mathbb{E}_{(\mathbf{v}, \mathbf{l}, \mathbf{a}) \sim \mathcal{D}}\left[\sum_{h=0}^{H-1} \|\mathbf{a}_{t+h} - \hat{\mathbf{a}}_{t+h}\|^2\right]$$</div>
+    <p>其中 $\hat{\mathbf{a}}$ 是 ACT 预测的动作。</p>
+  </div>
+
+  <div class="card red">
+    <h3>5.3 π0：通用机器人策略模型</h3>
+    <p>π0（Physical Intelligence, 2024）是目前最强的开源通用机器人策略模型，核心是一个扩散-Transformer 混合架构。</p>
+    <p><strong>π0 的关键创新：</strong></p>
+    <ul>
+      <li><strong>双流动态系统（Two-Flow System）：</strong>π0 包含两个并行的动作生成流——一个快速流（7 步 ODE 积分）和一个慢速流（精细动作调整），两者融合后输出最终动作。快流保证响应速度，慢流保证精细度。</li>
+      <li><strong>预训练 + 微调范式：</strong>π0 先在大规模机器人数据（包含多种机器人平台）上预训练，然后针对特定任务微调。预训练阶段充分利用互联网规模的视觉-语言数据，通过 VLM 编码器注入常识知识。</li>
+      <li><strong>跨形态泛化：</strong>同一个 π0 模型参数可以控制机械臂（7DOF）、双臂（14DOF）、轮式移动平台等多种形态，模型权重共享，仅动作头层有少量形态特定参数。</li>
+    </ul>
+    <div class="callout red">
+      <strong>⚠ π0 的计算成本：</strong>π0 的慢流需要 7 次 DiT forward（每步约 10ms），快流 1 次，共 80ms/动作序列，在实时控制（100Hz）中需要模型蒸馏或更激进的 Flow Matching（1–2 步）来满足延迟要求。
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 6. 动作空间的工程问题 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>6. 动作空间的工程实践</h2>
+    <p>动作表征 · 归一化 · 安全约束 · 车端部署</p>
+  </div>
+
+  <div class="card green">
+    <h3>6.1 动作表征</h3>
+    <p>不同的动作表征直接影响扩散模型的生成难度和精度：</p>
+    <ul>
+      <li><strong>绝对动作（Absolute）：</strong>直接输出每个关节的绝对角度或车辆控制量。最简单但存在累积误差。</li>
+      <li><strong>相对动作（Relative / Delta）：</strong>输出相对于当前状态的增量：$\Delta \mathbf{a}_t = \mathbf{a}_t - \mathbf{a}_{t-1}$。避免累积漂移，但需要精确的当前状态估计。</li>
+      <li><strong>动作归一化：</strong>不同维度的动作量纲差异大（如方向盘转角 ±500° vs 刹车开度 0–1），需要用数据集统计的均值 $\mu$ 和标准差 $\sigma$ 归一化：$\tilde{\mathbf{a}} = (\mathbf{a} - \mu) / \sigma$。</li>
+      <li><strong>旋转群表征（SO(3)）：</strong>对于涉及三维旋转的动作（如机械臂末端姿态），用 6D 表示或轴角（Axis-Angle）代替欧拉角，避免万向锁问题。</li>
+    </ul>
+  </div>
+
+  <div class="card green">
+    <h3>6.2 车端部署的关键约束</h3>
+    <div class="tech-grid-auto">
+      <div class="tech-data-block">
+        <div class="block-title"><span>延迟预算</span><span class="tech-badge" style="background:#fee2e2;color:#991b1b">硬性</span></div>
+        <p style="font-size:11px;color:var(--text-2)">从感知输入到控制输出的端到端延迟需控制在 100ms 以内。FSD 芯片采用"感知-规划"流水线和专用 Transformer 加速单元达到此目标。</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title"><span>安全冗余</span><span class="tech-badge" style="background:#fef3c7;color:#92400e">必需</span></div>
+        <p style="font-size:11px;color:var(--text-2)">VLA 的动作输出需经过安全护盾（Safety Shield）校验，如 RSS（Responsibility Sensitive Safety）模型，确保动作符合物理约束和法规。</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title"><span>热管理</span><span class="tech-badge" style="background:#f1f5f9;color:#334155">重要</span></div>
+        <p style="font-size:11px;color:var(--text-2)">车规级 SoC（FSD Dojo、Nvidia Thor）持续运行 VLA 模型，整机功耗 30–100W，需要液冷或相变散热，芯片结温控制在 105°C 以下。</p>
+      </div>
+      <div class="tech-data-block">
+        <div class="block-title"><span>OTA 更新</span><span class="tech-badge" style="background:#f1f5f9;color:#334155">重要</span></div>
+        <p style="font-size:11px;color:var(--text-2)">VLA 模型通过 OTA（Over-the-Air）更新，需保证模型版本的回滚机制和差分更新的网络带宽优化。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 7. 小结 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="section green">
+    <h2>7. 本章小结</h2>
+    <p>第四章核心要点回顾</p>
+  </div>
+
+  <div class="card green">
+    <p>本章是 VLA 感知-语言链路之后的关键一步：<strong>动作生成</strong>。</p>
+    <ul>
+      <li><strong>Diffusion Policy</strong> 通过将动作序列视为高维"图像"进行去噪生成，解决了 AR 方法的延迟和误差累积问题，CFG 引导机制确保语言指令-following 质量。</li>
+      <li><strong>Flow Matching（OT-FM）</strong> 用 ODE 替代马尔可夫链，将推理步数从 50–1000 步压缩到 1–20 步，使实时控制成为可能，是 VLA 车端部署的未来方向。</li>
+      <li><strong>DiT</strong> 将扩散模型的主干网络替换为 Transformer，使动作生成能够享受 Scaling Law 的红利。</li>
+      <li><strong>ACT 和 π0</strong> 代表了机器人控制领域 Transformer 动作生成的最先进水平，双流动态系统、快慢融合的思路对自动驾驶 VLA 同样有借鉴价值。</li>
+      <li>动作表征（绝对/相对/归一化）和车端部署约束（延迟、安全）是动作生成从论文到量产的最后一公里。</li>
+    </ul>
+    <p>至此，VLA 的三大核心能力——视觉感知（第二章）、语言对齐（第三章）、动作生成（第四章）——已全部覆盖。后续章节将进入<strong>端到端自动驾驶系统</strong>的整合与实战部署。</p>
+  </div>
+
+</div><!-- .container -->
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · 04 动作生成：Diffusion、Flow Matching 与 Transformer ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../03-language-grounding/index.html">← 03 语言与视觉的对齐</a> ·
+  <a href="../05-end-to-end-driving/index.html">下一篇：05 端到端自动驾驶 →</a>
+</div>
+
+</body>
+</html>

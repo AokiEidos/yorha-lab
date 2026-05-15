@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 UNet 骨干网络与 Transformer 变种 — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+</head>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>07 UNet 骨干网络与 Transformer 变种</h1>
+    <p>UNet 骨干网络与 Transformer 变种</p>
+  </div>
+
+  <div class="section">
+    <h2>UNet Encoder-Decoder + Skip Connections / 架构概述</h2>
+    <p>UNet 是扩散模型的标准骨干网络，通过 Encoder-Decoder 结构和跳跃连接实现多尺度特征融合</p>
+  </div>
+  <div class="card">
+    <h3>UNet 结构详解</h3>
+    <p style="font-size:12px;color:var(--text-2)">UNet 由 Encoder（下采样）、Decoder（上采样）和 Skip Connections（跳跃连接）组成：</p>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">Encoder（特征提取）</p>
+        <p style="font-size:12px;color:var(--text-2)">$H\times W \to H/2 \times W/2 \to H/4 \times W/4 \to H/8 \times W/8$<br>每层：Conv + GN + SiLU，逐步下采样提取语义</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">Decoder（特征重建）</p>
+        <p style="font-size:12px;color:var(--text-2)">$H/8 \times W/8 \to H/4 \times W/4 \to H/2 \times W/2 \to H\times W$<br>每层：ConvTranspose + GN + SiLU，逐步上采样</p>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">Skip Connections 将 Encoder 的同尺度特征直接传递到 Decoder，补充上采样过程中丢失的空间细节。这是 UNet 在密集预测任务（分割、去噪）中表现优异的关键。</p>
+    <div class="callout blue" style="font-size:12px">
+      <strong>UNet 在扩散模型中的角色</strong><br>
+      扩散模型的 UNet 接收噪声图像 $x_t$ 和时间步 $t$ embedding，输出噪声预测 $\epsilon_\theta(x_t, t)$。时间步通过 SiNN（sinusoidal positional embedding）编码并通过 MLP 注入每个残差块。
+    </div>
+  </div>
+  <div class="card green">
+    <h3>Self-Attention 的计算复杂度</h3>
+    <p style="font-size:12px;color:var(--text-2)">UNet 中的 Self-Attention 用于捕获全局特征：</p>
+    <div class="formula">$$\text{Attention}(Q, K, V): \quad O(H^2 W^2)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">对于 $H=W=64$（latent space），$O(64^4) = 16{,}777{,}216$，非常高。在 $H=W=32$ 时，$O(32^4) = 1{,}048{,}576$，可接受。因此 UNet 在深层（下采样后）使用 Self-Attention，在浅层使用局部卷积。</p>
+  </div>
+  <div class="section green">
+    <h2>Normalization 对比 / Normalization Comparison</h2>
+    <p>Group Normalization (GN) 相比 Batch Normalization (BN) 和 Layer Normalization (LN) 更适合扩散模型</p>
+  </div>
+  <div class="card green">
+    <h3>三种 Normalization 对比</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:90px">类型</th><th>公式</th><th>优点</th><th>缺点</th></tr>
+      <tr><td><strong>BN</strong></td><td>$\frac{x-\mu}{\sigma} \cdot \gamma + \beta$（batch 维度）</td><td>训练快，泛化好</td><td>batch 小时不稳定，推理需保存 running stats</td></tr>
+      <tr><td><strong>LN</strong></td><td>$\frac{x-\mu_H}{\sigma_H} \cdot \gamma + \beta$（hidden 维度）</td><td>稳定，Transformer 标配</td><td>破坏特征尺度，对扩散模型不适合</td></tr>
+      <tr><td><strong>GN</strong></td><td>$\frac{x-\mu_G}{\sigma_G} \cdot \gamma + \beta$（group 维度）</td><td>batch 不敏感，scale preserving</td><td>需要调 group 数（通常 $G=32$）</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">扩散模型用 BN 的问题：训练时 batch 很小（通常 1-8），BN 的 batch 统计不稳定。GN 不依赖 batch，对扩散模型的小 batch 训练更友好。</p>
+    <div class="callout green" style="font-size:12px">
+      <strong>GN 的 scale preserving 特性</strong><br>
+      LN 归一化后需要再乘以 $\gamma$ 和加上 $\beta$，但这个线性变换可能破坏特征的 scale 信息。GN 因为在 group 维度归一化，spatial 维度的 scale 信息得以保留，这对需要捕获多尺度特征的扩散模型至关重要。
+    </div>
+  </div>
+  <div class="section amber">
+    <h2>Time Embedding / 时间步编码</h2>
+    <p>将连续的时间步 $t$ 编码为高维向量，注入网络的每个残差块</p>
+  </div>
+  <div class="card amber">
+    <h3>Sinusoidal Positional Embedding</h3>
+    <p style="font-size:12px;color:var(--text-2)">扩散模型使用与 Transformer 相同的 sinusoidal embedding 来编码时间步：</p>
+    <div class="formula">$$PE(t)_i = \sin\left(\frac{t}{10000^{i/d}}\right), \quad PE(t)_{i+d/2} = \cos\left(\frac{t}{10000^{i/d}}\right)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $d$ 是 embedding 维度（UNet 通常 $d=256$），$i \in [0, d/2)$。这个编码方式让模型能够区分不同的时间步，并学习到"从噪声到数据"的演变模式。</p>
+    <div class="callout blue" style="font-size:12px;margin-top:8px">
+      <strong>Time Embedding 注入方式</strong><br>
+      Time embedding 通过 MLP（2层全连接 + SiLU）映射为与 spatial feature 同维度的向量，然后在每个残差块的归一化前加到特征中（AdaGN）。这种注入方式让模型在每个时间步有不同的行为。
+    </div>
+  </div>
+  <div class="section">
+    <h2>DiT：Transformer 替代 UNet / DiT Architecture</h2>
+    <p>DiT（Diffusion Transformer）用 Transformer 架构替代 UNet，实现更好的 scaling 特性</p>
+  </div>
+  <div class="card">
+    <h3>DiT Patchify + Transformer</h3>
+    <p style="font-size:12px;color:var(--text-2)">DiT 将输入图像划分为 $P \times P$ 的 patches（如 $P=2$），每个 patch 线性投影为一个 token：</p>
+    <div class="formula">$$N = \frac{H}{P} \times \frac{W}{P} \times C \quad (C = 4 \text{ for VAE latent})$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">对于 $H=W=32, P=2, C=4$，$N = 16\times16\times4 = 1024$ tokens。然后通过 $L$ 层 Transformer blocks 处理。每层包含：</p>
+    <table style="font-size:12px;margin-top:8px">
+      <tr><th>组件</th><th>作用</th></tr>
+      <tr><td>LayerNorm</td><td>归一化</td></tr>
+      <tr><td>Self-Attention ($O(N^2)$)</td><td>全局建模</td></tr>
+      <tr><td>MLP (2层, SiLU)</td><td>特征变换</td></tr>
+      <tr><td>AdaLN/AdaLN-Zero</td><td>时间步 + 条件注入</td></tr>
+    </table>
+  </div>
+  <div class="card green">
+    <h3>AdaLN / AdaLN-Zero 详解</h3>
+    <p style="font-size:12px;color:var(--text-2)">AdaLN（Adaptive Layer Normalization）根据时间步 embedding $t$ 和条件 $c$ 自适应调整归一化参数：</p>
+    <div class="formula">$$\text{AdaLN}(x, t, c) = \gamma(t, c) \cdot \text{LN}(x) + \beta(t, c)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">其中 $\gamma, \beta = \text{MLP}([t; c])$。AdaLN-Zero 进一步初始化 $\gamma_{\text{init}} = 0$，使每个残差块在训练初期等价于恒等映射，加速收敛。</p>
+  </div>
+  <div class="section purple">
+    <h2>UViT / SiT / MM-DiT 对比 / Architecture Variants</h2>
+    <p>UNet 和 DiT 之外的重要变种架构</p>
+  </div>
+  <div class="card purple">
+    <h3>架构对比表</h3>
+    <table style="font-size:12px">
+      <tr><th style="width:90px">架构</th><th>核心思想</th><th>Scaling 特性</th><th>代表工作</th></tr>
+      <tr><td><strong>UNet</strong></td><td>卷积 + skip + attention</td><td>中等（22亿参数为上限）</td><td>DDPM, SD 1/2/3</td></tr>
+      <tr><td><strong>DiT</strong></td><td>纯 Transformer + AdaLN-Zero</td><td>优秀（符合 Scaling Law）</td><td>DiT-XL/2B, SD3</td></tr>
+      <tr><td><strong>UViT</strong></td><td>UNet + Transformer 混合</td><td>良好</td><td>U-ViT, Forge</td></tr>
+      <tr><td><strong>SiT</strong></td><td>DiT + 改进 ODE 采样器</td><td>优秀</td><td>SiT (scaling improves)</td></tr>
+      <tr><td><strong>MM-DiT</strong></td><td>双塔 Text+Image 独立建模</td><td>优秀</td><td>FLUX, SDXL-Turbo</td></tr>
+    </table>
+    <div class="callout amber" style="font-size:12px;margin-top:8px">
+      <strong>MM-DiT 的核心设计</strong><br>
+      Multi-Modal DiT（MM-DiT）将文本和图像分别通过独立的 embedding 层映射到同一维度（如 3072），然后在 Transformer blocks 中分别处理并在 Attention 层交互。这解决了 DiT 中 text 和 image 特征混合导致的干扰问题。
+    </div>
+  </div>
+
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 07 UNet 骨干网络与 Transformer 变种 · <a href="../index.html">← 总目录</a> · <a href="../06-guidance/index.html">← 06 条件引导与Classifier Guidance</a>  · <a href="../08-scheduler/index.html">下一篇：08 噪声调度器与训练-采样解耦 →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 多智能体强化学习 / Multi-Agent RL — 强化学习</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:600;margin-right:4px}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+  /* KaTeX formula rendering overrides */
+  .formula .katex-display { margin: 0; padding: 4px 0; }
+  .formula .katex { color: #1e40af; font-size: 14px; }
+  .formula .katex .mathnormal, .formula .katex .textit { color: #1e40af; }
+</style>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false,
+          trust: true,
+          strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>09 多智能体强化学习 / Multi-Agent Reinforcement Learning</h1>
+    <p>博弈论基础、Nash 均衡、CTDE 框架、MADDPG、QMIX、MAPPO — 从对抗博弈到合作协同的完整技术栈</p>
+  </div>
+
+  <!-- 核心挑战 -->
+  <div class="section">
+    <h2>多智能体 vs 单智能体的本质差异 / Fundamental Differences</h2>
+    <p>MARL 的每个智能体都在一个随他人策略变化而变化的环境中学习——这从根本上改变了问题结构</p>
+  </div>
+
+  <div class="card">
+    <h3>联合动作空间与联合价值分解</h3>
+    <p style="font-size:12px;color:var(--text-2)">有 $N$ 个智能体，每个有动作空间 $\mathcal{A}_i$，联合动作空间是 $\mathcal{A} = \mathcal{A}_1 \times \cdots \times \mathcal{A}_N$。当 $N=5, |\mathcal{A}_i|=10$ 时，联合动作空间是 $10^5$——不能枚举。</p>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">核心问题：非平稳性 / Non-Stationarity</p>
+        <p style="font-size:12px;color:var(--text-2)">在单智能体 RL 中，数据分布随策略更新变化，但可以用 experience replay 缓解（假设 stationary）。在 MARL 中，智能体 $i$ 的数据分布不仅随自己的策略变化，还随其他智能体的策略变化。这意味着早期收集的数据会"过时"得更快。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">稳定化策略：CTDE 框架</p>
+        <p style="font-size:12px;color:var(--text-2)">Centralized Training, Decentralized Execution（CTDE）：训练时用全局信息稳定学习，执行时只用局部观察。这是当前 MARL 的主流范式，兼顾训练信号质量和部署可行性。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout red">
+    <strong>⚠️ MARL 的三大根本挑战</strong>
+    <ol style="margin-top:6px;font-size:12px">
+      <li><strong>非平稳性（Non-Stationarity）</strong>：其他智能体策略变化导致环境特性变化，历史数据的分布偏移</li>
+      <li><strong>信用分配（Credit Assignment）</strong>：团队奖励如何分配到每个智能体？全局奖励 $r$ 是共享的，但每个智能体的贡献不同</li>
+      <li><strong>扩展性（Scalability）</strong>：联合动作/观察空间随智能体数量指数增长，需要值分解或参数共享</li>
+    </ol>
+  </div>
+
+  <!-- 博弈论基础 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>博弈论基础 / Game Theory Foundations</h2>
+    <p>Nash 均衡、零和博弈、纯策略与混合策略 — 理解 MARL 收敛目标的数学框架</p>
+  </div>
+
+  <div class="card green">
+    <h3>博弈的数学定义 / Game Definition</h3>
+    <p style="font-size:12px;color:var(--text-2)">一个 $N$ 人一般和博弈（General-Sum Game）定义为：</p>
+    <div class="formula">$$\mathcal{G} = (N, \{\mathcal{A}_i\}, \{\mathcal{O}_i\}, \{r_i\}, \gamma)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">
+      $N$ 是智能体数量；$\mathcal{A}_i$ 是智能体 $i$ 的动作空间；$\mathcal{O}_i$ 是局部观察空间；$r_i: \mathcal{O} \times \mathcal{A} \to \mathbb{R}$ 是每个智能体自己的奖励函数（可以是不同的）；$\gamma$ 是折扣因子。
+    </p>
+    <p style="font-size:12px;color:var(--text-2);margin-top:4px">
+      注意：在一般和博弈中，每个智能体可以有自己独立的奖励函数（$r_i$ 不同），这与零和博弈（$r_1 = -r_2$）形成对比。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Nash 均衡 / Nash Equilibrium</h3>
+    <p style="font-size:12px;color:var(--text-2)">Nash 均衡是 MARL 的收敛目标——在均衡状态下，没有任何智能体可以通过单方面改变策略来获得更高回报：</p>
+    <div class="formula">$$\forall i, \; \pi_i^* \in \arg\max_{\pi_i} \; \mathbb{E}\left[ r_i \mid \pi_{-i}^*, \pi_i \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">其中 $\pi_{-i}^*$ 表示除 $i$ 之外所有智能体的策略。直觉上：如果你知道其他人都不动，你单方面改变策略也无法提高自己的回报——这就是均衡。</p>
+    <div class="callout blue" style="margin-top:8px;font-size:12px">
+      <strong>纯策略 vs 混合策略</strong>
+      <ul style="margin-top:4px">
+        <li><strong>纯策略</strong>：每个智能体选择一个确定的动作 $a_i$。在某些博弈中纯策略 Nash 不存在（如"石头剪刀布"）。</li>
+        <li><strong>混合策略</strong>：智能体以概率分布 $\pi_i(a_i)$ 采样动作。纳什证明：任何有限博弈在混合策略中必有 Nash 均衡。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card amber">
+    <h3>博弈类型分类 / Taxonomy of Games</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">合作博弈（Cooperative）</p>
+        <p style="font-size:12px;color:var(--text-2)">所有智能体共享同一个全局奖励 $r$（或共享同一个目标）。智能体之间没有利益冲突，只有如何分工合作的问题。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：多机器人协作搬运、无人机编队飞行、通信协议协商。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--red)">零和博弈（Zero-Sum）</p>
+        <p style="font-size:12px;color:var(--text-2)">$r_1 = -r_N$，一方的收益是另一方的损失。不存在合作的可能，只有对抗。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：围棋、象棋、星际争霸（双方对立）。Self-Play 是训练这类博弈AI的标准方法。</p>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">一般和博弈（General-Sum）</p>
+        <p style="font-size:12px;color:var(--text-2)">每个智能体有自己的奖励函数，可能是合作也可能是竞争。现实世界的大多数场景属于此类。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：经济学定价博弈、多智能体导航（避免碰撞但各有目标）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--purple)">混合博弈（Potential Games）</p>
+        <p style="font-size:12px;color:var(--text-2)">存在一个"势函数"（Potential Function）$\phi$，使得所有智能体的奖励都能写成势函数的梯度形式。这保证收敛到 Nash。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：资源竞争博弈、拥塞博弈（Routing Game）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTDE -->
+  <div class="section" style="margin-top:20px">
+    <h2>CTDE 框架 / Centralized Training Decentralized Execution</h2>
+    <p>训练时使用全局信息，执行时只用局部观察——当前 MARL 的主流范式</p>
+  </div>
+
+  <div class="card">
+    <h3>CTDE 的数学框架</h3>
+    <div class="flow" style="margin-top:10px">
+      <div class="flow-node green">训练阶段<br><small>所有智能体的全局信息</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node amber">中心化 Critic $Q_i(o, a; \theta_i)$<br><small>输入: $(o_1,\ldots,o_N, a_1,\ldots,a_N)$</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green">分布式 Actor $\pi_i(o_i; \phi_i)$<br><small>输出: 智能体 $i$ 的动作</small></div>
+    </div>
+    <div class="grid-2" style="margin-top:10px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">中心化 Critic 的优势</p>
+        <ul style="font-size:12px">
+          <li>Critic 可以访问所有智能体的状态/动作/奖励，训练信号最准确</li>
+          <li>解决了非平稳性问题（Critic 知道其他智能体在做什么）</li>
+          <li>可以直接用标准 TD / PPO 等单智能体方法，只需要改造输入</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">去中心化执行的优势</p>
+        <ul style="font-size:12px">
+          <li>执行时不需要通信带宽，适合真实部署</li>
+          <li>每个智能体只看到自己的局部观察，符合真实约束</li>
+          <li>泛化性好：训练好的策略可用于不同数量的智能体（某些情况下）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- MADDPG -->
+  <div class="section green" style="margin-top:20px">
+    <h2>MADDPG / Multi-Agent DDPG (Lowe et al., 2017)</h2>
+    <p>CTDE 框架的早期代表作，适用于一般和博弈和混合博弈</p>
+  </div>
+
+  <div class="card green">
+    <h3>MADDPG 的 Critic 和 Actor</h3>
+    <p style="font-size:12px;color:var(--text-2)">每个智能体 $i$ 有自己的中心化 Critic $Q_i^\mu(o, a_1,\ldots,a_N)$，接收所有智能体的联合观察-动作对作为输入：</p>
+    <div class="formula">$$Q_i^\mu(o_t, a_1^t, \ldots, a_N^t) \approx r_i^t + \gamma \mathbb{E}_{a'}\left[ Q_i^\mu(o_{t+1}, a_1', \ldots, a_N') \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">Actor $\mu_i(o_i)$ 只用局部观察 $o_i$，但 Critic 可以看到所有智能体的全局信息。策略梯度：</p>
+    <div class="formula">$$\nabla_{\phi_i} J_i \approx \mathbb{E}_{o,a}\left[ \nabla_{\phi_i} \mu_i(o_i) \cdot \nabla_{a_i} Q_i^\mu(o, a) \Bigl|_{a_i=\mu_i(o_i)} \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">MADDPG 还支持"知道其他智能体策略"的版本（GAME THEORY DDPG），通过建模其他智能体的策略来解决非平稳性。</p>
+  </div>
+
+  <!-- QMIX & VDN -->
+  <div class="section amber" style="margin-top:20px">
+    <h2>QMIX / 值分解网络 (Rashid et al., 2018)</h2>
+    <p>合作场景的 CTDE 算法——将联合 Q 值分解为各智能体 Q 值的单调组合</p>
+  </div>
+
+  <div class="card amber">
+    <h3>值分解的动机 / Why Value Decomposition?</h3>
+    <p style="font-size:12px;color:var(--text-2)">在合作场景中，全局 Q 值 $Q_{\text{tot}}(\tau, u)$（$\tau$ 是联合历史，$u$ 是联合动作）需要分解为各智能体的 Q 值 $Q_i(\tau_i, u_i)$，使得：</p>
+    <div class="formula">$$Q_{\text{tot}}(\tau, u) = \text{MIX}\Bigl(Q_1(\tau_1, u_1), \ldots, Q_N(\tau_N, u_N)\Bigr)$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">但这需要满足 IGM（Individual-Global-Max）条件：如果 $u^*$ 是最大化 $Q_{\text{tot}}$ 的联合动作，则 $u_i^*$ 也必须是对应 $Q_i$ 的最优动作。否则值分解会导致次优解。</p>
+  </div>
+
+  <div class="card">
+    <h3>QMIX 的单调性约束 / Monotonicity Constraint</h3>
+    <p style="font-size:12px;color:var(--text-2)">QMIX 使用一个混合网络（Mixing Network）将各智能体 Q 值合成为全局 Q，要求混合网络的权重非负：</p>
+    <div class="formula">$$Q_{\text{tot}} = \underbrace{W_N}_{\geq 0} \cdot Q_N + \underbrace{b_N}_{\text{bias}} + \cdots + W_1 \cdot Q_1 + b_1$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">通过保证 $\partial Q_{\text{tot}} / \partial Q_i \geq 0$（单调性），IGM 条件得到满足：$\arg\max_u Q_{\text{tot}}$ 等价于分别对每个 $Q_i$ 取 $\arg\max$。$W_i, b_i$ 由超网络（HyperNetwork）生成，超网络的输入是全局状态 $s$。</p>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">QMIX 在 StarCraft II 微管理（SMAC）环境上取得了当时最好的结果。</p>
+  </div>
+
+  <!-- MAPPO -->
+  <div class="section" style="margin-top:20px">
+    <h2>MAPPO / Multi-Agent PPO (Yu et al., 2022)</h2>
+    <p>"The Surprising Effectiveness of PPO in Cooperative Multi-Agent RL" — PPO 在 MARL 中出人意料地有效</p>
+  </div>
+
+  <div class="card">
+    <h3>MAPPO 的核心发现</h3>
+    <p style="font-size:12px;color:var(--text-2)">MAPPO 论文发现：在合作场景中，标准的 PPO 算法（中心化 Critic + 去中心化 Actor）加上一些工程技巧，可以打败专门为 MARL 设计的 QMIX 等算法。</p>
+    <div class="formula">$$L^{\text{CLIP}}(\theta_i) = \mathbb{E}_t \left[ \min \Bigl( r_t^i(\theta) \cdot \hat{A}_i(t), \mathrm{clip}(r_t^i(\theta), 1-\epsilon, 1+\epsilon) \cdot \hat{A}_i(t) \Bigr) \right]$$</div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">Critic 的输入是所有智能体的历史观察-动作对 $(o_{1:t}, a_{1:t})$，Actor 的输入是当前智能体自己的局部观察 $o_i^t$。GAE 用于优势估计：</p>
+    <div class="formula">$$\hat{A}_i(t) = \sum_{l=0}^{T-t} (\gamma\lambda)^l \delta_i(t+l), \quad \delta_i(t) = r_i(t) + \gamma V(o_{1:t+1}) - V(o_{1:t})$$</div>
+  </div>
+
+  <div class="callout blue" style="margin-top:8px">
+    <strong>🎯 MAPPO 实用技巧（论文总结的工程 tricks）</strong>
+    <ul style="margin-top:6px;font-size:12px">
+      <li><strong>值函数中心化（Value Centralization）</strong>：用所有智能体的联合观察训练 Critic，而非只用局部观察</li>
+      <li><strong>训练数据复用（Reuse Training Data）</strong>：多 epoch 更新同一批数据（和 PPO 一样）</li>
+      <li><strong>值裁剪（Value Clipping）</strong>：在 MAPPO 中也用 clip，防止值函数过大波动</li>
+      <li><strong>智能体数量缩放</strong>：当智能体数量变化时，策略网络参数共享（parameter sharing）可以自然迁移</li>
+    </ul>
+  </div>
+
+  <!-- 算法对比 -->
+  <div class="section green" style="margin-top:20px">
+    <h2>MARL 算法选择指南 / Algorithm Selection</h2>
+  </div>
+
+  <table style="font-size:12px">
+    <tr><th style="width:120px">算法</th><th>博弈类型</th><th>CTDE</th><th> Critic 输入</th><th>关键优势</th><th>代表场景</th></tr>
+    <tr><td>VDN</td><td>合作</td><td>是</td><td>联合动作</td><td>线性值分解，简单</td><td>协作导航</td></tr>
+    <tr><td>QMIX</td><td>合作</td><td>是</td><td>状态 + 联合动作</td><td>单调非线性分解，表达力强</td><td>StarCraft SMAC</td></tr>
+    <tr><td>MADDPG</td><td>一般和</td><td>是</td><td>所有智能体 O-A</td><td>通用，适合混合博弈</td><td>多机器人协作+竞争</td></tr>
+    <tr><td>MAPPO</td><td>合作</td><td>是</td><td>联合历史</td><td>实现简单，接近 SOTA</td><td>几乎所有合作场景</td></tr>
+    <tr><td>Self-Play</td><td>零和</td><td>否</td><td>N/A</td><td>无需环境模型</td><td>围棋、象棋、游戏AI</td></tr>
+    <tr><td>NFSP</td><td>一般和</td><td>部分</td><td>历史</td><td>无需显式博弈建模</td><td>扑克、多人博弈</td></tr>
+  </table>
+
+  <!-- 开放问题 -->
+  <div class="section red" style="margin-top:20px">
+    <h2>MARL 的开放科学问题 / Open Problems</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--red)">
+      <h3>信用分配 / Credit Assignment</h3>
+      <p style="font-size:12px;color:var(--text-2)">在共享奖励的合作任务中，全局奖励 $r$ 是相同的，但每个智能体的贡献不同。SHAP、Counterfactual 等方法尝试解决，但都不是完美的。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">Tian et al. (2019) 的 "Compressive Credits" 用注意力机制动态分配信用，是当前较好的方法。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--amber)">
+      <h3>扩展性 / Scalability</h3>
+      <p style="font-size:12px;color:var(--text-2)">联合动作空间随智能体数量指数增长。即使每智能体只有 5 个动作，50 个智能体也有 $5^{50}$ 个联合动作。参数共享（parameter sharing）缓解但不能根本解决。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:4px">平均场近似（Mean Field Approximation）：只考虑"邻居"的平均影响，是大规模 MARL 的研究方向。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--green)">
+      <h3>通信与协作学习</h3>
+      <p style="font-size:12px;color:var(--text-2)">智能体之间是否可以通信？通信带宽受限时的协作学习是重要的研究方向。CommNet、DIAL 等通过可微分通信层学习何时传递什么信息。</p>
+    </div>
+    <div class="card" style="border-left-color:var(--purple)">
+      <h3>多智能体鲁棒性</h3>
+      <p style="font-size:12px;color:var(--text-2)">训练好的策略在面对未知新智能体时表现如何？这是真实世界部署（自动驾驶、无人机蜂群）的关键问题。Population-based training（多策略同时训练）是解决方案之一。</p>
+    </div>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    强化学习文档 · 09 多智能体 RL · <a href="../index.html">← 总目录</a> · <a href="../08-model-based/index.html">← 08 基于模型</a> · <a href="../10-offline-rl/index.html">下一篇：10 离线强化学习 →</a>
+  </div>
+</div>
+</body>
+</html>

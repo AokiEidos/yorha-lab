@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 06 · 模仿学习与强化学习在机器人中的应用</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+<!-- ── Title ── -->
+<div class="title-bar">
+  <h1>Chapter 06 · 模仿学习与强化学习在机器人中的应用</h1>
+  <p>VLA 技术文档系列 · Vision-Language-Action Model Series</p>
+</div>
+
+<!-- ── 1. 章节导览 ── -->
+<div class="section">
+  <h2>1 · 为什么需要模仿学习与强化学习？</h2>
+  <p>手动设计机器人控制策略在低维简单任务上可行，但面对高维操作任务（如杂乱环境中的双臂协作）时，穷举所有状态和动作的规则系统既不可扩展也无法泛化。模仿学习（Imitation Learning, IL）通过从专家演示中学习策略；强化学习（Reinforcement Learning, RL）通过与环境交互优化策略。二者共同构成了 VLA 系统动作能力获取的核心技术路径。</p>
+</div>
+
+<div class="callout blue">
+<strong>核心区别：</strong>模仿学习是离线监督学习，需要高质量专家演示数据；强化学习是在线探索学习，需要定义奖励函数并在环境中收集交互数据。实际系统往往结合二者——用 IL 做初始化，用 RL 做微调。
+</div>
+
+<!-- ── 2. 模仿学习 ── -->
+<div class="section green">
+  <h2>2 · 模仿学习：从演示到策略</h2>
+  <p>模仿学习的核心目标是学习一个策略 $\pi_\theta(a|s)$，使得在状态 $s$ 下采取的动作 $a$ 与专家演示数据 $\mathcal{D} = \{(s_i, a_i)\}$ 中的行为一致。</p>
+</div>
+
+<h3>2.1 行为克隆（Behavioral Cloning）</h3>
+<p>行为克隆是最直接的模仿学习方法：将专家数据视为有标签监督学习问题，最小化策略网络输出与专家动作之间的交叉熵或均方误差：</p>
+
+<div class="formula">
+$$L_{BC}(\theta) = \mathbb{E}_{(s,a) \sim \mathcal{D}_\text{expert}}\left[ -\log \pi_\theta(a \mid s) \right]$$
+</div>
+
+<p>但直接行为克隆存在两个根本性问题：</p>
+<ul>
+  <li><strong>分布偏移（Distribution Mismatch）：</strong>策略在训练状态上误差很小，但一旦在某个状态上产生小误差，后续状态会偏离训练分布，导致错误累积（compounding error）。</li>
+  <li><strong>专家覆盖不足：</strong>专家数据无法覆盖所有可能状态，策略对未见状态的外推行为不可控。</li>
+</ul>
+
+<div class="card">
+  <h3>DAgger：交互式模仿学习</h3>
+  <p>DAgger（Dataset Aggregation）通过迭代式数据采集缓解分布偏移问题：</p>
+  <ol>
+    <li>用当前策略 $\pi_\theta$ 收集 trajectories</li>
+    <li>让专家对策略轨迹中的每个状态标注最优动作</li>
+    <li>将专家标注数据加入训练集，重新训练策略</li>
+  </ol>
+  <div class="formula">
+$$\mathcal{D} \leftarrow \mathcal{D} \cup \{(s, \pi_\text{expert}(s)) \mid s \sim \pi_\theta\}$$
+  </div>
+  <p>理论上，DAgger 可以保证收剑到最优策略（前提是策略容量足够且专家可访问）。实践中采集成本限制了迭代次数。</p>
+</div>
+
+<h3>2.2 GAIL：生成对抗模仿学习</h3>
+<p>GAIL（Generative Adversarial Imitation Learning）引入生成对抗网络的思想：训练一个判别器 $D_\phi(s,a)$ 来区分专家数据和数据分布，策略 $\pi_\theta$ 则试图欺骗判别器。最终均衡时，策略的诱导状态-动作分布与专家分布无法区分。</p>
+
+<div class="formula">
+$$\min_\theta \max_\phi \mathbb{E}_{s,a \sim \pi_\theta}[\log D_\phi(s,a)] + \mathbb{E}_{s,a \sim \mathcal{D}_\text{expert}}[\log(1 - D_\phi(s,a))]$$
+</div>
+
+<p>GAIL 的优势在于不需要逐状态标注的专家动作，只需要专家的完整 trajectories。判别器隐式地定义了奖励信号，可用于指导策略优化。</p>
+
+<h3>2.3 NDtrig：归一化动态时间规整</h3>
+<p>在多模态动作场景下（如同一操作有多种正确手法），行为克隆容易发生模态坍缩。NDtrig（Normalized Dynamic Time Warping Regression）通过动态时间规整对齐多模态专家轨迹，并引入归一化损失来处理动作尺度差异：</p>
+
+<div class="formula">
+$$L_\text{NDtrig}(\theta) = \frac{1}{|\mathcal{D}|} \sum_{(s,a) \in \mathcal{D}} \frac{\| \pi_\theta(s) - a \|_2^2}{\sigma_a^2}$$
+</div>
+
+<p>其中 $\sigma_a^2$ 是该动作维度的方差统计量，对低方差动作维度赋予更高权重，避免主导动作维度掩盖其他有效决策。</p>
+
+<!-- ── 3. 强化学习 ── -->
+<div class="section amber">
+  <h2>3 · 强化学习：与环境交互优化策略</h2>
+  <p>强化学习不依赖专家标注，而是通过奖励信号 $r(s,a)$ 驱动策略优化。目标是最大化累积折扣奖励 $J(\pi) = \mathbb{E}_{\pi}[\sum_{t=0}^\infty \gamma^t r(s_t, a_t)]$。</p>
+</div>
+
+<h3>3.1 策略梯度与 PPO</h3>
+<p>策略梯度方法直接对策略参数求导：</p>
+
+<div class="formula">
+$$\nabla_\theta J(\pi_\theta) = \mathbb{E}_{s \sim d_{\pi_\theta}, a \sim \pi_\theta}\left[ \nabla_\theta \log \pi_\theta(a \mid s) \cdot Q^{\pi_\theta}(s,a) \right]$$
+</div>
+
+<p>但原始策略梯度方差过高。PPO（Proximal Policy Optimization）通过限制策略更新的幅度来稳定训练：</p>
+
+<div class="formula">
+$$L^\text{PPO}(\theta) = \mathbb{E}\left[ \min\left( \frac{\pi_\theta(a|s)}{\pi_{\theta_\text{old}}(a|s)} \cdot A^{\pi_{\theta_\text{old}}}(s,a), \; \text{clip}\left(\frac{\pi_\theta(a|s)}{\pi_{\theta_\text{old}}(a|s)}, 1-\epsilon, 1+\epsilon\right) \cdot A^{\pi_{\theta_\text{old}}}(s,a) \right) \right]$$
+</div>
+
+<p>clip 操作防止策略变化过大，是 PPO 区别于 TRPO 的核心简化。PPO 在连续控制任务（如 locomotion、manipulation）中是事实标准基线。</p>
+
+<h3>3.2 Soft Actor-Critic（SAC）</h3>
+<p>SAC 是一种离策略（off-policy）最大熵强化学习方法，在最大化奖励的同时鼓励策略的熵最大化，以提升探索能力：</p>
+
+<div class="formula">
+$$J(\pi) = \mathbb{E}_{\tau \sim \pi}\left[ \sum_{t=0}^\infty \gamma^t \left( r(s_t,a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t)) \right) \right]$$
+</div>
+
+<p>其中 $\alpha$ 是温度参数，控制探索-利用权衡。SAC 使用双 Q 网络和目标网络来缓解 Q 值过估计问题，是连续动作空间中最有效的算法之一。</p>
+
+<div class="card amber">
+  <h3>PPO vs SAC：何时选谁？</h3>
+  <table>
+    <thead><tr><th>维度</th><th>PPO</th><th>SAC</th></tr></thead>
+    <tbody>
+      <tr><td>策略类型</td><td>On-policy（需新鲜数据）</td><td>Off-policy（可复用历史数据）</td></tr>
+      <tr><td>采样效率</td><td>低（每次更新需新采集）</td><td>高（可利用 Replay Buffer）</td></tr>
+      <tr><td>超参敏感性</td><td>对 Clipping 参数敏感</td><td>对温度参数 $\alpha$ 敏感</td></tr>
+      <tr><td>适用场景</td><td>样本有限、需稳定更新</td><td>样本充裕、需高效探索</td></tr>
+      <tr><td>离散/连续</td><td>两者皆可</td><td>主要连续动作</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>3.3 RLVF：强化学习与视觉反馈</h3>
+<p>RLVF（Reinforcement Learning with Visual Feedback）将视觉感知直接融入 RL 框架。在高维观测空间（图像）中，传统 RL 的探索效率极低。视觉反馈提供了对环境状态的紧凑表征，使策略能够更有效地学习。</p>
+
+<p>一个典型实现是：</p>
+<div class="formula">
+$$a_t = \pi_\theta\left( \phi(s_t^{\text{visual}}); \theta_\phi \right)$$
+</div>
+
+<p>其中 $\phi$ 是视觉编码器（如 ResNet、ViT），将原始图像映射到低维表征，再输入策略网络。视觉编码器可以是固定的（预训练），也可以与策略联合训练。</p>
+
+<!-- ── 4. Sim-to-Real ── -->
+<div class="section">
+  <h2>4 · Sim-to-Real：跨越仿真到现实的鸿沟</h2>
+  <p>在仿真器中训练 RL 策略安全、低成本且可并行，但直接部署到真实机器人会因物理参数、视觉纹理、传感器噪声的差异而失效。Sim-to-Real（Domain Randomization）是解决这一问题的核心方法。</p>
+</div>
+
+<h3>4.1 Domain Randomization</h3>
+<p>Domain Randomization（DR）在仿真中随机化物理和视觉参数，使模型在训练时见过大量变体，从而泛化到真实环境：</p>
+
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">物理参数随机化</div>
+    <ul>
+      <li>摩擦系数 $\mu \in [0.1, 2.0]$</li>
+      <li>质量 $m \in [0.8, 1.2] \cdot m_\text{nominal}$</li>
+      <li>观测噪声 $\sigma_\text{sensor}$</li>
+      <li>控制延迟 $\delta_t \in [0, 50]$ ms</li>
+    </ul>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">视觉纹理随机化</div>
+    <ul>
+      <li>背景颜色、光照强度</li>
+      <li>物体材质反射率</li>
+      <li>相机内参（焦距、光心）</li>
+      <li>运动模糊、散焦程度</li>
+    </ul>
+  </div>
+</div>
+
+<h3>4.2 系统辨识与自适应控制</h3>
+<p>DR 的局限在于若随机范围过大，策略可能学到保守的「应付一切」的行为而非真正适应特定环境。系统辨识方法通过在真实环境中快速采集数据来估计物理参数，再调整仿真器。DARLA 等方法将系统辨识建模为元学习问题。</p>
+
+<div class="callout purple">
+<strong>GR-00：</strong>2024 年的 Graceful Degradation 00 提出在sim2real传输中引入不确定性感知——策略输出动作的同时输出置信度，在低置信度状态下切换到安全保守策略（如减速、停止），而不是盲目执行学到的动作。
+</div>
+
+<h3>4.3 元学习与快速适应</h3>
+<p>MAML（Model-Agnostic Meta-Learning）及其变体通过在大量任务上学习一个可在少量梯度步骤内适应新任务的初始化。在机器人领域，这允许在仿真中训练不同任务分布，然后在新任务上快速微调：</p>
+
+<div class="formula">
+$$\theta^* = \arg\min_\theta \sum_{\mathcal{T}_i} L_{\mathcal{T}_i}( \theta - \alpha \nabla_\theta L_{\mathcal{T}_i}(\theta) )$$
+</div>
+
+<p>MAML 需要二阶梯度，计算开销大。Reptile 等一阶近似方法在某些场景下可达到相近性能且计算代价更低。</p>
+
+<!-- ── 5. 实践框架 ── -->
+<div class="section green">
+  <h2>5 · 实践框架：RL 在机器人中的工程实现</h2>
+</div>
+
+<h3>5.1 奖励函数设计</h3>
+<p>机器人 RL 的核心挑战之一是奖励函数设计。稀疏奖励（只在任务成功时给 +1）探索效率极低；稠密奖励需要手工设计，容易引入 reward hacking（策略找到取巧行为）。</p>
+
+<div class="tech-data-block">
+  <div class="block-title">奖励塑形策略</div>
+  <ul>
+    <li><strong>距离奖励：</strong>$r_d = -\alpha \cdot d(\text{end-effector}, \text{target})$ — 末端执行器接近目标时给予奖励</li>
+    <li><strong>_orientation 奖励：</strong>$r_o = \beta \cdot \cos(\theta)$ — 末端执行器朝向正确时给予奖励</li>
+    <li><strong>接触奖励：</strong>$r_c = \gamma \cdot \mathbb{1}[\text{contact}]$ — 接触传感器触发时给予奖励</li>
+    <li><strong>稀疏成功奖励：</strong>$r_\text{success}$ — 任务完成时一次性给予高奖励</li>
+  </ul>
+</div>
+
+<h3>5.2 动作空间与控制频率</h3>
+<p>机器人的动作空间通常是关节位置、关节速度或末端执行器位姿。高维动作空间（7自由度机械臂）需要 Actor-Critic 架构来稳定训练。控制频率也需要匹配物理特性——位置控制通常 100Hz，阻抗控制 500Hz 以上。</p>
+
+<div class="card">
+  <h3>Action Space 对比</h3>
+  <table>
+    <thead><tr><th>动作空间</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead>
+    <tbody>
+      <tr><td>关节位置</td><td>平滑、安全</td><td>需要 IK 求解</td><td>位置控制机械臂</td></tr>
+      <tr><td>关节扭矩</td><td>直接力控、柔顺</td><td>噪声放大问题</td><td>力控应用</td></tr>
+      <tr><td>末端执行器速度</td><td>直观</td><td>奇异点问题</td><td>移动操作</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 6. 与 VLA 的关联 ── -->
+<div class="section amber">
+  <h2>6 · 模仿学习与 RL 在 VLA 中的角色</h2>
+  <p>VLA 系统中的动作模块（Action Module）通常通过模仿学习从人类演示中初始化，然后通过强化学习在特定任务上微调。例如 Robot Learning 的最新工作（如 RT-2、Openrictions）使用视觉-语言模型作为感知和推理 backbone，结合 RLHF 风格的后续训练来优化机器人动作策略。</p>
+</div>
+
+<div class="callout blue">
+<strong>关键趋势：</strong>从离线模仿学习到在线强化学习的 pipeline 日益流行：先用大规模互联网视频预训练视觉表征和行为先验（类似 VLM 的预训练阶段），再用特定机器人数据通过 RL 微调动作头。这种两阶段训练既利用了互联网规模的预训练，又保留了任务特定的优化能力。
+</div>
+
+<!-- ── 7. 本章小结 ── -->
+<div class="section">
+  <h2>7 · 本章小结</h2>
+  <p>模仿学习和强化学习是赋予机器人泛化性控制能力的两条互补路径。行为克隆简单高效但受限于分布偏移；DAgger 通过在线数据采集缓解了这一问题；GAIL 则通过对抗训练实现了更灵活的分布匹配。PPO 和 SAC 是连续控制 RL 的核心算法，前者稳定易调，后者高效离策略。</p>
+  <p>Sim-to-Real 的核心挑战是仿真与现实之间的物理和视觉差异。Domain Randomization 提供了朴素的解法，元学习和系统辨识则提供了更原则性的迁移框架。下一章我们将讨论仿真平台本身的设计，以及生成式数据如何进一步弥合 sim2real 鸿沟。</p>
+</div>
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · Chapter 06 · 模仿与强化学习 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../05-end-to-end-driving/index.html">← 第五章：端到端自动驾驶</a> ·
+  <a href="../07-simulation-data/index.html">第七章：仿真与数据引擎 →</a>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 05 · 端到端自动驾驶：UniAD、FSD 与闭环革命</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+</head>
+<body>
+<div class="container">
+
+<!-- ── Title ── -->
+<div class="title-bar">
+  <h1>Chapter 05 · 端到端自动驾驶：UniAD、FSD 与闭环革命</h1>
+  <p>VLA 技术文档系列 · Vision-Language-Action Model Series</p>
+</div>
+
+<!-- ── 1. 章节导览 ── -->
+<div class="section">
+  <h2>1 · 从感知到控制：为什么需要端到端？</h2>
+  <p>模块化堆栈（感知 → 预测 → 规划 → 控制）长期主导自动驾驶系统设计。然而逐级传递的误差会累积放大，且模块间的人为定义接口限制了系统全局最优性。端到端方法用单一神经网络将原始传感器输入直接映射为车辆控制输出，实现了真正的闭环学习。</p>
+</div>
+
+<div class="callout blue">
+<strong>核心转变：</strong>从「分而治之的规则接口」到「数据驱动的全局优化」。端到端系统不再依赖人工设计的感知 tracker 或启发式后处理，所有中间表征在训练阶段由 loss 函数隐式决定。
+</div>
+
+<!-- ── 2. UniAD ── -->
+<div class="section green">
+  <h2>2 · UniAD：全栈 Transformer 架构</h2>
+  <p>2023 年 CVPR 最佳论文 UniAD 提出了首个集成感知、预测、规划的端到端自动驾驶框架。它以 Transformer 为核心，通过 Query 机制在各个模块间传递隐式表征，实现了模块间的联合优化。</p>
+</div>
+
+<h3>2.1 系统架构</h3>
+<div class="card">
+  <h3>感知模块（TrackFormer）</h3>
+  <p>TrackFormer 通过 BEV（Bird's Eye View）特征图生成多目标轨迹 query。每个 query 包含位置、速度、形状等状态信息，在时序上通过自注意力和交叉注意力进行更新，实现了多目标跟踪而不依赖后置的关联算法。</p>
+  <div class="tech-data-block">
+    <div class="block-title">输入输出</div>
+    <div><span class="tech-badge">输入</span> 多视角相机图像 $I_1, I_2, \ldots, I_N$（前视 + 侧视 + 后视）</div>
+    <div style="margin-top:6px"><span class="tech-badge">输出</span> $K$ 个 agent 的 Query $Q_{agent} = \{q_i\}_{i=1}^K$，含位置、速度、朝向</div>
+  </div>
+</div>
+
+<div class="card green">
+  <h3>预测模块（MapFormer）</h3>
+  <p>MapFormer 将矢量化的地图元素（车道线、可行驶边界、交叉口）编码为 query，与 agent query 进行交叉注意力，实现动态与静态要素的联合推理。输出每个 agent 在 $T$ 个未来时间步的轨迹概率分布。</p>
+</div>
+
+<div class="card amber">
+  <h3>规划模块（MotionFormer + PlanningFormer）</h3>
+  <p>MotionFormer 将 agent 和地图 query 融合，输出每个时间步的空间位置分布。PlanningFormer 以自车 query 为核心，在考虑其他agent 预测结果的前提下直接输出自车未来轨迹。该设计避免了传统规划器对感知结果的强依赖。</p>
+</div>
+
+<div class="tech-canvas">
+  <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    <!-- ── Row 1: Main pipeline ── -->
+    <!-- Camera input -->
+    <rect x="10" y="16" width="100" height="72" rx="8" fill="#3b82f6" opacity="0.92"/>
+    <text x="60" y="42" text-anchor="middle" fill="white" font-size="12" font-weight="bold">多视角相机</text>
+    <text x="60" y="60" text-anchor="middle" fill="white" font-size="10">原始图像</text>
+    <text x="60" y="75" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">Backbone → BEV</text>
+
+    <!-- Arrow -->
+    <line x1="110" y1="52" x2="136" y2="52" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="132,47 140,52 132,57" fill="#94a3b8"/>
+
+    <!-- TrackFormer -->
+    <rect x="140" y="16" width="110" height="72" rx="8" fill="#7c3aed" opacity="0.92"/>
+    <text x="195" y="42" text-anchor="middle" fill="white" font-size="12" font-weight="bold">TrackFormer</text>
+    <text x="195" y="60" text-anchor="middle" fill="white" font-size="10">目标跟踪 Query</text>
+    <text x="195" y="75" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">输出追踪结果</text>
+
+    <!-- Arrow -->
+    <line x1="250" y1="52" x2="276" y2="52" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="272,47 280,52 272,57" fill="#94a3b8"/>
+
+    <!-- MapFormer -->
+    <rect x="280" y="16" width="110" height="72" rx="8" fill="#22c55e" opacity="0.92"/>
+    <text x="335" y="42" text-anchor="middle" fill="white" font-size="12" font-weight="bold">MapFormer</text>
+    <text x="335" y="60" text-anchor="middle" fill="white" font-size="10">矢量地图 Query</text>
+    <text x="335" y="75" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">输出地图元素</text>
+
+    <!-- Arrow -->
+    <line x1="390" y1="52" x2="416" y2="52" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="412,47 420,52 412,57" fill="#94a3b8"/>
+
+    <!-- MotionFormer -->
+    <rect x="420" y="16" width="110" height="72" rx="8" fill="#f59e0b" opacity="0.92"/>
+    <text x="475" y="42" text-anchor="middle" fill="white" font-size="12" font-weight="bold">MotionFormer</text>
+    <text x="475" y="60" text-anchor="middle" fill="white" font-size="10">轨迹预测 Query</text>
+    <text x="475" y="75" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">输出多模态轨迹</text>
+
+    <!-- Arrow (down to planning) -->
+    <line x1="475" y1="88" x2="475" y2="118" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="470,114 475,122 480,114" fill="#94a3b8"/>
+
+    <!-- PlanningFormer (below MotionFormer, aligned) -->
+    <rect x="420" y="122" width="110" height="72" rx="8" fill="#ef4444" opacity="0.92"/>
+    <text x="475" y="148" text-anchor="middle" fill="white" font-size="12" font-weight="bold">PlanningFormer</text>
+    <text x="475" y="166" text-anchor="middle" fill="white" font-size="10">自车规划 Query</text>
+    <text x="475" y="181" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">输出自车轨迹</text>
+
+    <!-- ── Cross-attention: Track → Map ── -->
+    <path d="M 250 40 Q 280 5 310 40" stroke="#c4b5fd" stroke-width="1.2" fill="none" stroke-dasharray="5,3"/>
+    <text x="280" y="20" text-anchor="middle" fill="#94a3b8" font-size="9">Track→Map</text>
+
+    <!-- ── Cross-attention: Map → Motion ── -->
+    <path d="M 390 40 Q 420 5 450 40" stroke="#86efac" stroke-width="1.2" fill="none" stroke-dasharray="5,3"/>
+    <text x="420" y="20" text-anchor="middle" fill="#94a3b8" font-size="9">Map→Motion</text>
+
+    <!-- ── Output arrow ── -->
+    <line x1="530" y1="158" x2="556" y2="158" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="552,153 560,158 552,163" fill="#94a3b8"/>
+
+    <!-- Ego output box -->
+    <rect x="560" y="130" width="90" height="56" rx="8" fill="#0f172a" opacity="0.85"/>
+    <text x="605" y="153" text-anchor="middle" fill="white" font-size="11" font-weight="bold">规划轨迹输出</text>
+    <text x="605" y="171" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="10">方向盘 / 油门 / 刹车</text>
+
+    <!-- ── Row 2: Loss ── -->
+    <!-- Loss box centered below all modules -->
+    <rect x="250" y="210" width="220" height="28" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="360" y="228" text-anchor="middle" fill="#475569" font-size="11" font-weight="bold">端到端联合 Loss</text>
+
+    <!-- Loss connection: from PlanningFormer down to loss -->
+    <line x1="475" y1="194" x2="475" y2="208" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <line x1="475" y1="210" x2="470" y2="210" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Loss connection: from MotionFormer -->
+    <line x1="475" y1="88" x2="475" y2="100" stroke="transparent"/>
+    <line x1="335" y1="88" x2="335" y2="100" stroke="transparent"/>
+    <line x1="195" y1="88" x2="195" y2="100" stroke="transparent"/>
+    <!-- Gradient arrows going backward (dashed) -->
+    <path d="M 360 210 L 475 194" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4,3" fill="none"/>
+    <path d="M 360 210 L 475 88" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" fill="none" opacity="0.6"/>
+    <path d="M 360 210 L 335 88" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" fill="none" opacity="0.6"/>
+    <path d="M 360 210 L 195 88" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" fill="none" opacity="0.5"/>
+
+    <!-- Gradient label -->
+    <text x="420" y="208" fill="#ef4444" font-size="9" opacity="0.8">梯度回传</text>
+  </svg>
+  <div style="font-size:11px;color:#64748b;text-align:center;padding:4px 0">图 2-1：UniAD 系统数据流。TrackFormer → MapFormer → MotionFormer → PlanningFormer，</div>
+</div>
+
+<h3>2.2 Query 机制与注意力</h3>
+<p>UniAD 的核心是 Query-based 的表征传递。每个模块维护一组可学习的 Query，通过交叉注意力从上一层获取信息：</p>
+
+<div class="formula">
+$$Q_{t+1} = \text{MSA}\left(Q_t, \text{Encoder}(X_t)\right)$$
+</div>
+
+<p>其中 $Q_t$ 是时序传递的 query 状态，$X_t$ 是 BEV 特征，MSA 是 Multi-Head Self-Attention。这种设计允许系统在训练时对每个模块进行独立或联合优化，并支持在线时序传播（在线推理时只做一次前向传播即可更新所有 query）。</p>
+
+<div class="callout purple">
+<strong>关键洞察：</strong>Query 是连续的隐式表征，不经过任何离散化或后处理。这与直接检测+IoU匹配的后处理方案有本质区别——Query 在整个推理链路中始终保留完整的概率分布信息。
+</div>
+
+<h3>2.3 规划损失与规避碰撞</h3>
+<p>UniAD 的规划损失包含两部分：</p>
+<ul>
+  <li><strong>轨迹损失：</strong>$L_{traj} = \|p_{ego} - p_{gt}\|_2^2$，衡量自车预测轨迹与真实轨迹的 $L_2$ 距离</li>
+  <li><strong>碰撞惩罚：</strong>$L_{collision} = \sum_{t} \sum_{a} \mathbb{1}[d(p_t^{ego}, p_t^a) \lt r] \cdot \exp(-\frac{d - r}{\sigma})$，对预测轨迹上与其他 agent 距离过近的情况施加指数惩罚</li>
+</ul>
+
+<div class="formula">
+$$L_{plan} = L_{traj} + \lambda_c \cdot L_{collision}$$
+</div>
+
+<p>通过这种设计，碰撞规避不再依赖规则后处理（如基于TTC的刹车逻辑），而是从数据中学习到在预测其他agent轨迹的前提下选择安全的自车路径。</p>
+
+<!-- ── 3. Tesla FSD ── -->
+<div class="section amber">
+  <h2>3 · Tesla FSD：Occupancy 网络与多任务学习</h2>
+  <p>Tesla 的 FSD（Full Self-Driving）系统在端到端路线上走出了一条独特的路径：不依赖高精地图，不使用激光雷达，以视觉为核心，通过 Occupancy 网络构建 3D 表征，再基于此做规划和控制。</p>
+</div>
+
+<h3>3.1 Occupancy 作为通用表征</h3>
+<p>传统感知依赖于 3D bounding box 来描述目标，但长尾场景中物体形状多样、遮挡频繁，bounding box 难以覆盖所有可能的几何形态。Occupancy 网络将 3D 空间划分为体素网格，预测每个体素是否被占用：</p>
+
+<div class="formula">
+$$O(x,y,z) = \sigma\left( W_{occ} \cdot f_{bev}(x,y) + b_{occ} \right)$$
+</div>
+
+<p>其中 $f_{bev}(x,y)$ 是鸟瞰图特征，$O(x,y,z)$ 输出 3D 占用概率，$\sigma$ 是 Sigmoid。这种表征的优势在于：</p>
+
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">优势 <span class="tech-badge">通用性</span></div>
+    <ul>
+      <li>不依赖物体类别定义，任何形状的物体都能被覆盖</li>
+      <li>对未知物体（unseen category）天然鲁棒</li>
+      <li>支持动态物体和静态场景的联合建模</li>
+    </ul>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">局限 <span class="tech-badge">计算量</span></div>
+    <ul>
+      <li>高分辨率体素网格计算成本巨大</li>
+      <li>时序 Occupancy Flow 需要大量标注数据</li>
+      <li>对小目标（行人、摩托车）的检测精度有限</li>
+    </ul>
+  </div>
+</div>
+
+<h3>3.2 多任务视频序列架构</h3>
+<p>FSD 的视频模块（Video Module）将多摄像头图像通过 Transformer 融合为统一的 BEV 特征。核心设计包括：</p>
+
+<div class="card">
+  <h3>Spatial RNN</h3>
+  <p>沿自车行驶方向（纵向）和横向建立 2D LSTM RNN，每个 RNN 单元对应 BEV 的一个空间位置。通过时序视频输入更新 RNN 状态，实现 3D 场景理解。</p>
+</div>
+
+<div class="card green">
+  <h3>Tree Planning（树形规划）</h3>
+  <p>FSD 的规划器采用树形搜索结构：在每个时间步扩展多个候选动作节点，基于Occupancy和预测结果评估代价，选择最优路径。这种方法相比单点轨迹输出能更好地处理不确定性场景（如汇入匝道、绕行障碍物）。</p>
+</div>
+
+<h3>3.3 影子模式与数据闭环</h3>
+<p>Tesla 利用百万量级的量产车队进行「影子模式」（Shadow Mode）数据采集：在人类驾驶员操作时，后台同时运行算法并记录与人类行为的差异。这些差异案例经过筛选后用于模型迭代，形成数据闭环飞轮。</p>
+
+<div class="callout amber">
+<strong>规模化挑战：</strong>端到端系统的仿真验证比模块化系统更困难——如何衡量一个端到端模型「在某些场景下为何失败」并不直观，不像模块化系统那样有每个模块的独立指标可供分析。
+</div>
+
+<!-- ── 4. VAD & reasoningPlanner ── -->
+<div class="section purple">
+  <h2>4 · VAD 与推理规划器</h2>
+  <p>蔚来汽车提出的 VAD（VectorNet Autonomous Driving）和麻省理工的 ReasoningPlanner 代表了另一条路：不仅做端到端轨迹规划，还在规划过程中引入结构化推理和语言交互能力。</p>
+</div>
+
+<h3>4.1 VAD：矢量化的端到端规划</h3>
+<p>VAD 的核心思想是将驾驶场景中的所有元素（车道边界、其他车辆轨迹、信号灯状态）统一表示为矢量序列，而非栅格化的 BEV 图像。这种表示方式大幅降低了表示空间的自由度，同时保持了丰富的几何和语义信息。</p>
+
+<div class="tech-data-block">
+  <div class="block-title">VAD 输入输出结构</div>
+  <div style="margin-bottom:6px"><span class="tech-badge">输入</span> 多视角相机图像序列</div>
+  <div><span class="tech-badge">输出</span> 自车规划轨迹 + 其他 agent 预测轨迹 + 语义地图</div>
+  <div style="margin-top:6px;font-family:monospace;font-size:11px">矢量表征 → [Actor Query, Map Query] → Planning Head → 轨迹点序列</div>
+</div>
+
+<h3>4.2 ReasoningPlanner：引入语言推理</h3>
+<p>ReasoningPlanner 在传统轨迹规划的基础上增加了「场景理解」分支：对当前驾驶情境进行文本化描述（如「前方 50 米有一辆公交车停在公交车道，正在并线」），并将该描述与视觉特征融合后输入规划器。这种设计使得模型具备对复杂情境显式推理的能力。</p>
+
+<div class="formula">
+$$a_t = \text{PlanNet}\left(f_{visual}, \text{LLM}(s_t)\right)$$
+</div>
+
+<p>其中 $s_t$ 是当前驾驶场景的文本描述，LLM 将其编码为语义向量与视觉特征拼接后输入规划网络。这种跨模态推理能力在长尾场景（如施工绕行、紧急车辆避让）中尤为重要。</p>
+
+<!-- ── 5. 闭环仿真 ── -->
+<div class="section">
+  <h2>5 · 闭环仿真：端到端的验证框架</h2>
+  <p>端到端系统的一个核心挑战是如何验证其安全性。开环评估（比较预测轨迹与真实轨迹）无法反映规划决策对环境的影响。闭环仿真通过将模型接入仿真器并允许其真实影响场景演化，成为端到端系统验证的事实标准。</p>
+</div>
+
+<h3>5.1 闭环 vs 开环</h3>
+<table>
+  <thead>
+    <tr><th>维度</th><th>开环评估</th><th>闭环仿真（Conclosed-Loop）</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>自车对环境的影响</td><td>不考虑（静态真值）</td><td>自车动作改变其他 agent 行为</td></tr>
+    <tr><td>其他 agent 策略</td><td>回放真实轨迹</td><td>基于学习或规则的交互策略</td></tr>
+    <tr><td>长尾场景覆盖</td><td>依赖真实数据分布</td><td>可编程注入极端场景</td></tr>
+    <tr><td>评估指标</td><td>ADE, Miss Rate</td><td>碰撞率、违规率、舒适度</td></tr>
+    <tr><td>计算成本</td><td>低（仅推理）</td><td>高（需仿真器实时运行）</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 World Model 与生成式仿真</h3>
+<p>近年来，基于世界模型（World Model）的仿真成为热门方向。GAIA-1、DriveDreamer 等模型学习生成连续的视频序列来模拟驾驶场景：给定当前观测和自车动作，模型生成未来多帧视频。这种方法相比传统基于渲染的仿真器有更高的灵活性，但保真度仍在提升。</p>
+
+<div class="formula">
+$$p(s_{t+1:T} \mid s_t, a_t) = \text{WorldModel}(s_t, a_t; \theta)$$
+</div>
+
+<p>世界模型的关键优势在于可以用于大规模闭环数据生成：在虚拟环境中收集端到端模型的决策数据，用于继续训练或评估。</p>
+
+<h3>5.3 安全关键场景注入</h3>
+<p>闭环仿真平台（如 CARLA、SMARTS、nuPlan）支持对安全关键场景进行编程注入：</p>
+<ul>
+  <li><strong>紧急切入：</strong>前车突然cut-in，测试自车反应</li>
+  <li><strong>遮挡行人：</strong>从停放车辆后方突然出现的行人</li>
+  <li><strong>传感器失效：</strong>模拟相机遮挡、雨雪天气等极端条件下的系统降级</li>
+</ul>
+
+<div class="callout red">
+<strong>安全验证的统计学困境：</strong>即使端到端模型在 99.9% 的仿真回合中安全通过，也不足以证明其在真实世界中安全。要可靠地验证稀有事件（碰撞频率 $\lt 10^{-6}$），需要超过数十亿公里的虚拟测试里程，这远超当前计算资源的可行性。
+</div>
+
+<!-- ── 6. 关键挑战 ── -->
+<div class="section green">
+  <h2>6 · 关键挑战与研究前沿</h2>
+</div>
+
+<div class="tech-grid-auto">
+  <div class="tech-data-block">
+    <div class="block-title">挑战 1：可解释性 <span class="tech-badge">可解释性</span></div>
+    <p>端到端模型的决策过程是一个黑箱。当车辆做出危险决策时，难以追溯是哪一层表征或哪一个训练样本导致了该决策。LIME、SHAP 等事后解释方法提供了有限的工具。</p>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">挑战 2：数据分布偏移 <span class="tech-badge">鲁棒性</span></div>
+    <p>端到端模型高度依赖训练数据分布。在新的城市、天气、道路类型下，模型性能可能急剧下降。Domain Adaptation 和 Open-set Detection 是当前的活跃研究方向。</p>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">挑战 3：计算资源 <span class="tech-badge">效率</span></div>
+    <p>全Transformer架构在边缘设备（车载计算平台）上的实时推理仍是工程瓶颈。量化、剪枝、知识蒸馏等模型压缩技术正在快速演进。</p>
+  </div>
+  <div class="tech-data-block">
+    <div class="block-title">挑战 4：Safety Case <span class="tech-badge">合规</span></div>
+    <p>监管机构（如 UNECE ALKS）要求明确的安全论证。端到端模型的非模块化特性使其难以满足现有的功能安全标准（如 ISO 26262）的分解验证框架。</p>
+  </div>
+</div>
+
+<!-- ── 7. 本章小结 ── -->
+<div class="section">
+  <h2>7 · 本章小结</h2>
+  <p>端到端自动驾驶代表了从「人类先验知识驱动」到「数据驱动联合优化」的根本范式转变。UniAD 通过 Query 机制和联合 loss 设计展示了模块化端到端的可能性；Tesla FSD 通过 Occupancy 网络和大规模量产数据闭环走出了一条纯视觉路线；VAD 和 ReasoningPlanner 则进一步将语言推理引入规划过程。</p>
+  <p>闭环仿真是端到端系统验证的核心手段，而世界模型正在成为生成多样化训练数据的关键技术。下一章我们将讨论如何通过模仿学习和强化学习在机器人控制中训练这类端到端策略。</p>
+</div>
+
+<hr>
+<div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+  VLA · Chapter 05 · 端到端自动驾驶 ·
+  <a href="../index.html">← 总目录</a> ·
+  <a href="../04-action-generation/index.html">← 第四章：动作生成</a> ·
+  <a href="../06-imitation-reinforcement/index.html">第六章：模仿与强化学习 →</a>
+</div>
+
+</div>
+</body>
+</html>

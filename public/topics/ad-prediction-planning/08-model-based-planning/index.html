@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>08 Model-Based 规划：MPC、EM Planner 与学习式规划 — 自动驾驶预测与规划</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../modern-tech-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display: true},
+            {left:'$', right:'$', display: false}
+          ],
+          throwOnError: false, trust: true, strict: false
+        });
+      }, 100);
+    });
+  </script>
+
+<style>
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+
+
+/* defensive: keep strong inline */
+strong{display:inline!important}li strong{display:inline!important}
+
+  /* defensive: keep strong inline */
+  strong,strong *,b{display:inline!important;font-weight:700!important}
+  .card strong,.callout strong,li strong,p strong{display:inline!important;font-weight:700!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar">
+    <h1>08 Model-Based 规划：MPC、EM Planner 与学习式规划</h1>
+    <p>从优化到学习的规划范式转变 · 从搜索到扩散的演化全景</p>
+  </div>
+
+  <!-- ========== 4.2 强化学习 ========== -->
+  <div class="section purple">
+    <h2>4.2 强化学习（Reinforcement Learning, RL）</h2>
+    <p>难度：进阶 | 前置知识：马尔可夫决策过程基础</p>
+  </div>
+
+  <div class="card purple">
+    <h3>What — RL 的基本范式</h3>
+    <p>强化学习（RL）通过<strong>智能体与环境交互</strong>，最大化累积奖励（Cumulative Reward）来学习策略。与模仿学习不同，RL 不依赖专家数据，理论上可以通过探索发现超越人类的驾驶策略。</p>
+    <p>在 RL 框架中，自动驾驶车辆是智能体，道路环境是观测空间，方向盘和油门刹车是动作空间，驾驶质量通过奖励函数量化。</p>
+    <div class="formula">$$\max_{\pi} \mathbb{E} \left[ \sum_{t=0}^{T} \gamma^{t} r(s_t, a_t) \right]$$</div>
+    <p>其中 $\gamma \in (0, 1)$ 为折扣因子，$r(s_t, a_t)$ 为即时奖励函数。RL 的目标是找到使期望累积折扣奖励最大化的策略 $\pi$。</p>
+  </div>
+
+  <div class="callout red">
+    <strong>Why — RL 面临的根本困难</strong>
+    驾驶是一个多目标优化问题：安全、效率、舒适、合规之间存在复杂权衡。手动设计的奖励函数往往导致：
+    <ul style="margin:6px 0 0 16px">
+      <li><strong>奖励黑客（Reward Hacking）</strong>：智能体找到满足奖励但行为不合理的策略。例如为最小化碰撞惩罚，选择永远停在原地。</li>
+      <li><strong>权重敏感性</strong>：$w_1$ 到 $w_5$ 的微小变化可能导致策略行为的剧烈震荡。</li>
+      <li><strong>样本效率极低</strong>：典型自动驾驶 RL 训练需要数亿帧交互才能学到基本车道保持，而人类只需几小时。</li>
+      <li><strong>安全探索困境</strong>：RL 需要探索才能学习，但在驾驶场景中探索意味着可能发生碰撞。</li>
+    </ul>
+  </div>
+
+  <div class="card purple">
+    <h3>Why — Sim-to-Real Gap：仿真与现实的差距</h3>
+    <p>即使在仿真器中训练，迁移到真实世界时仍面临巨大鸿沟：</p>
+    <table>
+      <tr><th>仿真世界</th><th>真实世界</th></tr>
+      <tr><td>完美传感器</td><td>传感器噪声与遮挡</td></tr>
+      <tr><td>简化物理模型</td><td>复杂路面与天气</td></tr>
+      <tr><td>规则驱动的 NPC 行为</td><td>不可预测的人类行为</td></tr>
+      <tr><td>有限场景多样性</td><td>无限长尾场景</td></tr>
+    </table>
+    <p style="margin-top:8px">Domain Gap 使得策略迁移后性能骤降，这是 RL 在自动驾驶量产中失败的核心原因之一。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>How — RL 训练流程与奖励函数设计</h3>
+    <p>RL 的典型训练流程：策略网络在仿真环境中交互，收集 $(s_t, a_t, r_t, s_{t+1})$ 经验数据，通过策略梯度算法（如 PPO、SAC、TD3）更新参数。</p>
+    <pre><code><span class="cmt"># RL 奖励函数设计示例</span>
+<span class="kw">def</span> <span class="fn">compute_reward</span>(state, action, info):
+    r  = <span class="num">0.0</span>
+    r += w1 * info[<span class="str">'progress'</span>]      <span class="cmt"># 前进奖励</span>
+    r += w2 * info[<span class="str">'lane_keep'</span>]     <span class="cmt"># 车道保持奖励</span>
+    r -= w3 * info[<span class="str">'collision'</span>]     <span class="cmt"># 碰撞惩罚</span>
+    r -= w4 * info[<span class="str">'violation'</span>]     <span class="cmt"># 违规惩罚</span>
+    r -= w5 * info[<span class="str">'jerk'</span>]           <span class="cmt"># 急刹/急转惩罚</span>
+    <span class="kw">return</span> r</code></pre>
+    <div class="flow" style="margin-top:12px">
+      <div class="flow-node purple">策略网络 $\pi(a \mid s)$</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">仿真环境 (CARLA)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">状态 $s_{t+1}$, 奖励 $r_t$</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">PPO / SAC / TD3</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">策略更新 $\theta \leftarrow \theta + \alpha \nabla_\theta J$</div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <strong>实践警告 — RL 的工程化困境</strong>
+    RL 策略是黑箱神经网络，无法解释"为什么做出这个决策"。对于需要安全认证的自动驾驶系统来说，这是致命缺陷。此外，纯 RL 方法在量产中没有成功案例，但其核心思想——<strong>闭环训练</strong>和<strong>多步决策建模</strong>——深刻影响了后续的端到端学习架构。
+  </div>
+
+  <!-- ========== 4.3 学习式方法的遗产 ========== -->
+  <div class="section purple">
+    <h2>4.3 学习式方法的遗产与阶段性总结</h2>
+    <p>从 IL 与 RL 的失败中提炼出的关键洞察</p>
+  </div>
+
+  <div class="card purple">
+    <h3>IL 与 RL 的核心贡献</h3>
+    <p>虽然纯 RL/IL 没有成为量产方案，但这段探索带来了关键洞察：</p>
+    <div class="grid-2" style="margin-top:12px">
+      <div>
+        <h3 style="font-size:12px;color:var(--purple)">模仿学习（IL）的遗产</h3>
+        <ul>
+          <li>端到端架构的探索与验证</li>
+          <li>BEV（Bird's Eye View）表征学习</li>
+          <li>数据驱动的范式转变</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="font-size:12px;color:var(--green)">强化学习（RL）的遗产</h3>
+        <ul>
+          <li>闭环训练思想</li>
+          <li>多步决策时序建模</li>
+          <li>探索与利用的权衡框架</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h3>融合方向：数据驱动 + 可控生成</h3>
+    <p>IL 的数据驱动能力与 RL 的探索机制，共同指向一个更强大的方向——<strong>扩散规划器（Diffusion Planner）</strong>。扩散模型继承了两者的优势：</p>
+    <div class="flow">
+      <div class="flow-node purple">IL 贡献</div>
+      <div class="flow-arrow">→</div>
+      <div style="flex:1;text-align:center;font-size:12px;color:var(--text-2)">数据驱动 + 可控生成<br/>(扩散规划器核心)</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-node green">RL 贡献</div>
+    </div>
+  </div>
+
+  <!-- ========== 5. 扩散规划器的驱动力 ========== -->
+  <div class="section purple">
+    <h2>5. 迈向扩散规划器（Diffusion Planner）的驱动力</h2>
+    <p>难度：进阶 | 前置知识：扩散模型基础（参考 ../02-generative/01-diffusion-basics.md）</p>
+  </div>
+
+  <div class="callout blue">
+    <strong>扩散模型的核心优势 — 为什么它能解决规划问题</strong>
+    扩散模型最初在图像生成领域取得突破（DDPM, 2020），其核心机制恰好能解决规划的几大痛点：多模态分布建模、迭代精化（无需显式目标函数）、条件引导的灵活性、联合预测与规划的潜力。
+  </div>
+
+  <div class="card purple">
+    <h3>5.1 What — 扩散模型如何用于轨迹规划</h3>
+    <p>扩散模型学习从噪声中逐步恢复出高质量轨迹的条件分布 $p(\tau^0 \mid c)$，其中 $\tau^0$ 是去噪后的清晰轨迹，$c$ 是条件信息（如地图、障碍物、自车状态）。</p>
+    <p>与传统优化不同，扩散模型通过学习数据分布的<strong>得分函数（Score Function）</strong>隐式地避开不合理区域，不依赖显式代价函数的梯度。</p>
+    <div class="formula">$$p(\tau^0 \mid c) = \int p(\tau^T) \prod_{t=1}^{T} p_\theta(\tau^{t-1} \mid \tau^t, c) \quad d\tau^{1:T}$$</div>
+    <p>其中 $\tau^T$ 是纯噪声，$p_\theta$ 是学习到的去噪网络。通过迭代去噪，轨迹从噪声逐步精化为满足约束的清晰路径。</p>
+  </div>
+
+  <div class="card purple">
+    <h3>5.2 Why — 传统方法的共同瓶颈</h3>
+    <p>将前述三代方法的核心缺陷放在一起看，问题的本质逐渐清晰：</p>
+    <div class="flow" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div class="flow-node">搜索式：离散化 → 维度灾难 → 无法高维连续空间</div>
+      <div style="margin-left:20px;color:var(--text-3)">↓</div>
+      <div class="flow-node green">优化式：需要显式建模 → 非凸问题难解 → 无法处理多模态</div>
+      <div style="margin-left:20px;color:var(--text-3)">↓</div>
+      <div class="flow-node amber">学习式：分布偏移（IL）/ 奖励设计（RL）→ 闭环鲁棒性差</div>
+    </div>
+    <div class="callout red" style="margin-top:12px">
+      <strong>共同瓶颈</strong>：如何在保持可控性的前提下，建模复杂的多模态轨迹分布？
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h3>5.3 How — 扩散去噪 vs 传统优化</h3>
+    <div class="grid-2">
+      <div>
+        <h3 style="font-size:12px;color:var(--red)">传统优化</h3>
+        <p>初始猜测 $x_0$ 通过梯度下降迭代至局部最优 $x^*$。问题：非凸问题容易陷入局部最优，且需要显式目标函数梯度。</p>
+      </div>
+      <div>
+        <h3 style="font-size:12px;color:var(--green)">扩散去噪</h3>
+        <p>纯噪声 $\tau^T$ 通过学习到的去噪网络逐步精化：</p>
+        <p style="font-size:11px;color:var(--text-2)">$\tau^T \xrightarrow{\text{去噪}} \tau^{T-1} \xrightarrow{\text{去噪}} \cdots \xrightarrow{\text{去噪}} \tau^0$</p>
+        <p style="font-size:11px">优势：隐式避开不合理区域，无需显式代价函数</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h3>5.4 扩散模型的四大核心优势</h3>
+    <ol>
+      <li style="margin-bottom:8px"><strong>多模态分布建模</strong>：在复杂路口，合理的驾驶行为不止一种（直行、左转、等待）。扩散模型天然建模概率分布，可从同一条件下采样出多种合理轨迹。</li>
+      <li style="margin-bottom:8px"><strong>迭代精化（Iterative Refinement）</strong>：去噪过程类似于优化中的迭代求解，但通过学习数据分布的得分函数隐式避开不合理区域，不依赖显式梯度。</li>
+      <li style="margin-bottom:8px"><strong>条件引导（Conditional Guidance）的灵活性</strong>：通过 Classifier-Free Guidance 或 Classifier Guidance 灵活注入安全约束、舒适性约束、交规约束、他车预测轨迹约束，无需重新训练。</li>
+      <li style="margin-bottom:8px"><strong>联合预测与规划（Joint Prediction and Planning）</strong>：传统流水线中预测和规划模块分离存在信息损失。扩散规划器可以将自车轨迹和他车轨迹联合生成，自车和他车轨迹在去噪过程中相互影响。</li>
+    </ol>
+  </div>
+
+  <div class="card purple">
+    <h3>5.5 关键推动论文</h3>
+    <table>
+      <tr><th>论文</th><th>年份</th><th>核心贡献</th></tr>
+      <tr><td>Diffuser (Janner et al.)</td><td>2022</td><td>首次将扩散模型用于离线 RL 的轨迹规划</td></tr>
+      <tr><td>CTG++ (Zhong et al.)</td><td>2023</td><td>可控交通生成，引导满足约束的轨迹</td></tr>
+      <tr><td>Diffusion Planner (Zheng et al.)</td><td>2024</td><td>联合多智能体轨迹扩散规划</td></tr>
+      <tr><td>GameFormer+Diffusion</td><td>2024</td><td>博弈论 + 扩散的交互式规划</td></tr>
+    </table>
+    <p style="margin-top:8px">这些工作共同证明了扩散模型在轨迹规划领域的巨大潜力，标志着规划方法正式进入<strong>"生成式规划"时代</strong>。</p>
+  </div>
+
+  <!-- ========== 6. 全方位对比表 ========== -->
+  <div class="section">
+    <h2>6. 四代规划方法全方位对比</h2>
+    <p>从多个关键维度对比搜索式、优化式、学习式与扩散式规划方法</p>
+  </div>
+
+  <div class="card">
+    <h3>规划方法总览表</h3>
+    <table>
+      <tr><th>维度</th><th>搜索式 (A*/RRT)</th><th>优化式 (MPC/Lattice)</th><th>学习式 (RL/IL)</th><th>扩散式 (Diffusion)</th></tr>
+      <tr><td><strong>核心范式</strong></td><td>图/树搜索</td><td>数学优化</td><td>数据驱动策略</td><td>条件分布生成</td></tr>
+      <tr><td><strong>状态空间</strong></td><td>离散</td><td>连续</td><td>连续</td><td>连续</td></tr>
+      <tr><td><strong>多模态支持</strong></td><td>多路径枚举</td><td>困难（需组合优化）</td><td>单模态为主</td><td>天然支持</td></tr>
+      <tr><td><strong>动态障碍物</strong></td><td>时空扩展（代价高）</td><td>预测+约束</td><td>隐式学习</td><td>联合生成</td></tr>
+      <tr><td><strong>实时性</strong></td><td>中等 (10–100ms)</td><td>好 (5–50ms)</td><td>好 (1–10ms)</td><td>较差 (50–500ms)</td></tr>
+      <tr><td><strong>最优性</strong></td><td>A*有保证/RRT渐近</td><td>局部最优</td><td>无理论保证</td><td>采样近似</td></tr>
+      <tr><td><strong>安全约束</strong></td><td>碰撞检测硬约束</td><td>优化约束</td><td>难以保证</td><td>引导式软约束</td></tr>
+      <tr><td><strong>可解释性</strong></td><td>高（搜索路径可视）</td><td>高（优化目标明确）</td><td>低（黑箱）</td><td>中（去噪可视化）</td></tr>
+      <tr><td><strong>工程成熟度</strong></td><td>高</td><td>高</td><td>中</td><td>低（快速发展中）</td></tr>
+      <tr><td><strong>场景泛化</strong></td><td>差（需手动适配）</td><td>中（需调参）</td><td>中（依赖数据）</td><td>好（数据驱动）</td></tr>
+      <tr><td><strong>典型代表</strong></td><td>DARPA GC 参赛车</td><td>Apollo, Autoware</td><td>Wayve, ALVINN</td><td>Diffusion Planner</td></tr>
+      <tr><td><strong>主要阵营</strong></td><td>学术界/早期竞赛</td><td>量产主流</td><td>初创公司探索</td><td>前沿研究</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>方法选型决策树</h3>
+    <p>根据实际工程需求选择合适的规划方法：</p>
+    <div class="flow" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <div class="flow-node amber">场景复杂度？</div>
+      <div style="margin-left:40px;color:var(--text-3)">↓ 低 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↑ 高</div>
+      <div class="flow" style="margin-left:40px">
+        <div class="flow-node">实时性要求？</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node green">是否需要多模态？</div>
+      </div>
+      <div style="margin-left:80px;color:var(--text-3)">↓ 高 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↑ 低</div>
+      <div style="margin-left:80px;color:var(--text-3)">↓ 是 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↑ 否</div>
+      <div class="flow" style="margin-left:80px;flex-wrap:wrap">
+        <div class="flow-node amber">MPC / Lattice</div>
+        <div class="flow-node amber">A* + 后平滑</div>
+        <div class="flow-node purple">Diffusion Planner</div>
+        <div class="flow-node green">MPC + 场景分类器</div>
+      </div>
+    </div>
+    <div class="callout blue" style="margin-top:12px">
+      <strong>实战建议</strong>：低复杂度固定场景优先选 MPC/Lattice；高复杂度多模态路口优先考虑 Diffusion Planner；量产系统建议以优化式为主框架，扩散式作为场景增强模块。
+    </div>
+  </div>
+
+  <!-- ========== 7. 演化总结 ========== -->
+  <div class="section green">
+    <h2>7. 演化总结与开放问题</h2>
+    <p>从搜索到扩散的规划范式演进全景</p>
+  </div>
+
+  <div class="card green">
+    <h3>7.1 演化总结</h3>
+    <p>运动规划的演化并非"新方法完全替代旧方法"，而是<strong>逐层累积</strong>：</p>
+    <div class="flow" style="flex-wrap:wrap;gap:6px;margin-top:10px">
+      <div class="flow-node amber">搜索式 (2000s)<br/><span style="font-size:10px">离散空间最优搜索</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">优化式 (2010s)<br/><span style="font-size:10px">连续空间最优控制</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">学习式 (2015–2020)<br/><span style="font-size:10px">端到端数据驱动</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--blue);color:var(--blue)">扩散式 (2022+)<br/><span style="font-size:10px">多模态条件生成</span></div>
+    </div>
+    <p style="margin-top:12px">扩散式融合了前三代的优点：</p>
+    <ul style="margin-top:6px">
+      <li>从<strong>搜索式</strong>继承：探索多种可能性的思想</li>
+      <li>从<strong>优化式</strong>继承：迭代精化轨迹的机制</li>
+      <li>从<strong>学习式</strong>继承：数据驱动，无需手工规则</li>
+    </ul>
+  </div>
+
+  <div class="card green">
+    <h3>7.2 演化阶段对照表</h3>
+    <table>
+      <tr><th>演化阶段</th><th>核心突破</th><th>遗留问题</th><th>向下一代的启示</th></tr>
+      <tr><td>搜索式 (2000s)</td><td>离散空间最优搜索</td><td>维度灾难、不平滑</td><td>需要连续空间方法</td></tr>
+      <tr><td>优化式 (2010s)</td><td>连续空间最优控制</td><td>非凸、单模态</td><td>需要数据驱动 + 多模态</td></tr>
+      <tr><td>学习式 (2015–2020)</td><td>端到端数据驱动</td><td>分布偏移、闭环不稳</td><td>需要更好的生成范式</td></tr>
+      <tr><td>扩散式 (2022+)</td><td>多模态条件生成</td><td>实时性、安全保证</td><td>持续优化中...</td></tr>
+    </table>
+  </div>
+
+  <div class="card red">
+    <h3>7.3 开放问题</h3>
+    <p>当前扩散规划器仍面临若干挑战，值得关注：</p>
+    <ul style="margin-top:8px">
+      <li style="margin-bottom:6px"><strong>实时性</strong>：去噪步数（通常 20–100 步）带来的延迟如何压缩至 < 50ms？DDIM 加速采样是关键方向。</li>
+      <li style="margin-bottom:6px"><strong>安全保证</strong>：软约束引导能否提供硬安全保证？需要形式化方法与扩散模型的结合。</li>
+      <li style="margin-bottom:6px"><strong>可验证性</strong>：如何对生成式规划器进行形式化验证（Formal Verification）？</li>
+      <li><strong>与控制的衔接</strong>：生成的轨迹如何保证动力学可行并平滑过渡到控制层？</li>
+    </ul>
+  </div>
+
+  <div class="callout green">
+    <strong>下一步阅读推荐</strong>
+    扩散规划器的网络架构、训练流程、条件引导机制与最新进展，请参阅：
+    <a href="./02-diffusion-planner.html">Diffusion Planner 深度解析</a>
+    。对于扩散模型基础不熟悉的读者，建议先阅读
+    <a href="../02-generative/01-diffusion-basics.html">扩散模型基础</a>。
+  </div>
+
+  <div class="section" style="margin-top:24px">
+    <h2>参考文献</h2>
+  </div>
+  <div class="card">
+    <ul style="font-size:11.5px;color:var(--text-2)">
+      <li>Hart, P. E., Nilsson, N. J., & Raphael, B. (1968). A* algorithm.</li>
+      <li>LaValle, S. M. (1998). Rapidly-exploring random trees (RRT).</li>
+      <li>Camacho, E. F., & Bordons, C. (2007). Model Predictive Control.</li>
+      <li>Bansal, M., Krizhevsky, M., & Ogale, A. (2019). ChauffeurNet.</li>
+      <li>Janner, M., Du, Y., Tenenbaum, J. B., & Levine, S. (2022). Diffuser: Trajectory Conditioning with Diffusion Models.</li>
+      <li>Zheng, Z., et al. (2024). Diffusion Planner: Joint Multi-Agent Trajectory Diffusion Planning.</li>
+      <li>Zhong, T., et al. (2023). CTG++: Controllable Traffic Generation with Diffusion.</li>
+    </ul>
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    自动驾驶预测与规划 · 08 Model-Based 规划：MPC、EM Planner 与学习式规划 ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../07-planning-foundation/index.html">← 07 规划方法演进：从搜索到优化</a>
+    · <a href="../09-learning-planning/index.html">下一篇：09 Learning-Based 规划：RL、IL 与扩散规划器 →</a>
+  </div>
+</div>
+</body>
+</html>

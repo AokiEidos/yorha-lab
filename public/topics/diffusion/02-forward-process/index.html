@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 前向扩散过程（Forward Process） — diffusion</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left:'$$', right:'$$', display: true},
+        {left:'$', right:'$', display: false}
+      ],
+      throwOnError: false, trust: true, strict: false
+    });
+  }, 100);
+});
+</script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-2:#64748b;--text-3:#94a3b8;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#7c3aed;--code-bg:#f1f5f9;--code-border:#cbd5e1;--font:'Noto Sans SC','Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.7}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .title-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px 28px;text-align:center;margin-bottom:20px}
+  .title-bar h1{font-size:20px;font-weight:700}
+  .title-bar p{color:var(--text-2);font-size:12px;margin-top:6px}
+  .section{border-left:4px solid var(--blue);background:linear-gradient(to right,#eff6ff,transparent);padding:12px 16px;margin:20px 0 12px;border-radius:0 6px 6px 0}
+  .section.green{border-left-color:var(--green);background:linear-gradient(to right,#f0fdf4,transparent)}
+  .section.amber{border-left-color:var(--amber);background:linear-gradient(to right,#fffbeb,transparent)}
+  .section.red{border-left-color:var(--red);background:linear-gradient(to right,#fef2f2,transparent)}
+  .section.purple{border-left-color:var(--purple);background:linear-gradient(to right,#ede9fe,transparent)}
+  .section h2{font-size:15px;font-weight:700}
+  .section p{color:var(--text-2);font-size:12px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;border-left:3px solid var(--blue)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}.card.purple{border-left-color:var(--purple)}
+  .card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:10px 14px;margin:10px 0;font-size:12px}
+  .callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .callout strong{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#f1f5f9;color:var(--text-2);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  td{padding:7px 10px;border:1px solid var(--border)}
+  tr:nth-child(even) td{background:#f8fafc}
+  pre{background:var(--code-bg);border:1px solid var(--code-border);border-left:3px solid var(--code-border);border-radius:4px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:10px 0}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  .kw{color:#7c3aed;font-weight:600}.fn{color:#1d4ed8}.str{color:#166534}.cmt{color:#94a3b8;font-style:italic}.num{color:#b45309}
+  .formula{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;text-align:center;font-family:'Times New Roman',serif;font-size:14px;color:#1e40af;margin:12px 0;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .flow-node{background:var(--card);border:1.5px solid var(--blue);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--blue)}
+  .flow-node.green{border-color:var(--green);color:var(--green)}.flow-node.amber{border-color:var(--amber);color:#b45309}.flow-node.purple{border-color:var(--purple);color:#5b21b6}
+  .flow-arrow{color:var(--text-3);font-size:16px;font-weight:700}
+  ul,ol{padding-left:20px;margin:6px 0}
+  li{margin-bottom:4px}
+  p{margin-bottom:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:18px;font-weight:700;margin-bottom:8px}
+  h2{font-size:15px;font-weight:700;margin:14px 0 8px}
+  h3{font-size:13px;font-weight:700;margin:10px 0 6px}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="title-bar">
+    <h1>02 前向扩散过程（Forward Process）</h1>
+    <p>Forward Process — 从数据到噪声：逐步加噪的数学描述</p>
+  </div>
+
+  <!-- Section 1: Markov 加噪链 -->
+  <div class="section">
+    <h2>Markov 加噪链 / Markov Noise Chain</h2>
+    <p>Forward Process 的核心是一系列条件高斯分布组成的 Markov 链，每一步只依赖前一个状态</p>
+  </div>
+
+  <div class="card">
+    <h3>单步条件分布 / Single-Step Conditional Distribution</h3>
+    <p style="font-size:12px;color:var(--text-2)">从 $x_{t-1}$ 到 $x_t$ 的转换定义为：</p>
+    <div class="formula">$$q\left(x_t \mid x_{t-1}\right) =  \mathcal{N}\left(x_t ; \sqrt{1-\beta_t}  x_{t-1}, \beta_t \mathbf{I}\right)$$</div>
+    <p style="font-size:12px;color:var(--text-2)">其中 $\beta_t \in (0,1)$ 是第 $t$ 步的噪声方差参数，控制该步向纯噪声融合的程度。$\sqrt{1-\beta_t}$ 保证 $x_t$ 的方差随时间步平滑增长而不会爆炸。</p>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">具体操作等价于：</p>
+    <div class="formula">$$x_t =  \sqrt{1-\beta_t} x_{t-1} +  \sqrt{\beta_t} \epsilon_t, \qquad \epsilon_t \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$</div>
+    <p style="font-size:12px;color:var(--text-2)">这意味着 $x_t$ 是 $x_{t-1}$ 的缩放版本加上独立噪声。当 $\beta_t$ 接近 1 时，$x_t \approx \epsilon_t$（几乎完全变成噪声）。</p>
+  </div>
+
+  <div class="card green">
+    <h3>完整 Markov 链 / Full Markov Chain</h3>
+    <p style="font-size:12px;color:var(--text-2)">整个 Forward Process 是 $T$ 步 Markov 链的联合分布：</p>
+    <div class="formula">$$q\left(x_{1:T} \mid x_0\right) =  \prod_{t=1}^{T} q\left(x_t \mid x_{t-1}\right)$$</div>
+    <p style="font-size:12px;color:var(--text-2)">由于每一步都是条件高斯分布，$q$ 本身不包含可学习参数——这是扩散模型与 VAE/GAN 的本质区别之一。Forward Process 完全由 $\{\beta_t\}_{t=1}^T$ 决定，这组参数称为<strong>噪声调度（Noise Schedule）</strong>。</p>
+  </div>
+
+  <div class="callout blue">
+    <strong>信号保存 vs 噪声注入</strong><br>
+    系数 $\sqrt{1-\beta_t}$ 的设计是精心平衡的结果：它确保 $x_t$ 的信噪比（SNR）随 $t$ 单调递减，同时保持条件分布的方差结构可逆。当 $\beta_t$ 很小（低噪声步）时，信号主导；随着 $t$ 增大，噪声逐渐占据主导地位，最终 $x_T \approx \mathcal{N}(\mathbf{0}, \mathbf{I})$。
+  </div>
+
+  <!-- Section 2: 闭式解 -->
+  <div class="section green">
+    <h2>闭式解 / Closed-Form Solution</h2>
+    <p>不需要逐步模拟，直接从 $x_0$ 算出任意 $x_t$ 的分布</p>
+  </div>
+
+  <div class="card green">
+    <h3>直接从 $x_0$ 到 $x_t$ 的闭式分布</h3>
+    <p style="font-size:12px;color:var(--text-2)">通过对 Markov 链求边缘化，得到任意时间步 $t$ 的解析表达式：</p>
+    <div class="formula">$$q\left(x_t \mid x_0\right) =  \mathcal{N}\left(x_t ; \sqrt{\bar{\alpha}_t} x_0, \bigl(1-\bar{\alpha}_t\bigr)\mathbf{I}\right)$$</div>
+    <p style="font-size:12px;color:var(--text-2)">其中 $\bar{\alpha}_t$ 是累积衰减系数：</p>
+    <div class="formula">$$\alpha_t  := 1 - \beta_t, \qquad \bar{\alpha}_t  := \prod_{i=1}^{t} \alpha_i =  \prod_{i=1}^{t} (1-\beta_i)$$</div>
+    <p style="font-size:12px;color:var(--text-2)">这意味着任意时间步 $t$ 的 $x_t$ 可以直接写成 $x_0$ 的线性组合加上一个高斯噪声项，无需模拟中间所有 $t-1$ 步。</p>
+  </div>
+
+  <div class="card">
+    <h3>闭式解的推导 / Derivation</h3>
+    <p style="font-size:12px;color:var(--text-2)">从单步公式 $x_t = \sqrt{\alpha_t}  x_{t-1} + \sqrt{\beta_t}  \epsilon_t$ 展开，令 $\bar{\alpha}_t = \prod_{i=1}^t \alpha_i$：</p>
+    <div style="font-size:12px;color:var(--text-2);margin:8px 0">
+    $$\begin{aligned}
+    x_t &= \sqrt{\alpha_t}  x_{t-1} + \sqrt{\beta_t}  \epsilon_t \\
+    &= \sqrt{\alpha_t \alpha_{t-1}}  x_{t-2} + \sqrt{\alpha_t \beta_{t-1}}  \epsilon_{t-1} + \sqrt{\beta_t}  \epsilon_t \\
+    & \vdots \\
+    &= \sqrt{\bar{\alpha}_t}  x_0 + \underbrace{\sqrt{1-\bar{\alpha}_t}  \epsilon}_{\text{等效高斯噪声}}
+    \end{aligned}$$
+    </div>
+    <p style="font-size:12px;color:var(--text-2)">关键是：独立高斯变量的线性组合仍是高斯变量，因此 $x_t \sim \mathcal{N}(\sqrt{\bar{\alpha}_t}  x_0, (1-\bar{\alpha}_t)\mathbf{I})$。</p>
+  </div>
+
+  <div class="card amber">
+    <h3>实用的采样形式 / Practical Sampling Form</h3>
+    <p style="font-size:12px;color:var(--text-2)">当需要从 $q(x_t \mid x_0)$ 采样时，使用以下等价形式（避免手动计算协方差）：</p>
+    <div class="formula">$$x_t =  \sqrt{\bar{\alpha}_t} x_0 +  \sqrt{1-\bar{\alpha}_t} \epsilon, \qquad \epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$</div>
+    <p style="font-size:12px;color:var(--text-2)">这是 DDPM 训练和损失函数计算的核心工具：给定原始图像 $x_0$，可以直接生成任意时间步 $t$ 的噪声版本 $x_t$，而不需要真正执行 $t$ 次迭代。</p>
+  </div>
+
+  <div class="callout green">
+    <strong>训练为什么用闭式解而不是逐步模拟？</strong><br>
+    在 DDPM 训练中，每个 batch 随机采样一个时间步 $t$ 并用闭式解直接从 $x_0$ 生成 $x_t$，然后让网络预测对应的噪声 $\epsilon_t$。这避免了 $T$ 步的迭代计算——每个样本只需一次前向传播就可以计算任意时间步的损失，大幅提升训练效率。
+  </div>
+
+  <!-- Section 3: 噪声调度对比表 -->
+  <div class="section amber">
+    <h2>噪声调度 / Noise Schedule</h2>
+    <p>不同的 $\beta_t$ 调度策略如何影响扩散过程的性质</p>
+  </div>
+
+  <div class="card amber">
+    <h3>主流噪声调度对比</h3>
+    <table style="font-size:12px">
+      <thead>
+        <tr>
+          <th style="width:100px">调度名称</th>
+          <th style="width:220px">公式 / 定义</th>
+          <th style="width:100px">$\beta$ 范围</th>
+          <th>核心特点</th>
+          <th>适用场景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Linear</strong></td>
+          <td><code>$\beta_t = \beta_1 + (t-1)\frac{\beta_T-\beta_1}{T-1}$</code></td>
+          <td>$[10^{-4}, 0.02]$</td>
+          <td>从极小噪声线性增长到固定上限。最通用，但中段 SNR 下降过快。</td>
+          <td>DDPM 原论文默认调度，ImageNet 256×256 训练</td>
+        </tr>
+        <tr>
+          <td><strong>Cosine</strong></td>
+          <td><code>$\beta_t = 1 - \frac{\bar{\alpha}_t}{\bar{\alpha}_{t-1}}, \bar{\alpha}_t = \frac{1}{2}(1+\cos\frac{t\pi}{T})$</code></td>
+          <td>$[10^{-4}, 0.028]$</td>
+          <td>$\bar{\alpha}_t$ 余弦衰减，SNR 下降更平缓。采样质量更好，尤其在较大 $T$ 时。</td>
+          <td>Stable Diffusion 全系列默认调度</td>
+        </tr>
+        <tr>
+          <td><strong>Sqrt</strong></td>
+          <td><code>$\beta_t = \beta_{\min} + \frac{\beta_{\max}-\beta_{\min}}{\sqrt{T}}$</code></td>
+          <td>$[10^{-4}, 0.05]$</td>
+          <td>比 Linear 更慢的噪声注入，前期 SNR 更高。适合低步数场景。</td>
+          <td>LCM / 4-step 高速采样</td>
+        </tr>
+        <tr>
+          <td><strong>LogSNR</strong></td>
+          <td><code>$\lambda_t = \log(\text{SNR}_t) = \log\frac{\bar{\alpha}_t}{1-\bar{\alpha}_t}$ 线性插值</code></td>
+          <td>动态范围</td>
+          <td>直接在高维 LogSNR 空间进行线性插值，SNR 控制更精确。</td>
+          <td>SDXL、DiT高级变种、大 $T$ 场景</td>
+        </tr>
+        <tr>
+          <td><strong>Constant</strong></td>
+          <td><code>$\beta_t = \beta_{\max}$（固定）</code></td>
+          <td>$[0.001, 0.05]$</td>
+          <td>每步注入等量噪声。方差结构最简单，数学分析方便。</td>
+          <td>理论分析、Score Matching 推导</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">调度策略的选择直接影响训练稳定性和采样质量。Cosine 调度通过保持前期 SNR 不快速衰减，让模型在低噪声阶段（$t$ 较小时）学到更多数据结构信息。</p>
+  </div>
+
+  <div class="callout amber">
+    <strong>SNR 与感知质量的关联</strong><br>
+    $\text{SNR}_t = \bar{\alpha}_t / (1-\bar{\alpha}_t)$ 是衡量信号与噪声比例的关键指标。当 SNR 很高（$t$ 小）时，数据结构保留较多，网络主要学习细粒度特征；当 SNR 很低（$t$ 大）时，数据被严重噪声化，网络主要学习全局结构。Cosine 调度的优势在于让 SNR 的下降速度更均匀，给予模型更充分的中间状态学习信号。
+  </div>
+
+  <!-- Section 4: α/β/ᾱ 关系 -->
+  <div class="section purple">
+    <h2>α / β / ᾱ 的关系 / Alpha, Beta, Bar-Alpha</h2>
+    <p>扩散模型中最重要的三个记号及其物理含义</p>
+  </div>
+
+  <div class="card purple">
+    <h3>核心关系一览</h3>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--purple)">$\beta_t$ — 噪声方差</p>
+        <p style="font-size:12px;color:var(--text-2)">第 $t$ 步注入的噪声比例，$\beta_t \in (0,1)$。决定该步 Markov 转换中噪声项的方差。</p>
+        <div class="formula" style="margin-top:6px;font-size:13px">$$\beta_t = 1 - \alpha_t$$</div>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--purple)">$\alpha_t$ — 信号保留率</p>
+        <p style="font-size:12px;color:var(--text-2)">第 $t$ 步保留的信号比例（缩放系数）。从 $\alpha_t = 1-\beta_t$ 可知 $\alpha_t = \sqrt{1-\beta_t}$ 不是线性关系。</p>
+        <div class="formula" style="margin-top:6px;font-size:13px">$$\alpha_t = 1 - \beta_t$$</div>
+      </div>
+      <div style="grid-column:1/-1">
+        <p style="font-size:12px;font-weight:700;color:var(--purple)">$\bar{\alpha}_t$ — 累积信号保留率</p>
+        <p style="font-size:12px;color:var(--text-2)">从时间步 1 到 $t$ 的累积信号保留率。经过 $t$ 步加噪后，原始数据 $x_0$ 还剩 $\sqrt{\bar{\alpha}_t}$ 的信号强度。</p>
+        <div class="formula" style="margin-top:6px;font-size:13px">$$\bar{\alpha}_t = \prod_{i=1}^{t} \alpha_i = \prod_{i=1}^{t} (1 - \beta_i)$$</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>物理直觉：逐步衰减图示</h3>
+    <p style="font-size:12px;color:var(--text-2)">以 Linear 调度为例（$T=1000$，$\beta_1=10^{-4}$，$\beta_T=0.02$），观察 $\alpha_t$、$\sqrt{\bar{\alpha}_t}$、$\sqrt{1-\bar{\alpha}_t}$ 的变化：</p>
+    <table style="font-size:12px">
+      <tr><th>$t$</th><th>$\beta_t$</th><th>$\alpha_t$</th><th>$\sqrt{\bar{\alpha}_t}$（信号）</th><th>$\sqrt{1-\bar{\alpha}_t}$（噪声）</th><th>SNR$_t$</th></tr>
+      <tr><td>0（$x_0$）</td><td>—</td><td>1.0</td><td>1.000</td><td>0.000</td><td>∞</td></tr>
+      <tr><td>100</td><td>≈0.002</td><td>≈0.998</td><td>≈0.956</td><td>≈0.294</td><td>≈10.5</td></tr>
+      <tr><td>500</td><td>≈0.010</td><td>≈0.990</td><td>≈0.707</td><td>≈0.707</td><td>1.0</td></tr>
+      <tr><td>1000（$x_T$）</td><td>0.020</td><td>≈0.980</td><td>≈0.000</td><td>≈1.000</td><td>≈0</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:6px">在 $t=500$ 时，信号和噪声比例恰好相等（各占 50%），这是模型学习最难中间态的关键时间点。Cosine 调度通过让 $t=500$ 时的 SNR 不恰好等于 1（而略高于 1）来改善这个问题。</p>
+  </div>
+
+  <div class="callout purple">
+    <strong>符号约定汇总</strong><br>
+    不同的论文使用不同的符号约定：DDPM 原论文使用 $\bar{\alpha}_t$ 表示累积 $\alpha$；Song et al. 的 Score Matching 论文用 $\bar{\sigma}_t^2$ 表示累积噪声方差；有些实现（如 Hugging Face Diffusers）直接存储 $\bar{\alpha}_t$ 数组。阅读论文时务必检查符号定义。
+  </div>
+
+  <!-- Section 5: 自动驾驶应用 -->
+  <div class="section">
+    <h2>自动驾驶应用 / Autonomous Driving Applications</h2>
+    <p>Forward Process 在自动驾驶仿真中的具体应用场景</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-left-color:var(--blue)">
+      <h3 style="color:var(--blue)">LiDAR 点云加噪仿真</h3>
+      <p style="font-size:12px;color:var(--text-2)">在自动驾驶感知仿真中，需要模拟真实 LiDAR 传感器噪声来训练鲁棒检测网络。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px"><strong>方法：</strong>将 Forward Process 适配到 3D 点云空间：对每个点独立应用 $q(x_t \mid x_0)$，或者利用 BEV（鸟瞰图）表示将点云转换为 2D 特征图后处理。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px"><strong>物理噪声建模：</strong></p>
+      <ul style="font-size:12px;color:var(--text-2);padding-left:16px">
+        <li><strong>Shot noise</strong>：$\sigma_{\text{shot}} = \sqrt{I}$（光子统计噪声）</li>
+        <li><strong>Dark noise</strong>：$\sigma_{\text{dark}} = \sqrt{n_{\text{dark}}  t}$（暗电流噪声）</li>
+        <li><strong>Read noise</strong>：$\sigma_{\text{read}}$（读出电路噪声）</li>
+      </ul>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">将这些物理噪声项整合到扩散过程的噪声调度中，可以生成更逼真的仿真点云，用于数据增强。</p>
+    </div>
+
+    <div class="card amber" style="border-left-color:var(--amber)">
+      <h3 style="color:#b45309">相机传感器噪声建模</h3>
+      <p style="font-size:12px;color:var(--text-2)">相机图像在低光、高速运动场景下会产生复杂退化。Forward Process 提供了一个统一的框架来建模这些退化。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px"><strong>ISO 噪声（低光场景）：</strong>真实相机噪声的方差与 ISO 增益近似成正比：</p>
+      <div class="formula" style="font-size:13px;margin:6px 0">$$\sigma_{\text{noise}}^2 = \sigma_{\text{read}}^2 + \frac{\sigma_{\text{shot}}^2 \cdot \text{ISO}}{g}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px"><strong>运动模糊（动态场景）：</strong>可通过在 Forward Process 的每步中加入卷积核为 $\mathbf{K}_t$ 的线性模糊操作来模拟：</p>
+      <div class="formula" style="font-size:13px;margin:6px 0">$$q(x_t \mid x_{t-1}) = \mathcal{N}\bigl(\mathbf{K}_t * x_{t-1};  \sqrt{1-\beta_t}  x_{t-1},  \beta_t \mathbf{I}\bigr)$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">这种加噪+模糊的组合让扩散模型可以学习真实世界相机的退化分布，用于提升感知模型在恶劣条件下的鲁棒性。</p>
+    </div>
+
+    <div class="card green" style="border-left-color:var(--green)">
+      <h3 style="color:var(--green)">场景多样性增强</h3>
+      <p style="font-size:12px;color:var(--text-2)">扩散模型的 Forward Process 提供了一种原则性的方法来混合多个场景的视觉特征。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">给定两个驾驶场景 $x_0^{(A)}$（晴天高速公路）和 $x_0^{(B)}$（雨天城市），在时间步 $t$ 上使用闭式解直接采样：</p>
+      <div class="formula" style="font-size:13px;margin:6px 0">$$x_t = \sqrt{\bar{\alpha}_t} x_0^{(A)} + \sqrt{1-\bar{\alpha}_t} \epsilon  \xrightarrow{\text{替换为场景B的信号}}  x_t^{(B\text{-style})}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">通过控制 $t$ 的大小，可以控制风格迁移的程度：小 $t$ 保留更多原场景结构，大 $t$ 引入更多目标场景风格。这种方法比 GAN 风格的混合更稳定，因为有严格的概率分布保证。</p>
+    </div>
+
+    <div class="card purple" style="border-left-color:var(--purple)">
+      <h3 style="color:#5b21b6">多模态传感器融合仿真</h3>
+      <p style="font-size:12px;color:var(--text-2)">自动驾驶系统依赖 Camera + LiDAR + Radar 的多模态融合。Forward Process 可以在不同模态之间建立一致的噪声水平。</p>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px"><strong>跨模态对应加噪：</strong>对齐 Camera 图像 $x_0^{(C)}$ 和 LiDAR 深度图 $d_0^{(L)}$ 后，在相同的时间步 $t$ 应用 Forward Process：</p>
+      <div class="formula" style="font-size:13px;margin:6px 0">$$x_t^{(C)} = \sqrt{\bar{\alpha}_t} x_0^{(C)} + \sqrt{1-\bar{\alpha}_t} \epsilon^{(C)}$$</div>
+      <div class="formula" style="font-size:13px;margin:6px 0">$$d_t^{(L)} = \sqrt{\bar{\alpha}_t} d_0^{(L)} + \sqrt{1-\bar{\alpha}_t} \epsilon^{(L)}$$</div>
+      <p style="font-size:12px;color:var(--text-2);margin-top:6px">这样多模态输入总是保持同步退化，保证感知模块在测试时处理各种噪声组合时能学到一致的跨模态对应关系。</p>
+    </div>
+  </div>
+
+  <div class="callout blue" style="margin-top:12px">
+    <strong>Forward Process 在仿真中的核心价值</strong><br>
+    与其手动设计噪声模型（高斯、泊松、椒盐），不如让 Forward Process 作为统一框架：$\beta_t$ 的调度曲线本身就定义了一种可调控的噪声注入策略，不同 $\beta$ 范围适配不同传感器特性。这使得仿真系统的噪声建模从"调参数"变成"选调度"，更系统化、更可控。
+  </div>
+
+  <!-- Section 6: Python 实现 -->
+  <div class="section green">
+    <h2>Python 实现 / Pure NumPy Implementation</h2>
+    <p>零依赖的纯 Python 实现，帮助理解数学细节</p>
+  </div>
+
+  <div class="card green">
+    <h3>Forward Process 核心函数</h3>
+<pre><code><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cmt"># --- 噪声调度（Noise Schedule）---</span>
+
+<span class="kw">def</span> <span class="fn">linear_beta_schedule</span>(T, beta_min=<span class="num">1e-4</span>, beta_max=<span class="num">0.02</span>):
+    <span class="cmt">"""Linear β 调度：DDPM 默认策略"""</span>
+    betas = np.linspace(beta_min, beta_max, T)
+    <span class="kw">return</span> betas
+
+<span class="kw">def</span> <span class="fn">cosine_beta_schedule</span>(T, s=<span class="num">0.008</span>):
+    <span class="cmt">"""Cosine β 调度：Stable Diffusion 默认策略"""</span>
+    t = np.arange(<span class="num">1</span>, T + <span class="num">1</span>)
+    bar_alpha = np.cos((t / T + s) / (<span class="num">1</span> + s) * np.pi * <span class="num">0.5</span>) ** <span class="num">2</span>
+    alphas = bar_alpha / bar_alpha[<span class="num">0</span>]
+    betas = <span class="num">1</span> - alphas / np.concatenate([[<span class="num">1</span>], alphas[:-<span class="num">1</span>]])
+    <span class="cmt"># 首尾 clamp 防止数值问题</span>
+    betas = np.clip(betas, <span class="num">0</span>, <span class="num">0.999</span>)
+    <span class="kw">return</span> betas
+
+<span class="cmt"># --- 核心计算 ---</span>
+
+<span class="kw">def</span> <span class="fn">compute_alpha_bar</span>(betas):
+    <span class="cmt">"""计算累积 ᾱ = ∏ α_i = ∏ (1 - β_i)"""</span>
+    alphas = <span class="num">1</span> - betas
+    bar_alpha = np.cumprod(alphas, axis=<span class="num">0</span>)
+    <span class="cmt"># prepend 1 以便索引：bar_alpha[t] = ᾱ_t</span>
+    bar_alpha = np.concatenate([[<span class="num">1.0</span>], bar_alpha])
+    <span class="kw">return</span> bar_alpha
+
+<span class="kw">def</span> <span class="fn">forward_sample</span>(x0, t, bar_alpha):
+    <span class="cmt">"""闭式采样：给定 x0，直接得到 x_t"""</span>
+    <span class="cmt"># bar_alpha[t] = ᾱ_t，注意 t 可以是标量或数组</span>
+    a = bar_alpha[t]
+    noise = np.random.randn(*x0.shape)
+    <span class="kw">return</span> np.sqrt(a) * x0 + np.sqrt(<span class="num">1</span> - a) * noise
+
+<span class="kw">def</span> <span class="fn">forward_chain</span>(x0, betas):
+    <span class="cmt">"""完整 Markov 链：逐帧执行 T 步加噪（调试用）"""</span>
+    T = len(betas)
+    chain = [x0.copy()]
+    x = x0.copy()
+    <span class="kw">for</span> t <span class="kw">in</span> range(<span class="num">1</span>, T + <span class="num">1</span>):
+        sqrt_a  = np.sqrt(<span class="num">1</span> - betas[t - <span class="num">1</span>])
+        sqrt_b  = np.sqrt(betas[t - <span class="num">1</span>])
+        noise   = np.random.randn(*x.shape)
+        x = sqrt_a * x + sqrt_b * noise
+        chain.append(x.copy())
+    <span class="kw">return</span> np.array(chain)
+
+<span class="cmt"># --- 示例 ---</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    T = <span class="num">1000</span>
+    x0 = np.random.randn(<span class="num">1</span>, <span class="num">3</span>, <span class="num">32</span>, <span class="num">32</span>)  <span class="cmt"># 示例图像 batch</span>
+
+    betas_lin = linear_beta_schedule(T)
+    bar_alpha_lin = compute_alpha_bar(betas_lin)
+
+    <span class="cmt"># 随机采一个时间步，直接用闭式解采样</span>
+    t_sample = np.random.randint(<span class="num">1</span>, T + <span class="num">1</span>)
+    xt_lin = forward_sample(x0, t_sample, bar_alpha_lin)
+    <span class="fn">print</span>(<span class="str">f"t={t_sample}, ᾱ_t={bar_alpha_lin[t_sample]:.4f}, x_t shape={xt_lin.shape}"</span>)
+
+    <span class="cmt"># 验证闭式解和逐步链的一致性（取 t=500）</span>
+    t_check = <span class="num">500</span>
+    chain = forward_chain(x0, betas_lin)
+    xt_closed = forward_sample(x0, t_check, bar_alpha_lin)
+    np.testing.assert_allclose(xt_closed, chain[t_check], atol=<span class="num">1e-6</span>)
+    <span class="fn">print</span>(<span class="str">"闭式解验证通过：forward_sample == forward_chain ✓"</span>)</code></pre>
+  </div>
+
+  <div class="callout green">
+    <strong>代码要点说明</strong><br>
+    <span style="font-size:12px">
+    <strong>1. bar_alpha 的 prepend：</strong>数组前面拼接 1.0，使得 bar_alpha[t] = ᾱ_t（$t$ 从 1 开始计数，与论文一致）；<br>
+    <strong>2. clamp：</strong>cosine 调度的 $\beta_t$ 在边界可能略超出 [0,1]，clamp 操作防止数值不稳定；<br>
+    <strong>3. 验证一致性：</strong>assert_allclose 确保闭式解和逐步链的结果相同，这是数学正确性的最直接检查；<br>
+    <strong>4. shape 处理：</strong>forward_sample 中的 t 可以是标量（单步）或数组（batch 不同 t），broadcast 自动适配。
+    </span>
+  </div>
+
+  <!-- Section 7: 大模型视角 -->
+  <div class="section purple">
+    <h2>大模型视角 / LLM-Scale Perspective</h2>
+    <p>DiT（Diffusion Transformer）中的 Forward Process 设计考量与 $T$ 步选择策略</p>
+  </div>
+
+  <div class="card purple">
+    <h3>DiT 与标准 DDPM 的关键区别</h3>
+    <p style="font-size:12px;color:var(--text-2)">DiT（Peebles et al., 2023）将扩散模型的核心从 UNet 替换为 Transformer。与传统 DDPM 相比，DiT 在 Forward Process 上面临新的设计权衡：</p>
+    <table style="font-size:12px">
+      <tr><th style="width:160px">设计维度</th><th>标准 DDPM（UNet）</th><th>DiT（Transformer）</th></tr>
+      <tr><td><strong>噪声调度</strong></td><td>Linear / Cosine / Sqrt</td><td>LogSNR 线性调度（更精确的 SNR 控制）</td></tr>
+      <tr><td><strong>条件注入</strong></td><td>AdaGN / Adaptive GroupNorm</td><td>交叉注意力或 adaLN-Zero</td></tr>
+      <tr><td><strong>$T$ 步选择</strong></td><td>通常 $T=1000$</td><td>通常 $T=1000$（可压缩到更少步）</td></tr>
+      <tr><td><strong>Patchify</strong></td><td>N/A（卷积天然保持空间）</td><td>将图像划分为 patch，类比 LLM 的 token</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--text-2);margin-top:8px">DiT 的 patchify 机制本质上是在图像空间内模拟 LLM 的 tokenize 过程——每个 patch 等价于一个"视觉 token"，经过线性嵌入后送入 Transformer 处理。这种类比让扩散模型的设计空间与 LLM 的设计空间（head dimension、context length 等）产生了直接的对应关系。</p>
+  </div>
+
+  <div class="card">
+    <h3>$T$ 步的选择策略 / Choosing the Number of Diffusion Steps</h3>
+    <p style="font-size:12px;color:var(--text-2)">$T$ 是扩散模型最重要的超参数之一，直接影响训练稳定性和采样速度。$T$ 过小会导致噪声注入不足、数据分布恢复困难；$T$ 过大会导致采样步数过多、计算成本高。</p>
+
+    <div class="grid-3" style="margin-top:10px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--blue)">小 $T$（≤100）</p>
+        <p style="font-size:12px;color:var(--text-2)">采样速度快，但模型需要在有限的噪声水平内学会逆转分布。高噪声区域的数据底噪更重。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：LCM、4-step 高速采样、工业实时应用。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--amber)">中 $T$（≈500）</p>
+        <p style="font-size:12px;color:var(--text-2)">Cosine / Linear 调度的经典选择。SNR 下降曲线有足够的中间态供模型学习。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：Stable Diffusion v1.5（$T=1000$，但有效步可压缩至 20-50）。</p>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--green)">大 $T$（≥1000）</p>
+        <p style="font-size:12px;color:var(--text-2)">每步噪声注入更细微，$x_t$ 的分布更平滑，对应 Score 函数的梯度更稳定。</p>
+        <p style="font-size:12px;color:var(--text-2);margin-top:4px">典型场景：DDPM 原论文（$T=1000$）、高清图像生成（$T=2000$+）。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout purple" style="margin-top:12px">
+    <strong>DiT 的 Forward Process 设计原则</strong><br>
+    DiT 论文揭示了一个关键洞察：Forward Process 中的噪声调度（而非模型架构）是决定最终生成质量的关键因素之一。使用 LogSNR 线性调度而非简单的 Linear 或 Cosine，可以让 Transformer 在学习噪声预测时获得更一致的梯度信号。Stable Diffusion 3（SD3）采用 MM-DiT 架构，并配合改进的噪声调度，在文本到图像任务上取得了显著进步。
+  </div>
+
+  <hr>
+  <div style="text-align:center;color:var(--text-3);font-size:11px;padding:16px 0">
+    diffusion · 02 前向扩散过程（Forward Process） ·
+    <a href="../index.html">← 总目录</a>
+    · <a href="../01-introduction/index.html">← 01 生成式AI与扩散模型概述</a>
+    · <a href="../03-reverse-process/index.html">下一篇：03 反向过程与DDPM目标 →</a>
+  </div>
+</div>
+
+</body>
+</html>
