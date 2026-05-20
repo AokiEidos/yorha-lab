@@ -1,0 +1,161 @@
+{
+  "pdf": "/Users/haru/workspace/paper-reading/arxiv-2605.12090/paper.pdf",
+  "total_pages": 69,
+  "total_figures": 12,
+  "results": {
+    "2": {
+      "1": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_1_p2.png",
+        "method": "precision_crop",
+        "figure": "1",
+        "page": 2,
+        "region": {
+          "top": 39.6,
+          "bottom": 404.4839172363281,
+          "height_pct": 46.07120167125355
+        }
+      }
+    },
+    "3": {
+      "1": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_1_p3.png",
+        "method": "precision_crop",
+        "figure": "1",
+        "page": 3,
+        "region": {
+          "top": 39.6,
+          "bottom": 514.8,
+          "height_pct": 59.999999999999986
+        }
+      },
+      "2": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_2_p3.png",
+        "method": "precision_crop",
+        "figure": "2",
+        "page": 3,
+        "region": {
+          "top": 39.6,
+          "bottom": 218.66514587402344,
+          "height_pct": 22.609235590154476
+        }
+      }
+    },
+    "4": {
+      "2": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_2_p4.png",
+        "method": "precision_crop",
+        "figure": "2",
+        "page": 4,
+        "region": {
+          "top": 300.96,
+          "bottom": 701.3399047851562,
+          "height_pct": 50.55301828095408
+        }
+      }
+    },
+    "5": {
+      "3": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_3_p5.png",
+        "method": "precision_crop",
+        "figure": "3",
+        "page": 5,
+        "region": {
+          "top": 39.6,
+          "bottom": 237.67593383789062,
+          "height_pct": 25.00958760579427
+        }
+      }
+    },
+    "12": {
+      "4": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_4_p12.png",
+        "method": "precision_crop",
+        "figure": "4",
+        "page": 12,
+        "region": {
+          "top": 39.6,
+          "bottom": 514.8,
+          "height_pct": 59.999999999999986
+        }
+      }
+    },
+    "14": {
+      "5": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_5_p14.png",
+        "method": "precision_crop",
+        "figure": "5",
+        "page": 14,
+        "region": {
+          "top": 39.6,
+          "bottom": 255.96514892578125,
+          "height_pct": 27.31883193507339
+        }
+      }
+    },
+    "15": {
+      "5": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_5_p15.png",
+        "method": "precision_crop",
+        "figure": "5",
+        "page": 15,
+        "region": {
+          "top": 39.6,
+          "bottom": 234.25393676757812,
+          "height_pct": 24.577517268633603
+        }
+      }
+    },
+    "20": {
+      "6": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_6_p20.png",
+        "method": "precision_crop",
+        "figure": "6",
+        "page": 20,
+        "region": {
+          "top": 39.6,
+          "bottom": 752.4,
+          "height_pct": 89.99999999999999
+        }
+      }
+    },
+    "21": {
+      "6": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_6_p21.png",
+        "method": "precision_crop",
+        "figure": "6",
+        "page": 21,
+        "region": {
+          "top": 39.6,
+          "bottom": 244.38690185546875,
+          "height_pct": 25.856932052458177
+        }
+      }
+    },
+    "26": {
+      "7": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_7_p26.png",
+        "method": "precision_crop",
+        "figure": "7",
+        "page": 26,
+        "region": {
+          "top": 300.96,
+          "bottom": 578.5819091796875,
+          "height_pct": 35.05327136107166
+        }
+      }
+    },
+    "27": {
+      "7": {
+        "file": "/Users/haru/workspace/yorha-lab/public/extracted/260512090/fig_7_p27.png",
+        "method": "precision_crop",
+        "figure": "7",
+        "page": 27,
+        "region": {
+          "top": 39.6,
+          "bottom": 752.4,
+          "height_pct": 89.99999999999999
+        }
+      }
+    }
+  }
+}
